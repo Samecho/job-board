@@ -56,6 +56,39 @@ MERGED_INTO_PARENT = {
     "Collins Aerospace": "RTX",
 }
 
+PARENT_COMPANIES = {
+    "Google DeepMind": "Alphabet",
+    "Waymo": "Alphabet",
+    "Verily": "Alphabet",
+    "Wing": "Alphabet",
+    "Intrinsic": "Alphabet",
+    "GitHub": "Microsoft",
+    "LinkedIn": "Microsoft",
+    "Mojang Studios": "Microsoft",
+    "Activision Blizzard": "Microsoft",
+    "Twitch": "Amazon",
+    "Audible": "Amazon",
+    "Zoox": "Amazon",
+    "Slack": "Salesforce",
+    "Tableau": "Salesforce",
+    "Red Hat": "IBM",
+    "HashiCorp": "IBM",
+    "VMware": "Broadcom",
+    "ThousandEyes": "Cisco",
+    "AppDynamics": "Cisco",
+    "Splunk": "Cisco",
+    "Boston Dynamics": "Hyundai Motor Group",
+    "Toyota Research Institute": "Toyota",
+    "Woven by Toyota": "Toyota",
+    "Riot Games": "Tencent",
+    "Supercell": "Tencent",
+    "Rockstar Games": "Take-Two Interactive",
+    "2K Games": "Take-Two Interactive",
+    "Bungie": "Sony",
+    "Cruise": "General Motors",
+    "Latitude AI": "Ford",
+}
+
 
 CATEGORY_MAP = {
     "AI Lab": "AI & ML",
@@ -168,8 +201,8 @@ SWE_TIER_OVERRIDES = {
         "Docker", "DoorDash", "Dropbox", "Duolingo", "Elastic", "Epic Games",
         "Fastly", "Firecrawl", "Fly.io", "GitLab", "Goldman Sachs",
         "Grafana Labs", "HashiCorp",
-        "Helsing", "Honeycomb", "Ideogram", "Instacart", "JetBrains",
-        "Kuaishou", "Lambda",
+        "Helsing", "Honeycomb", "Ideogram", "Instacart", "Intrinsic",
+        "JetBrains", "Kuaishou", "Lambda", "Latitude AI",
         "Langfuse", "Lyft", "Mandiant", "MathWorks", "Mercor", "Miro",
         "Mobileye", "Modal", "MongoDB", "Moonshot AI",
         "MotherDuck", "Neon", "Nintendo", "Nuro", "Okta",
@@ -177,18 +210,21 @@ SWE_TIER_OVERRIDES = {
         "PlanetScale", "Postman", "Pulumi", "Pure Storage", "Recursion",
         "Railway", "Red Hat", "Reddit", "Redis", "Render", "Replicate",
         "Relativity Space", "Replit", "Retool",
-        "Riot Games", "Rivos", "Robinhood", "Rubrik", "Samsara", "Sentry",
+        "Riot Games", "Rivos", "Robinhood", "Rockstar Games", "Rubrik",
+        "Samsara", "Sentry",
         "Shield AI", "SiFive", "Skydio", "Slack", "Sourcegraph", "Spotify",
-        "Square", "Synthesia",
+        "Square", "Supercell", "Synthesia", "ThousandEyes",
         "Superhuman", "Supabase", "Synopsys", "Tailscale", "Teleport",
         "Temporal", "Tenstorrent", "Tesla", "Toyota Research Institute",
         "Turso", "Twitch", "Vanta", "Vercel", "Verkada", "Wealthsimple",
-        "Weights & Biases", "Weaviate", "Zip", "Zipline", "Zoox", "Zscaler",
+        "Weights & Biases", "Weaviate", "Wing", "Woven by Toyota", "Zip",
+        "Zipline", "Zoox", "Zscaler",
         "dbt Labs",
     },
     "B+": {
-        "Anaconda", "Analog Devices", "Arize AI", "ASML", "Autodesk",
-        "Bank of Canada", "Beacon Software", "CDPQ", "Cisco", "CSIS",
+        "2K Games", "Activision Blizzard", "Anaconda", "Analog Devices",
+        "Arize AI", "ASML", "Autodesk",
+        "Bank of Canada", "Beacon Software", "Bungie", "CDPQ", "Cisco", "CSIS",
         "Defence Research and Development Canada", "Epirus", "Esri",
         "Forescout", "Fortinet", "Fullscript", "Geotab", "Helicone", "Hopper",
         "Intel", "Intercontinental Exchange", "Intuitive Surgical",
@@ -864,6 +900,17 @@ ADDITIONAL_COMPANIES = [
     ("01.AI", "01.ai", "A", "AI Lab"),
     ("Moonshot AI", "moonshot.ai", "A", "AI Lab"),
     ("SenseTime", "sensetime.com", "B+", "AI Platform"),
+    ("NASA", "nasa.gov", "B+", "Government Research"),
+    ("Wing", "wing.com", "A", "Autonomy"),
+    ("Intrinsic", "intrinsic.ai", "A", "Robotics"),
+    ("Latitude AI", "latitude.ai", "A", "Autonomy"),
+    ("Woven by Toyota", "woven.toyota", "A", "Automotive"),
+    ("ThousandEyes", "thousandeyes.com", "A", "Networking"),
+    ("Supercell", "supercell.com", "A", "Gaming"),
+    ("Rockstar Games", "rockstargames.com", "A", "Gaming"),
+    ("2K Games", "2k.com", "B+", "Gaming"),
+    ("Activision Blizzard", "activisionblizzard.com", "B+", "Gaming"),
+    ("Bungie", "bungie.net", "B+", "Gaming"),
 ]
 
 
@@ -1025,6 +1072,17 @@ CAREER_URLS = {
     "01.AI": "https://www.lingyiwanwu.com/join-us",
     "Moonshot AI": "https://www.moonshot.cn/",
     "SenseTime": "https://www.sensetime.com/en/careers",
+    "NASA": "https://www.nasa.gov/careers/",
+    "Wing": "https://wing.com/careers",
+    "Intrinsic": "https://www.intrinsic.ai/careers",
+    "Latitude AI": "https://www.latitude.ai/careers",
+    "Woven by Toyota": "https://woven.toyota/en/careers/",
+    "ThousandEyes": "https://careers.cisco.com/global/en/thousandeyes",
+    "Supercell": "https://supercell.com/en/careers/",
+    "Rockstar Games": "https://www.rockstargames.com/careers",
+    "2K Games": "https://careers.2k.com/",
+    "Activision Blizzard": "https://careers.activisionblizzard.com/",
+    "Bungie": "https://careers.bungie.com/",
 }
 
 
@@ -1046,12 +1104,13 @@ def seed_companies(db: Session) -> None:
     for name, domain, tier, category in COMPANIES:
         if name in existing_companies:
             existing_companies[name].tier = tier
+            existing_companies[name].parent_company = PARENT_COMPANIES.get(name)
             continue
         now = datetime.now(UTC)
         row = {
             "name": name,
             "display_name": name,
-            "parent_company": None,
+            "parent_company": PARENT_COMPANIES.get(name),
             "domain": domain,
             "logo_url": f"https://www.google.com/s2/favicons?domain_url=https://{domain}&sz=128",
             "tier": tier,

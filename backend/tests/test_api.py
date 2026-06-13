@@ -1,16 +1,19 @@
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.config import get_settings
+from app.database import SessionLocal
 from app.main import app
+from app.models import Company
 
 
 def test_simplified_tracker_and_resume_flow(monkeypatch):
     with TestClient(app) as client:
         companies = client.get("/api/companies")
         assert companies.status_code == 200
-        assert len(companies.json()) >= 496
+        assert len(companies.json()) >= 506
         names = {item["name"] for item in companies.json()}
         assert {
             "Snap", "Spotify", "Duolingo", "Glean", "Together AI",
@@ -33,7 +36,9 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
             "Shared Services Canada", "CPP Investments", "OMERS",
             "Ontario Teachers' Pension Plan", "CDPQ", "Desjardins",
             "Alibaba", "Kuaishou", "MiniMax", "Z.ai", "01.AI",
-            "Moonshot AI", "SenseTime",
+            "Moonshot AI", "SenseTime", "NASA", "Wing", "Intrinsic", "Latitude AI",
+            "Woven by Toyota", "ThousandEyes", "Supercell", "Rockstar Games",
+            "2K Games", "Activision Blizzard", "Bungie",
         } <= names
         assert {
             "ByteDance Seed", "TikTok AI", "BytePlus", "Qwen",
@@ -42,6 +47,26 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
         }.isdisjoint(names)
         assert "Codeium" not in names
         assert "Windsurf" not in names
+        with SessionLocal() as db:
+            parent_companies = {
+                company.name: company.parent_company
+                for company in db.scalars(select(Company).where(Company.name.in_({
+                    "Google DeepMind", "Wing", "Intrinsic", "GitHub",
+                    "Activision Blizzard", "ThousandEyes", "Supercell",
+                    "Rockstar Games", "Woven by Toyota",
+                })))
+            }
+        assert parent_companies == {
+            "Google DeepMind": "Alphabet",
+            "Wing": "Alphabet",
+            "Intrinsic": "Alphabet",
+            "GitHub": "Microsoft",
+            "Activision Blizzard": "Microsoft",
+            "ThousandEyes": "Cisco",
+            "Supercell": "Tencent",
+            "Rockstar Games": "Take-Two Interactive",
+            "Woven by Toyota": "Toyota",
+        }
         tiers = {item["name"]: item["tier"] for item in companies.json()}
         assert tiers["OpenAI"] == "S+"
         assert tiers["Databricks"] == "S"
