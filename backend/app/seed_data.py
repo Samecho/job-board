@@ -193,7 +193,7 @@ SWE_TIER_OVERRIDES = {
         "Forescout", "Fortinet", "Fullscript", "Geotab", "Helicone", "Hopper",
         "Intel", "Intercontinental Exchange", "Intuitive Surgical",
         "JPMorgan Chase", "LangChain", "LlamaIndex", "Marvell", "Mastercard",
-        "MDA Space", "MediaTek", "Micron", "Morgan Stanley", "Nango", "NASA",
+        "MDA Space", "MediaTek", "Micron", "Morgan Stanley", "Nango",
         "Nasdaq",
         "National Research Council Canada", "OMERS",
         "Ontario Teachers' Pension Plan", "Oracle",
@@ -864,7 +864,6 @@ ADDITIONAL_COMPANIES = [
     ("01.AI", "01.ai", "A", "AI Lab"),
     ("Moonshot AI", "moonshot.ai", "A", "AI Lab"),
     ("SenseTime", "sensetime.com", "B+", "AI Platform"),
-    ("NASA", "nasa.gov", "B+", "Government Research"),
 ]
 
 
@@ -1026,7 +1025,6 @@ CAREER_URLS = {
     "01.AI": "https://www.lingyiwanwu.com/join-us",
     "Moonshot AI": "https://www.moonshot.cn/",
     "SenseTime": "https://www.sensetime.com/en/careers",
-    "NASA": "https://www.nasa.gov/careers/",
 }
 
 

@@ -33,7 +33,7 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
             "Shared Services Canada", "CPP Investments", "OMERS",
             "Ontario Teachers' Pension Plan", "CDPQ", "Desjardins",
             "Alibaba", "Kuaishou", "MiniMax", "Z.ai", "01.AI",
-            "Moonshot AI", "SenseTime", "NASA",
+            "Moonshot AI", "SenseTime",
         } <= names
         assert {
             "ByteDance Seed", "TikTok AI", "BytePlus", "Qwen",
