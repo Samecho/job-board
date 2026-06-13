@@ -10,7 +10,7 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
     with TestClient(app) as client:
         companies = client.get("/api/companies")
         assert companies.status_code == 200
-        assert len(companies.json()) >= 488
+        assert len(companies.json()) >= 496
         names = {item["name"] for item in companies.json()}
         assert {
             "Snap", "Spotify", "Duolingo", "Glean", "Together AI",
@@ -32,7 +32,14 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
             "Defence Research and Development Canada",
             "Shared Services Canada", "CPP Investments", "OMERS",
             "Ontario Teachers' Pension Plan", "CDPQ", "Desjardins",
+            "Alibaba", "Kuaishou", "MiniMax", "Z.ai", "01.AI",
+            "Moonshot AI", "SenseTime", "NASA",
         } <= names
+        assert {
+            "ByteDance Seed", "TikTok AI", "BytePlus", "Qwen",
+            "Tencent Hunyuan", "Tencent Cloud", "Kling AI", "Kimi",
+            "SenseNova", "Huawei Cloud Pangu", "Zhipu AI",
+        }.isdisjoint(names)
         assert "Codeium" not in names
         assert "Windsurf" not in names
         tiers = {item["name"]: item["tier"] for item in companies.json()}
