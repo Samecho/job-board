@@ -16,6 +16,16 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
             "Snap", "Spotify", "Duolingo", "Glean", "Together AI",
             "Fireworks AI", "Akuna Capital", "Virtu Financial",
         } <= names
+        tiers = {item["name"]: item["tier"] for item in companies.json()}
+        assert tiers["OpenAI"] == "S+"
+        assert tiers["Databricks"] == "S"
+        assert tiers["Microsoft"] == "A+"
+        assert tiers["Spotify"] == "A"
+        assert tiers["ASML"] == "B+"
+        assert tiers["Salesforce"] == "B"
+        assert tiers["Boeing"] == "C"
+        assert tiers["Pfizer"] == "D"
+        assert set(tiers.values()) == {"S+", "S", "A+", "A", "B+", "B", "C", "D"}
         assert companies.json()[0]["tier"] == "S+"
         s_plus_names = [
             item["name"] for item in companies.json() if item["tier"] == "S+"

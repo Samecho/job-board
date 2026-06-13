@@ -59,6 +59,16 @@ Each company supports:
 - Careers or application link
 - Resume generation and saved history
 
+Company tiers use an SWE/SDE student perspective rather than company size or
+general business prestige. The ranking considers engineering density and
+technical scope, software compensation, resume and mobility signal, student
+program quality, and current business or role stability. The order is:
+
+`S+`, `S`, `A+`, `A`, `B+`, `B`, `C`, `D`
+
+The curated tier policy is applied to both fresh installs and existing
+databases without changing personal statuses, notes, links, or saved resumes.
+
 Double-click a table row or choose **Edit** on a card to edit tracking details. **Resume (N)** shows how many saved resumes belong to that company.
 
 ## Analytics

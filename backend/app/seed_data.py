@@ -6,27 +6,15 @@ from sqlalchemy.orm import Session
 from .models import Company
 
 
-TIERS = ("S+", "S", "A+", "A", "B+", "B", "C+", "C", "D+", "D")
+TIERS = ("S+", "S", "A+", "A", "B+", "B", "C", "D")
 TIER_SCORES = {
-    "S+": 99, "S": 95, "A+": 91, "A": 87, "B+": 82,
-    "B": 77, "C+": 72, "C": 67, "D+": 62, "D": 57,
+    "S+": 99, "S": 95, "A+": 91, "A": 87,
+    "B+": 82, "B": 77, "C": 67, "D": 57,
 }
 LEGACY_TIER_MAP = {
     "S+": "S+", "S": "S", "A+": "A+", "A": "A",
     "B+": "B+", "B": "B", "C": "C",
 }
-D_TIER_NAMES = {
-    "BMO", "Scotiabank", "CIBC", "National Bank of Canada",
-    "TELUS", "Bell", "Rogers", "Nokia",
-    "HP", "Lenovo", "Huawei", "Baidu", "Xiaomi",
-    "Boeing", "Honeywell", "Safran", "Bombardier",
-    "Magna International", "Emerson", "Caterpillar",
-    "Philips", "BlackBerry", "OpenText",
-    "Continental", "Magna", "Eaton", "Johnson Controls", "Textron",
-    "Thermo Fisher Scientific", "Moderna", "Pfizer", "Roche",
-    "Johnson & Johnson", "Merck", "Novartis", "Amgen",
-}
-
 # Product lines and internal divisions share their parent company's hiring pipeline.
 # Independently operated subsidiaries with distinct careers sites remain separate.
 MERGED_INTO_PARENT = {
@@ -130,6 +118,135 @@ CATEGORY_MAP = {
 
 def broad_category(category: str) -> str:
     return CATEGORY_MAP.get(category, category)
+
+
+# SWE/SDE tiers emphasize engineering density, technical scope, compensation,
+# career signal, student program quality, and business/role stability.
+SWE_TIER_OVERRIDES = {
+    "S+": {
+        "Anthropic", "Citadel Securities", "D. E. Shaw", "Five Rings",
+        "Google DeepMind", "Hudson River Trading", "Jane Street", "OpenAI",
+    },
+    "S": {
+        "Anysphere", "Citadel", "CoreWeave", "Cursor", "Databricks", "DRW",
+        "Figma", "Google", "IMC Trading", "Jump Trading", "Meta", "Mistral AI",
+        "NVIDIA", "Optiver", "Perplexity", "Stripe",
+        "Susquehanna International Group", "Tower Research Capital",
+        "Two Sigma", "Waymo", "xAI",
+    },
+    "A+": {
+        "AMD", "Airbnb", "Akuna Capital", "Amazon", "Anduril", "Apple",
+        "Applied Intuition", "AQR Capital Management", "Arista Networks", "Arm",
+        "Bloomberg", "ByteDance", "Cerebras", "Character.AI", "Cloudflare",
+        "Cohere", "Coinbase", "Datadog", "Discord", "ElevenLabs", "Figure AI",
+        "Fireworks AI", "GitHub", "Glean", "Groq", "Harvey",
+        "Headlands Technologies", "Hugging Face", "Linear", "LinkedIn",
+        "Microsoft", "Millennium", "Netflix", "Notion", "Palantir", "Point72",
+        "Ramp", "Rippling", "Roblox", "Runway", "Safe Superintelligence",
+        "Scale AI", "Shopify", "Snap", "Snowflake", "SpaceX",
+        "Thinking Machines Lab", "Together AI", "Uber", "Valve",
+        "Virtu Financial", "Waabi", "Wiz",
+    },
+    "A": {
+        "1Password", "Adobe", "Adyen", "Affirm", "Atlassian", "Aurora",
+        "Benchling", "Block", "Boston Dynamics", "Brex", "Broadcom",
+        "Cadence Design Systems", "Canva", "Capital One", "Chronosphere",
+        "Cockroach Labs", "Confluent", "CrowdStrike", "Crusoe", "Dagster Labs",
+        "Docker", "DoorDash", "Dropbox", "Duolingo", "Elastic", "Epic Games",
+        "Fastly", "GitLab", "Goldman Sachs", "Grafana Labs", "HashiCorp",
+        "Helsing", "Honeycomb", "Instacart", "JetBrains", "Lambda", "Mandiant",
+        "MathWorks", "Miro", "Mobileye", "Modal", "MongoDB", "Neon", "Nintendo",
+        "Nuro", "Okta", "Palo Alto Networks", "Pinterest", "Plaid",
+        "PlanetScale", "Postman", "Pulumi", "Pure Storage", "Recursion",
+        "Red Hat", "Reddit", "Redis", "Relativity Space", "Replit", "Retool",
+        "Riot Games", "Rivos", "Robinhood", "Rubrik", "Samsara", "Sentry",
+        "Shield AI", "SiFive", "Skydio", "Slack", "Spotify", "Square",
+        "Superhuman", "Supabase", "Synopsys", "Tailscale", "Teleport",
+        "Temporal", "Tenstorrent", "Tesla", "Toyota Research Institute",
+        "Twitch", "Vanta", "Vercel", "Verkada", "Wealthsimple", "Weaviate",
+        "Zipline", "Zoox", "Zscaler", "dbt Labs",
+    },
+    "B+": {
+        "Analog Devices", "ASML", "Autodesk", "Cisco", "Epirus", "Esri",
+        "Fortinet", "Intel", "Intercontinental Exchange", "Intuitive Surgical",
+        "JPMorgan Chase", "LangChain", "LlamaIndex", "Marvell", "Mastercard",
+        "MDA Space", "MediaTek", "Micron", "Morgan Stanley", "Nasdaq", "Oracle",
+        "Qualcomm", "Rivian", "Rocket Lab", "SambaNova Systems", "Samsung",
+        "Sanctuary AI", "ServiceNow", "Sony Interactive Entertainment",
+        "StackAdapt", "Tempus AI", "Tencent", "Texas Instruments", "TSMC",
+        "Varda Space Industries", "Vector Institute", "Verily", "Visa",
+        "Wolfram", "Xanadu",
+    },
+    "C": {
+        "Bell", "Huawei", "Rogers", "TELUS",
+    },
+    "D": {
+        "Amgen", "Johnson & Johnson", "Merck", "Moderna", "Novartis", "Pfizer",
+        "Philips", "Roche", "Safran", "Thermo Fisher Scientific",
+    },
+}
+
+CATEGORY_TIER_POLICY = {
+    "AI & ML": {
+        "S+": "A+", "S": "A+", "A+": "A", "A": "B+", "B+": "B+", "B": "B",
+        "C": "C", "D": "D",
+    },
+    "Aerospace & Defense": {
+        "S+": "A+", "S": "A+", "A+": "A", "A": "B+", "B+": "B", "B": "C",
+        "C": "C", "D": "C",
+    },
+    "Big Tech & Consumer": {
+        "S+": "A+", "S": "A+", "A+": "A", "A": "B+", "B+": "B", "B": "C",
+        "C": "C", "D": "C",
+    },
+    "Cloud, Data & DevTools": {
+        "S+": "S", "S": "A+", "A+": "A+", "A": "A", "B+": "B+",
+        "B": "B", "C": "C", "D": "D",
+    },
+    "Emerging Tech": {
+        "S+": "A+", "S": "A", "A+": "A", "A": "B+", "B+": "B",
+        "B": "C", "C": "C", "D": "D",
+    },
+    "Enterprise Software": {
+        "S+": "A+", "S": "A+", "A+": "A", "A": "B+", "B+": "B",
+        "B": "C", "C": "C", "D": "D",
+    },
+    "Finance & Trading": {
+        "S+": "S+", "S": "S", "A+": "A+", "A": "A", "B+": "B",
+        "B": "C", "C": "C", "D": "C",
+    },
+    "Gaming & Media": {
+        "S+": "A+", "S": "A+", "A+": "A+", "A": "A", "B+": "B",
+        "B": "C", "C": "C", "D": "D",
+    },
+    "Hardware & Semiconductors": {
+        "S+": "S", "S": "S", "A+": "A", "A": "B+", "B+": "B",
+        "B": "C", "C": "C", "D": "C",
+    },
+    "Health & Biotech": {
+        "S+": "A+", "S": "A", "A+": "A", "A": "B+", "B+": "B",
+        "B": "C", "C": "C", "D": "D",
+    },
+    "Industrial & Engineering": {
+        "S+": "A+", "S": "A", "A+": "A", "A": "B+", "B+": "B",
+        "B": "C", "C": "C", "D": "D",
+    },
+    "Robotics & Mobility": {
+        "S+": "S", "S": "S", "A+": "A+", "A": "A", "B+": "B+",
+        "B": "B", "C": "C", "D": "C",
+    },
+    "Security & Networking": {
+        "S+": "A+", "S": "A+", "A+": "A+", "A": "A", "B+": "B+",
+        "B": "B", "C": "C", "D": "C",
+    },
+}
+
+
+def swe_tier_for(name: str, category: str, original_tier: str) -> str:
+    for tier, names in SWE_TIER_OVERRIDES.items():
+        if name in names:
+            return tier
+    return CATEGORY_TIER_POLICY[category][original_tier]
 
 
 # name, domain, tier, category
@@ -645,14 +762,18 @@ def _dedupe_companies():
     category_details = {}
     for name, domain, tier, category in LEGACY_COMPANIES:
         if name not in seen and name not in MERGED_INTO_PARENT:
-            normalized_tier = "D" if name in D_TIER_NAMES else LEGACY_TIER_MAP[tier]
-            companies.append((name, domain, normalized_tier, broad_category(category)))
+            broad = broad_category(category)
+            normalized_tier = LEGACY_TIER_MAP[tier]
+            companies.append((
+                name, domain, swe_tier_for(name, broad, normalized_tier), broad,
+            ))
             category_details[name] = category
             seen.add(name)
     for company in ADDITIONAL_COMPANIES:
         if company[0] not in seen and company[0] not in MERGED_INTO_PARENT:
             name, domain, tier, category = company
-            companies.append((name, domain, "D" if name in D_TIER_NAMES else tier, broad_category(category)))
+            broad = broad_category(category)
+            companies.append((name, domain, swe_tier_for(name, broad, tier), broad))
             category_details[name] = category
             seen.add(company[0])
     return companies, category_details
@@ -728,7 +849,9 @@ def career_url_for(name: str, domain: str) -> str:
 
 
 def seed_companies(db: Session) -> None:
-    existing_names = set(db.scalars(select(Company.name)))
+    existing_companies = {
+        company.name: company for company in db.scalars(select(Company))
+    }
     company_table = Table(
         Company.__tablename__,
         MetaData(),
@@ -737,7 +860,8 @@ def seed_companies(db: Session) -> None:
     column_names = set(company_table.columns.keys())
     rows = []
     for name, domain, tier, category in COMPANIES:
-        if name in existing_names:
+        if name in existing_companies:
+            existing_companies[name].tier = tier
             continue
         now = datetime.now(UTC)
         row = {
