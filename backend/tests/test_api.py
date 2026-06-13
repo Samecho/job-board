@@ -82,6 +82,13 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
             item["name"] for item in companies.json() if item["tier"] == "S+"
         ]
         assert s_plus_names == sorted(s_plus_names)
+        intern_hiring = {
+            item["name"]: item["intern_friendly"] for item in companies.json()
+        }
+        assert all(intern_hiring[name] for name in {
+            "Amazon", "Microsoft", "ByteDance", "Ericsson", "Nokia",
+        })
+        assert intern_hiring["Mercor"] is False
         company = next(item for item in companies.json() if item["name"] == "Google")
         original_company = company.copy()
         original_profile = client.get("/api/resume-profile").json()

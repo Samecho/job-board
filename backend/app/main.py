@@ -54,6 +54,7 @@ def company_read(
         tier=company.tier or "Conditional",
         category=company.category or "Other",
         main_locations=company.main_locations or "",
+        intern_friendly=bool(company.intern_friendly),
         status=company.status or "Not Applied",
         notes=company.notes or "",
         link=company.link or company.career_url or "",

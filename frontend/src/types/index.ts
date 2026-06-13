@@ -10,6 +10,7 @@ export interface Company {
   tier: string;
   category: string;
   main_locations: string;
+  intern_friendly: boolean;
   status: CompanyStatus;
   notes: string;
   link: string;

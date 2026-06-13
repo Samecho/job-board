@@ -34,7 +34,7 @@ def ensure_simple_schema() -> None:
         return
 
     columns = {column["name"] for column in inspector.get_columns("companies")}
-    missing = {"status", "notes", "link"} - columns
+    missing = {"status", "notes", "link", "intern_friendly"} - columns
 
     backup = DATA_DIR / "internradar-pre-simplify.db"
     if missing and DATABASE_PATH.exists() and not backup.exists():
@@ -53,6 +53,11 @@ def ensure_simple_schema() -> None:
         if "link" in missing:
             connection.execute(text(
                 "ALTER TABLE companies ADD COLUMN link VARCHAR(1000)"
+            ))
+        if "intern_friendly" in missing:
+            connection.execute(text(
+                "ALTER TABLE companies ADD COLUMN intern_friendly "
+                "BOOLEAN NOT NULL DEFAULT 0"
             ))
 
         old_tables = set(inspect(connection).get_table_names())

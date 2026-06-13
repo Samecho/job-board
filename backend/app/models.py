@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -26,6 +26,9 @@ class Company(Base):
     main_locations: Mapped[str | None] = mapped_column(Text, nullable=True)
     tags: Mapped[str | None] = mapped_column(Text, nullable=True)
     global_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    intern_friendly: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, index=True
+    )
     status: Mapped[str] = mapped_column(String(24), default="Not Applied", index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     link: Mapped[str | None] = mapped_column(String(1000), nullable=True)

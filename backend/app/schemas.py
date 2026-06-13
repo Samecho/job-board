@@ -16,6 +16,7 @@ class CompanyRead(BaseModel):
     tier: str
     category: str
     main_locations: str
+    intern_friendly: bool
     status: str
     notes: str
     link: str

@@ -15,6 +15,71 @@ LEGACY_TIER_MAP = {
     "S+": "S+", "S": "S", "A+": "A+", "A": "A",
     "B+": "B+", "B": "B", "C": "C",
 }
+
+# Companies with recurring, structured internship, co-op, or university hiring.
+# This intentionally excludes companies that only post student roles occasionally.
+INTERN_FRIENDLY_COMPANIES = {
+    # Quant, finance, and fintech
+    "Jane Street", "Hudson River Trading", "Two Sigma", "Citadel Securities",
+    "Citadel", "Optiver", "Jump Trading", "DRW", "IMC Trading",
+    "Susquehanna International Group", "Five Rings", "D. E. Shaw",
+    "AQR Capital Management", "Akuna Capital", "Virtu Financial",
+    "Bloomberg", "Goldman Sachs", "JPMorgan Chase", "Morgan Stanley",
+    "Bank of America", "Capital One", "American Express", "Mastercard",
+    "Visa", "RBC", "TD", "BMO", "Scotiabank", "CIBC",
+    "National Bank of Canada", "Bank of Canada", "CPP Investments", "OMERS",
+    "Ontario Teachers' Pension Plan", "CDPQ", "Desjardins", "Stripe",
+    "Coinbase", "Robinhood", "Block", "PayPal", "Adyen",
+
+    # Large software, cloud, consumer, and AI employers
+    "Google", "Google DeepMind", "Microsoft", "Amazon", "Apple", "Meta",
+    "NVIDIA", "Netflix", "Oracle", "Salesforce", "Adobe", "IBM", "SAP",
+    "ServiceNow", "Atlassian", "Workday", "Cisco", "GitHub", "LinkedIn",
+    "ByteDance", "TikTok", "Tencent", "Alibaba", "Huawei", "OpenAI",
+    "Anthropic", "Databricks", "Snowflake", "Cloudflare", "MongoDB",
+    "Confluent", "Elastic", "Datadog", "Splunk", "Palantir", "Shopify",
+    "Uber", "Lyft", "Airbnb", "DoorDash", "Instacart", "Pinterest",
+    "Reddit", "Snap", "Spotify", "Dropbox", "Slack", "Zoom", "Twilio",
+    "HubSpot", "DocuSign", "Roblox", "Unity", "Epic Games", "Riot Games",
+    "Electronic Arts", "Ubisoft", "Nintendo", "Sony Interactive Entertainment",
+    "Take-Two Interactive", "Activision Blizzard", "2K Games",
+    "Rockstar Games", "Duolingo", "Canva", "Figma",
+
+    # Hardware, semiconductor, networking, and telecom
+    "AMD", "Intel", "Arm", "Qualcomm", "Broadcom", "Marvell", "MediaTek",
+    "Texas Instruments", "Analog Devices", "Micron", "Western Digital",
+    "Seagate", "TSMC", "Samsung", "ASML", "Applied Materials",
+    "Lam Research", "KLA", "Synopsys", "Cadence Design Systems",
+    "Keysight Technologies", "Dell Technologies", "HP",
+    "Hewlett Packard Enterprise", "Lenovo", "Ericsson", "Nokia",
+    "TELUS", "Bell", "Rogers", "Ciena", "Juniper Networks",
+    "Arista Networks", "Motorola Solutions", "BlackBerry",
+
+    # Automotive, robotics, aerospace, defence, and industrial
+    "Tesla", "SpaceX", "Waymo", "Zoox", "Aurora", "Cruise", "Nuro",
+    "Mobileye", "Applied Intuition", "General Motors", "Ford", "Rivian",
+    "Toyota Research Institute", "Magna International", "Bosch",
+    "Boeing", "Airbus", "Lockheed Martin", "RTX", "Northrop Grumman",
+    "General Dynamics", "General Dynamics Mission Systems", "L3Harris",
+    "BAE Systems", "Honeywell", "GE Aerospace", "Collins Aerospace",
+    "Safran", "Thales", "CAE", "MDA Space", "Rocket Lab", "NASA",
+    "Bombardier", "Siemens", "Schneider Electric", "ABB", "Emerson",
+    "Rockwell Automation", "Caterpillar", "John Deere", "Garmin",
+    "Trimble", "Esri", "Autodesk",
+
+    # Canada-focused employers and public research
+    "OpenText", "Kinaxis", "Lightspeed", "Coveo", "PointClickCare",
+    "Geotab", "Wealthsimple", "Communications Security Establishment",
+    "CSIS", "Statistics Canada", "National Research Council Canada",
+    "Defence Research and Development Canada", "Shared Services Canada",
+
+    # Healthcare and life sciences with established student programs
+    "Intuitive Surgical", "GE HealthCare", "Siemens Healthineers",
+    "Philips", "Medtronic", "Boston Scientific", "Johnson & Johnson",
+    "Pfizer", "Roche", "Merck", "Novartis", "Amgen",
+    "Thermo Fisher Scientific", "Illumina",
+}
+
 # Product lines and internal divisions share their parent company's hiring pipeline.
 # Independently operated subsidiaries with distinct careers sites remain separate.
 MERGED_INTO_PARENT = {
@@ -1105,6 +1170,9 @@ def seed_companies(db: Session) -> None:
         if name in existing_companies:
             existing_companies[name].tier = tier
             existing_companies[name].parent_company = PARENT_COMPANIES.get(name)
+            existing_companies[name].intern_friendly = (
+                name in INTERN_FRIENDLY_COMPANIES
+            )
             continue
         now = datetime.now(UTC)
         row = {
@@ -1123,6 +1191,7 @@ def seed_companies(db: Session) -> None:
                 CATEGORY_DETAILS[name].lower().replace(" / ", ",").replace(" ", "-"),
             ])),
             "global_notes": "",
+            "intern_friendly": name in INTERN_FRIENDLY_COMPANIES,
             "status": "Not Applied",
             "notes": "",
             "link": career_url_for(name, domain),
