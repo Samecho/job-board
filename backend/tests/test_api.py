@@ -10,12 +10,18 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
     with TestClient(app) as client:
         companies = client.get("/api/companies")
         assert companies.status_code == 200
-        assert len(companies.json()) >= 390
+        assert len(companies.json()) >= 440
         names = {item["name"] for item in companies.json()}
         assert {
             "Snap", "Spotify", "Duolingo", "Glean", "Together AI",
             "Fireworks AI", "Akuna Capital", "Virtu Financial",
+            "Cognition", "Sierra AI", "Decagon", "Abridge", "Poolside",
+            "Magic", "OpenRouter", "Weights & Biases", "Anaconda",
+            "Untether AI", "Geotab", "Nuvei", "Mappedin", "ClickHouse",
+            "MotherDuck", "Astral", "Turso", "Lyft",
         } <= names
+        assert "Codeium" not in names
+        assert "Windsurf" not in names
         tiers = {item["name"]: item["tier"] for item in companies.json()}
         assert tiers["OpenAI"] == "S+"
         assert tiers["Databricks"] == "S"
