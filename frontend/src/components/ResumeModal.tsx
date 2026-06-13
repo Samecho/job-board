@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Download, Sparkles, X } from "lucide-react";
+import { Copy, Download, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "../api/client";
 import type { Company, FeatureStatus, GeneratedResume } from "../types";
 
@@ -27,6 +27,7 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
   const [notes, setNotes] = useState("");
   const [history, setHistory] = useState<GeneratedResume[]>([]);
   const [busy, setBusy] = useState<"generate" | "save" | "">("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   const loadHistory = () => api.companyResumes(company.id).then(setHistory);
@@ -65,6 +66,18 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
     } finally { setBusy(""); }
   };
 
+  const deleteSavedResume = async (resume: GeneratedResume) => {
+    if (!confirm(`Delete ${resume.resume_name}?`)) return;
+    setDeletingId(resume.id); setError("");
+    try {
+      await api.deleteResume(resume.id);
+      await loadHistory();
+      await onSaved();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Delete failed");
+    } finally { setDeletingId(null); }
+  };
+
   return <div className="modal-backdrop" onMouseDown={onClose}>
     <section className="modal resume-modal" onMouseDown={event => event.stopPropagation()}>
       <div className="modal-head"><div><span className="eyebrow">Tailored resume</span><h2>{company.name}</h2></div><button className="icon-button" onClick={onClose}><X size={20} /></button></div>
@@ -85,7 +98,7 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
         </div>
       </div>
       {error && <p className="inline-error">{error}</p>}
-      <div className="resume-history"><span className="eyebrow">Saved history for {company.name}</span>{history.length ? history.map(item => <article key={item.id}><div><strong>{item.resume_name}</strong><span>{item.job_title || "No job title"} · {new Date(item.created_at).toLocaleDateString()}</span></div><div><button onClick={() => { setJobTitle(item.job_title); setJdText(item.jd_text); setLatex(item.generated_latex); setResumeName(item.resume_name); setNotes(item.notes); }}>View</button><button onClick={() => navigator.clipboard.writeText(item.generated_latex)}>Copy</button><button onClick={() => downloadTex(item.resume_name, item.generated_latex)}>Download</button></div></article>) : <p>No saved resumes for this company yet.</p>}</div>
+      <div className="resume-history"><span className="eyebrow">Saved history for {company.name}</span>{history.length ? history.map(item => <article key={item.id}><div><strong>{item.resume_name}</strong><span>{item.job_title || "No job title"} · {new Date(item.created_at).toLocaleDateString()}</span></div><div><button onClick={() => { setJobTitle(item.job_title); setJdText(item.jd_text); setLatex(item.generated_latex); setResumeName(item.resume_name); setNotes(item.notes); }}>View</button><button onClick={() => navigator.clipboard.writeText(item.generated_latex)}>Copy</button><button onClick={() => downloadTex(item.resume_name, item.generated_latex)}>Download</button><button className="delete" disabled={deletingId === item.id} onClick={() => deleteSavedResume(item)}><Trash2 size={13} /> {deletingId === item.id ? "Deleting..." : "Delete"}</button></div></article>) : <p>No saved resumes for this company yet.</p>}</div>
     </section>
   </div>;
 }

@@ -309,7 +309,9 @@ def delete_resume(resume_id: int, db: Session = Depends(get_db)):
 def analytics_summary(db: Session = Depends(get_db)):
     companies = list(db.scalars(select(models.Company)))
     status_counts = {status: 0 for status in schemas.STATUSES}
-    tier_counts: dict[str, int] = {}
+    tier_counts = {
+        tier: 0 for tier in ("S+", "S", "A+", "A", "B+", "B", "C", "D")
+    }
     for company in companies:
         status_counts[company.status] = status_counts.get(company.status, 0) + 1
         tier = company.tier or "Conditional"

@@ -97,14 +97,25 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
         })
         assert saved.status_code == 201
         resume_id = saved.json()["id"]
+        count_after_save = client.get(
+            f"/api/companies/{company['id']}"
+        ).json()["resume_count"]
+        assert count_after_save == original_company["resume_count"] + 1
 
         history = client.get(f"/api/companies/{company['id']}/resumes")
         assert any(item["id"] == resume_id for item in history.json())
         analytics = client.get("/api/analytics/summary").json()
         assert analytics["saved_resume_count"] >= 1
         assert analytics["companies_with_resumes"] >= 1
+        assert list(analytics["tier_counts"]) == [
+            "S+", "S", "A+", "A", "B+", "B", "C", "D",
+        ]
 
         assert client.delete(f"/api/resumes/{resume_id}").status_code == 204
+        count_after_delete = client.get(
+            f"/api/companies/{company['id']}"
+        ).json()["resume_count"]
+        assert count_after_delete == original_company["resume_count"]
 
         client.put(f"/api/companies/{company['id']}", json={
             "status": original_company["status"],
