@@ -10,7 +10,7 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
     with TestClient(app) as client:
         companies = client.get("/api/companies")
         assert companies.status_code == 200
-        assert len(companies.json()) >= 440
+        assert len(companies.json()) >= 488
         names = {item["name"] for item in companies.json()}
         assert {
             "Snap", "Spotify", "Duolingo", "Glean", "Together AI",
@@ -19,6 +19,19 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
             "Magic", "OpenRouter", "Weights & Biases", "Anaconda",
             "Untether AI", "Geotab", "Nuvei", "Mappedin", "ClickHouse",
             "MotherDuck", "Astral", "Turso", "Lyft",
+            "Mercor", "OpenEvidence", "Midjourney", "Ideogram", "Pika",
+            "Suno", "Synthesia", "Replicate", "Baseten", "Sourcegraph",
+            "Railway", "Render", "Fly.io", "Clerk", "Convex", "Browserbase",
+            "Nango", "Firecrawl", "Braintrust", "Arize AI", "Langfuse",
+            "Helicone", "Beacon Software", "Fellow", "Solace", "Rewind",
+            "Fullscript", "Hopper", "Neo Financial", "KOHO", "Borrowell",
+            "Euna Solutions", "Forescout", "Terminal", "Zip",
+            "Communications Security Establishment", "CSIS", "Bank of Canada",
+            "Statistics Canada", "Canadian Digital Service",
+            "National Research Council Canada",
+            "Defence Research and Development Canada",
+            "Shared Services Canada", "CPP Investments", "OMERS",
+            "Ontario Teachers' Pension Plan", "CDPQ", "Desjardins",
         } <= names
         assert "Codeium" not in names
         assert "Windsurf" not in names
