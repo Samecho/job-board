@@ -18,8 +18,7 @@ async def lifespan(_: FastAPI):
     ensure_simple_schema()
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
-        if (db.scalar(select(func.count(models.Company.id))) or 0) == 0:
-            seed_companies(db)
+        seed_companies(db)
         if (db.scalar(select(func.count(models.ResumeProfile.id))) or 0) == 0:
             db.add(models.ResumeProfile())
             db.commit()

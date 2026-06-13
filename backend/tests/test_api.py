@@ -11,6 +11,11 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
         companies = client.get("/api/companies")
         assert companies.status_code == 200
         assert len(companies.json()) >= 390
+        names = {item["name"] for item in companies.json()}
+        assert {
+            "Snap", "Spotify", "Duolingo", "Glean", "Together AI",
+            "Fireworks AI", "Akuna Capital", "Virtu Financial",
+        } <= names
         assert companies.json()[0]["tier"] == "S+"
         s_plus_names = [
             item["name"] for item in companies.json() if item["tier"] == "S+"

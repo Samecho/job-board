@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+
+from sqlalchemy import MetaData, Table, insert, select
 from sqlalchemy.orm import Session
 
 from .models import Company
@@ -617,6 +620,22 @@ ADDITIONAL_COMPANIES = [
     ("Lightspeed Studios", "lightspeed-studios.com", "B", "Tencent"),
     ("miHoYo", "mihoyo.com", "B", "Gaming"),
     ("Cognosphere", "cognosphere.com", "B", "Gaming"),
+    # High-signal SWE employers missing from the original catalog.
+    ("Snap", "snap.com", "A+", "Big Tech & Consumer"),
+    ("Spotify", "spotify.com", "A", "Big Tech & Consumer"),
+    ("Duolingo", "duolingo.com", "A", "Big Tech & Consumer"),
+    ("Superhuman", "superhuman.com", "A", "Enterprise Software"),
+    ("Glean", "glean.com", "A+", "AI & ML"),
+    ("Together AI", "together.ai", "A+", "AI & ML"),
+    ("Fireworks AI", "fireworks.ai", "A+", "AI & ML"),
+    ("Modal", "modal.com", "A", "Cloud, Data & DevTools"),
+    ("Retool", "retool.com", "A", "Cloud, Data & DevTools"),
+    ("Miro", "miro.com", "A", "Enterprise Software"),
+    ("Verkada", "verkada.com", "A", "Security & Networking"),
+    ("Akuna Capital", "akunacapital.com", "A+", "Finance & Trading"),
+    ("Virtu Financial", "virtu.com", "A+", "Finance & Trading"),
+    ("Headlands Technologies", "headlandstech.com", "A+", "Finance & Trading"),
+    ("Quora", "quora.com", "A", "Big Tech & Consumer"),
 ]
 
 
@@ -686,6 +705,21 @@ CAREER_URLS = {
     "miHoYo": "https://join.mihoyo.com/",
     "Cognosphere": "https://www.hoyoverse.com/en-us/careers",
     "Five Rings": "https://fiverings.com/careers/",
+    "Snap": "https://careers.snap.com/",
+    "Spotify": "https://www.lifeatspotify.com/jobs",
+    "Duolingo": "https://careers.duolingo.com/",
+    "Superhuman": "https://superhuman.com/company/careers",
+    "Glean": "https://www.glean.com/careers",
+    "Together AI": "https://www.together.ai/careers",
+    "Fireworks AI": "https://fireworks.ai/careers",
+    "Modal": "https://modal.com/careers",
+    "Retool": "https://retool.com/careers",
+    "Miro": "https://miro.com/careers/",
+    "Verkada": "https://www.verkada.com/careers/",
+    "Akuna Capital": "https://akunacapital.com/careers/",
+    "Virtu Financial": "https://www.virtu.com/careers/",
+    "Headlands Technologies": "https://www.headlandstech.com/",
+    "Quora": "https://www.quora.com/careers",
 }
 
 
@@ -694,25 +728,43 @@ def career_url_for(name: str, domain: str) -> str:
 
 
 def seed_companies(db: Session) -> None:
+    existing_names = set(db.scalars(select(Company.name)))
+    company_table = Table(
+        Company.__tablename__,
+        MetaData(),
+        autoload_with=db.get_bind(),
+    )
+    column_names = set(company_table.columns.keys())
+    rows = []
     for name, domain, tier, category in COMPANIES:
-        db.add(Company(
-            name=name,
-            display_name=name,
-            parent_company=None,
-            domain=domain,
-            logo_url=f"https://www.google.com/s2/favicons?domain_url=https://{domain}&sz=128",
-            tier=tier,
-            category=category,
-            company_type=CATEGORY_DETAILS[name],
-            career_url=career_url_for(name, domain),
-            main_locations="",
-            tags=",".join(dict.fromkeys([
+        if name in existing_names:
+            continue
+        now = datetime.now(UTC)
+        row = {
+            "name": name,
+            "display_name": name,
+            "parent_company": None,
+            "domain": domain,
+            "logo_url": f"https://www.google.com/s2/favicons?domain_url=https://{domain}&sz=128",
+            "tier": tier,
+            "category": category,
+            "company_type": CATEGORY_DETAILS[name],
+            "career_url": career_url_for(name, domain),
+            "main_locations": "",
+            "tags": ",".join(dict.fromkeys([
                 category.lower().replace(" & ", ",").replace(" ", "-"),
                 CATEGORY_DETAILS[name].lower().replace(" / ", ",").replace(" ", "-"),
             ])),
-            global_notes="",
-            status="Not Applied",
-            notes="",
-            link=career_url_for(name, domain),
-        ))
+            "global_notes": "",
+            "status": "Not Applied",
+            "notes": "",
+            "link": career_url_for(name, domain),
+            "created_at": now,
+            "updated_at": now,
+            "pay_currency": "USD",
+            "pay_period": "unknown",
+        }
+        rows.append({key: value for key, value in row.items() if key in column_names})
+    if rows:
+        db.execute(insert(company_table), rows)
     db.commit()
