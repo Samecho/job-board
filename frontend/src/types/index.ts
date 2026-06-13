@@ -1,62 +1,94 @@
-export type ApplicationStatus =
+export type CompanyStatus =
   | "Not Applied" | "Watching" | "Interested" | "Applied" | "OA"
   | "Interview" | "Rejected" | "Offer" | "Hidden";
 
 export interface Company {
   id: number;
   name: string;
+  display_name: string | null;
   domain: string;
   logo_url: string | null;
-  tier: "S+" | "S" | "A+" | "A" | "B+" | "B" | "C+" | "C" | "D+" | "D";
-  category: string;
   career_url: string;
+  tier: string;
+  category: string;
   main_locations: string;
-  intern_open_count: number;
-  is_intern_hiring: boolean;
-  average_intern_pay_min: number | null;
-  average_intern_pay_max: number | null;
-  pay_currency: string;
-  pay_period: string;
-  match_score: number;
-  application_status: ApplicationStatus;
+  status: CompanyStatus;
   notes: string;
-  tags: string;
-  last_updated: string;
+  link: string;
+  resume_count: number;
 }
 
-export interface Job {
+export interface CompanyUpdate {
+  status?: CompanyStatus;
+  notes?: string;
+  link?: string;
+  main_locations?: string;
+}
+
+export interface ResumeProfile {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  linkedin: string;
+  github: string;
+  website: string;
+  education_text: string;
+  experience_text: string;
+  projects_text: string;
+  skills_text: string;
+  awards_text: string;
+  other_text: string;
+  updated_at: string;
+}
+
+export type ResumeProfileUpdate = Omit<ResumeProfile, "id" | "updated_at">;
+
+export interface GeneratedResume {
   id: number;
   company_id: number;
   company_name: string;
-  company_match_score: number;
-  title: string;
-  location: string;
-  job_type: string;
-  apply_url: string;
-  salary_min: number | null;
-  salary_max: number | null;
-  currency: string;
-  pay_period: string;
-  status: string;
-  deadline: string | null;
+  job_title: string;
+  jd_text: string;
+  generated_latex: string;
+  resume_name: string;
   notes: string;
-  date_added: string;
-  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface Summary {
+export interface ResumeSave {
+  job_title: string;
+  jd_text: string;
+  generated_latex: string;
+  resume_name: string;
+  notes: string;
+}
+
+export interface Analytics {
   total_companies: number;
-  companies_hiring: number;
-  total_open_roles: number;
   applied_count: number;
+  oa_count: number;
   interview_count: number;
   offer_count: number;
-  average_match_score: number;
-  priority_companies: Company[];
+  rejected_count: number;
+  watching_interested_count: number;
   status_counts: Record<string, number>;
-  category_counts: Record<string, number>;
   tier_counts: Record<string, number>;
+  saved_resume_count: number;
+  companies_with_resumes: number;
+  recent_resumes: Array<{
+    id: number;
+    company_id: number;
+    company_name: string;
+    resume_name: string;
+    job_title: string;
+    created_at: string;
+  }>;
 }
 
-export type CompanyUpdate = Partial<Omit<Company, "id" | "last_updated">>;
-export type JobCreate = Omit<Job, "id" | "company_name" | "company_match_score" | "date_added">;
+export interface FeatureStatus {
+  ai_enabled: boolean;
+  ai_configured: boolean;
+}

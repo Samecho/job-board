@@ -1,60 +1,112 @@
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
+from app.config import get_settings
 from app.main import app
 
 
-def test_seed_and_job_count():
+def test_simplified_tracker_and_resume_flow(monkeypatch):
     with TestClient(app) as client:
-        reset = client.post("/api/seed/reset")
-        assert reset.status_code == 200
-        assert reset.json()["companies"] >= 390
-        companies = client.get("/api/companies").json()
-        assert len(companies) >= 390
-        assert len({company["name"] for company in companies}) == len(companies)
-        valid_tiers = {"S+", "S", "A+", "A", "B+", "B", "C+", "C", "D+", "D"}
-        assert {company["tier"] for company in companies} <= valid_tiers
-        tiers = {company["name"]: company["tier"] for company in companies}
-        assert tiers["Jane Street"] == "S+"
-        assert tiers["Amazon"] == "A+"
-        assert tiers["Pfizer"] == "D"
-        requested = {
-            "Apple", "Meta", "Google", "Microsoft", "Amazon", "ByteDance",
-            "Docker", "Temporal", "CoreWeave", "Applied Intuition", "Tempus AI",
-        }
-        assert requested <= set(tiers)
-        merged_products = {
-            "Apple Machine Learning", "Apple Vision Pro", "Instagram", "WhatsApp",
-            "Google Cloud", "Google Research", "Amazon Web Services", "Prime Video",
-            "GitHub Copilot", "TikTok", "CapCut", "Tencent Games",
-        }
-        assert not merged_products & set(tiers)
-        career_urls = {company["name"]: company["career_url"] for company in companies}
-        assert career_urls["GitHub"].startswith("https://www.github.careers/")
-        assert career_urls["ByteDance"].startswith("https://jobs.bytedance.com/")
-        assert all(url.startswith("https://") for url in career_urls.values())
-        assert all(company["intern_open_count"] == 0 for company in companies)
+        companies = client.get("/api/companies")
+        assert companies.status_code == 200
+        assert len(companies.json()) >= 390
+        company = next(item for item in companies.json() if item["name"] == "Google")
+        original_company = company.copy()
+        original_profile = client.get("/api/resume-profile").json()
 
-        company = companies[0]
-        response = client.post("/api/jobs", json={
-            "company_id": company["id"],
-            "title": "Software Engineering Intern",
-            "location": "Toronto, Canada",
-            "job_type": "Internship",
-            "apply_url": "",
-            "salary_min": 35,
-            "salary_max": 45,
-            "currency": "CAD",
-            "pay_period": "hourly",
-            "status": "Open",
-            "deadline": None,
-            "notes": "",
-            "is_active": True,
+        updated = client.put(f"/api/companies/{company['id']}", json={
+            "status": "Interested",
+            "notes": "Track this application",
+            "link": "https://careers.google.com/",
+            "main_locations": "Toronto, Canada",
         })
-        assert response.status_code == 201
-        updated = client.get(f"/api/companies/{company['id']}").json()
-        assert updated["intern_open_count"] == 1
-        assert updated["is_intern_hiring"] is True
+        assert updated.status_code == 200
+        assert updated.json()["status"] == "Interested"
+        assert updated.json()["notes"] == "Track this application"
 
-        client.delete(f"/api/jobs/{response.json()['id']}")
-        restored = client.get(f"/api/companies/{company['id']}").json()
-        assert restored["intern_open_count"] == 0
+        profile = client.put("/api/resume-profile", json={
+            "name": "Test Student",
+            "email": "test@example.com",
+            "phone": "",
+            "location": "Vancouver",
+            "linkedin": "",
+            "github": "",
+            "website": "",
+            "education_text": "BSc Computer Science and Statistics",
+            "experience_text": "Built a Python data pipeline.",
+            "projects_text": "Created a FastAPI application.",
+            "skills_text": "Python, SQL, FastAPI",
+            "awards_text": "",
+            "other_text": "",
+        })
+        assert profile.status_code == 200
+        assert profile.json()["name"] == "Test Student"
+
+        monkeypatch.setenv("ENABLE_AI_FEATURES", "false")
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        get_settings.cache_clear()
+        disabled = client.post("/api/resumes/generate", json={
+            "company_id": company["id"],
+            "job_title": "Software Engineering Intern",
+            "jd_text": "Build reliable backend services using Python and SQL.",
+            "extra_instructions": "",
+        })
+        assert disabled.status_code == 503
+
+        monkeypatch.setenv("ENABLE_AI_FEATURES", "true")
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+        get_settings.cache_clear()
+        generated_latex = (
+            "% Generated by InternRadar\n"
+            "\\documentclass{article}\n"
+            "\\begin{document}\nTest Student\n\\end{document}"
+        )
+        monkeypatch.setattr(
+            "app.main.generate_resume",
+            lambda *_args, **_kwargs: generated_latex,
+        )
+        before_generate = len(client.get("/api/resumes").json())
+        generated = client.post("/api/resumes/generate", json={
+            "company_id": company["id"],
+            "job_title": "Software Engineering Intern",
+            "jd_text": "Build reliable backend services using Python and SQL.",
+            "extra_instructions": "",
+        })
+        assert generated.status_code == 200
+        assert generated.json()["generated_latex"] == generated_latex
+        assert len(client.get("/api/resumes").json()) == before_generate
+
+        resume_name = f"Google Resume {uuid4().hex[:8]}"
+        saved = client.post(f"/api/companies/{company['id']}/resumes", json={
+            "job_title": "Software Engineering Intern",
+            "jd_text": "Build reliable backend services using Python and SQL.",
+            "generated_latex": generated_latex,
+            "resume_name": resume_name,
+            "notes": "Reviewed and approved",
+        })
+        assert saved.status_code == 201
+        resume_id = saved.json()["id"]
+
+        history = client.get(f"/api/companies/{company['id']}/resumes")
+        assert any(item["id"] == resume_id for item in history.json())
+        analytics = client.get("/api/analytics/summary").json()
+        assert analytics["saved_resume_count"] >= 1
+        assert analytics["companies_with_resumes"] >= 1
+
+        assert client.delete(f"/api/resumes/{resume_id}").status_code == 204
+
+        client.put(f"/api/companies/{company['id']}", json={
+            "status": original_company["status"],
+            "notes": original_company["notes"],
+            "link": original_company["link"],
+            "main_locations": original_company["main_locations"],
+        })
+        client.put("/api/resume-profile", json={
+            key: value for key, value in original_profile.items()
+            if key not in {"id", "updated_at"}
+        })
+
+        monkeypatch.setenv("ENABLE_AI_FEATURES", "false")
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        get_settings.cache_clear()

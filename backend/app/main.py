@@ -1,26 +1,32 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, selectinload
 
-from . import crud, models, schemas
-from .database import Base, SessionLocal, engine, get_db
+from . import models, schemas
+from .ai_service import generate_resume
+from .config import get_settings
+from .database import Base, SessionLocal, engine, ensure_simple_schema, get_db
 from .seed_data import seed_companies
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    ensure_simple_schema()
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
         if (db.scalar(select(func.count(models.Company.id))) or 0) == 0:
             seed_companies(db)
+        if (db.scalar(select(func.count(models.ResumeProfile.id))) or 0) == 0:
+            db.add(models.ResumeProfile())
+            db.commit()
     yield
 
 
-app = FastAPI(title="InternRadar API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="InternRadar API", version="3.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -35,32 +41,44 @@ def health():
     return {"status": "ok"}
 
 
+def company_read(
+    company: models.Company,
+    resume_count: int = 0,
+) -> schemas.CompanyRead:
+    return schemas.CompanyRead(
+        id=company.id,
+        name=company.name,
+        display_name=company.display_name,
+        domain=company.domain or "",
+        logo_url=company.logo_url,
+        career_url=company.career_url or "",
+        tier=company.tier or "Conditional",
+        category=company.category or "Other",
+        main_locations=company.main_locations or "",
+        status=company.status or "Not Applied",
+        notes=company.notes or "",
+        link=company.link or company.career_url or "",
+        resume_count=resume_count,
+    )
+
+
 @app.get("/api/companies", response_model=list[schemas.CompanyRead])
-def list_companies(
-    search: str = "",
-    tier: str = "",
-    category: str = "",
-    status: str = "",
-    open_only: bool = False,
-    db: Session = Depends(get_db),
-):
-    query = select(models.Company)
-    if search:
-        needle = f"%{search}%"
-        query = query.where(
-            models.Company.name.ilike(needle)
-            | models.Company.tags.ilike(needle)
-            | models.Company.main_locations.ilike(needle)
+def list_companies(db: Session = Depends(get_db)):
+    resume_counts = {
+        company_id: count
+        for company_id, count in db.execute(
+            select(
+                models.GeneratedResume.company_id,
+                func.count(models.GeneratedResume.id),
+            ).group_by(models.GeneratedResume.company_id)
         )
-    if tier:
-        query = query.where(models.Company.tier == tier)
-    if category:
-        query = query.where(models.Company.category == category)
-    if status:
-        query = query.where(models.Company.application_status == status)
-    if open_only:
-        query = query.where(models.Company.intern_open_count > 0)
-    return db.scalars(query.order_by(models.Company.name)).all()
+    }
+    return [
+        company_read(company, resume_counts.get(company.id, 0))
+        for company in db.scalars(
+            select(models.Company).order_by(models.Company.name)
+        )
+    ]
 
 
 @app.get("/api/companies/{company_id}", response_model=schemas.CompanyRead)
@@ -68,143 +86,256 @@ def get_company(company_id: int, db: Session = Depends(get_db)):
     company = db.get(models.Company, company_id)
     if not company:
         raise HTTPException(404, "Company not found")
-    return company
-
-
-@app.post("/api/companies", response_model=schemas.CompanyRead, status_code=201)
-def create_company(payload: schemas.CompanyCreate, db: Session = Depends(get_db)):
-    if db.scalar(select(models.Company).where(models.Company.name == payload.name)):
-        raise HTTPException(409, "A company with this name already exists")
-    company = models.Company(**payload.model_dump(), last_updated=datetime.now(UTC))
-    db.add(company)
-    db.commit()
-    db.refresh(company)
-    return company
+    count = db.scalar(select(func.count(models.GeneratedResume.id)).where(
+        models.GeneratedResume.company_id == company_id
+    )) or 0
+    return company_read(company, count)
 
 
 @app.put("/api/companies/{company_id}", response_model=schemas.CompanyRead)
 def update_company(
-    company_id: int, payload: schemas.CompanyUpdate, db: Session = Depends(get_db)
+    company_id: int,
+    payload: schemas.CompanyUpdate,
+    db: Session = Depends(get_db),
 ):
     company = db.get(models.Company, company_id)
     if not company:
         raise HTTPException(404, "Company not found")
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(company, key, value)
-    if "intern_open_count" in payload.model_fields_set:
-        company.is_intern_hiring = company.intern_open_count > 0
-    company.last_updated = datetime.now(UTC)
+    company.updated_at = datetime.now(UTC)
     db.commit()
-    db.refresh(company)
-    return company
+    return get_company(company_id, db)
 
 
-@app.delete("/api/companies/{company_id}", status_code=204)
-def delete_company(company_id: int, db: Session = Depends(get_db)):
+def get_profile(db: Session) -> models.ResumeProfile:
+    profile = db.scalar(select(models.ResumeProfile).order_by(models.ResumeProfile.id))
+    if profile:
+        return profile
+    profile = models.ResumeProfile()
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
+def profile_read(profile: models.ResumeProfile) -> schemas.ResumeProfileRead:
+    return schemas.ResumeProfileRead(
+        id=profile.id,
+        name=profile.name or "",
+        email=profile.email or "",
+        phone=profile.phone or "",
+        location=profile.location or "",
+        linkedin=profile.linkedin or "",
+        github=profile.github or "",
+        website=profile.website or "",
+        education_text=profile.education_text or "",
+        experience_text=profile.experience_text or "",
+        projects_text=profile.projects_text or "",
+        skills_text=profile.skills_text or "",
+        awards_text=profile.awards_text or "",
+        other_text=profile.other_text or "",
+        updated_at=profile.updated_at,
+    )
+
+
+@app.get("/api/resume-profile", response_model=schemas.ResumeProfileRead)
+def read_resume_profile(db: Session = Depends(get_db)):
+    return profile_read(get_profile(db))
+
+
+@app.put("/api/resume-profile", response_model=schemas.ResumeProfileRead)
+def update_resume_profile(
+    payload: schemas.ResumeProfileBase,
+    db: Session = Depends(get_db),
+):
+    profile = get_profile(db)
+    for key, value in payload.model_dump().items():
+        setattr(profile, key, value)
+    profile.updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(profile)
+    return profile_read(profile)
+
+
+@app.get("/api/features", response_model=schemas.FeatureStatus)
+def feature_status():
+    settings = get_settings()
+    return {
+        "ai_enabled": settings.enable_ai_features,
+        "ai_configured": bool(settings.deepseek_api_key),
+    }
+
+
+@app.post("/api/resumes/generate", response_model=schemas.ResumeGenerateResponse)
+def generate_latex_resume(
+    payload: schemas.ResumeGenerateRequest,
+    db: Session = Depends(get_db),
+):
+    company = db.get(models.Company, payload.company_id)
+    if not company:
+        raise HTTPException(404, "Company not found")
+    profile = get_profile(db)
+    try:
+        latex = generate_resume(
+            company,
+            profile,
+            payload.job_title,
+            payload.jd_text,
+            payload.extra_instructions,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, "DeepSeek resume generation failed") from exc
+    date = datetime.now().strftime("%Y-%m-%d")
+    role = payload.job_title.strip() or "Tailored Resume"
+    return {
+        "generated_latex": latex,
+        "suggested_resume_name": f"{company.name} - {role} - {date}",
+        "warnings": [],
+    }
+
+
+def resume_read(resume: models.GeneratedResume) -> schemas.GeneratedResumeRead:
+    return schemas.GeneratedResumeRead(
+        id=resume.id,
+        company_id=resume.company_id,
+        company_name=resume.company.name,
+        job_title=resume.job_title or "",
+        jd_text=resume.jd_text,
+        generated_latex=resume.generated_latex,
+        resume_name=resume.resume_name,
+        notes=resume.notes or "",
+        created_at=resume.created_at,
+        updated_at=resume.updated_at,
+    )
+
+
+def resume_or_404(db: Session, resume_id: int) -> models.GeneratedResume:
+    resume = db.scalar(
+        select(models.GeneratedResume)
+        .where(models.GeneratedResume.id == resume_id)
+        .options(selectinload(models.GeneratedResume.company))
+    )
+    if not resume:
+        raise HTTPException(404, "Resume not found")
+    return resume
+
+
+@app.post(
+    "/api/companies/{company_id}/resumes",
+    response_model=schemas.GeneratedResumeRead,
+    status_code=201,
+)
+def save_resume(
+    company_id: int,
+    payload: schemas.GeneratedResumeBase,
+    db: Session = Depends(get_db),
+):
     company = db.get(models.Company, company_id)
     if not company:
         raise HTTPException(404, "Company not found")
-    db.delete(company)
+    resume = models.GeneratedResume(
+        company_id=company_id,
+        **payload.model_dump(),
+    )
+    db.add(resume)
     db.commit()
+    return resume_read(resume_or_404(db, resume.id))
 
 
-@app.get("/api/jobs", response_model=list[schemas.JobRead])
-def list_jobs(
-    company_id: int | None = None,
-    status: str = "",
-    job_type: str = "",
-    location: str = "",
+@app.get(
+    "/api/companies/{company_id}/resumes",
+    response_model=list[schemas.GeneratedResumeRead],
+)
+def company_resumes(company_id: int, db: Session = Depends(get_db)):
+    if not db.get(models.Company, company_id):
+        raise HTTPException(404, "Company not found")
+    resumes = db.scalars(
+        select(models.GeneratedResume)
+        .where(models.GeneratedResume.company_id == company_id)
+        .options(selectinload(models.GeneratedResume.company))
+        .order_by(models.GeneratedResume.created_at.desc())
+    )
+    return [resume_read(resume) for resume in resumes]
+
+
+@app.get("/api/resumes", response_model=list[schemas.GeneratedResumeRead])
+def list_resumes(db: Session = Depends(get_db)):
+    resumes = db.scalars(
+        select(models.GeneratedResume)
+        .options(selectinload(models.GeneratedResume.company))
+        .order_by(models.GeneratedResume.created_at.desc())
+    )
+    return [resume_read(resume) for resume in resumes]
+
+
+@app.get("/api/resumes/{resume_id}", response_model=schemas.GeneratedResumeRead)
+def get_resume(resume_id: int, db: Session = Depends(get_db)):
+    return resume_read(resume_or_404(db, resume_id))
+
+
+@app.put("/api/resumes/{resume_id}", response_model=schemas.GeneratedResumeRead)
+def update_resume(
+    resume_id: int,
+    payload: schemas.GeneratedResumeUpdate,
     db: Session = Depends(get_db),
 ):
-    query = select(models.Job)
-    if company_id:
-        query = query.where(models.Job.company_id == company_id)
-    if status:
-        query = query.where(models.Job.status == status)
-    if job_type:
-        query = query.where(models.Job.job_type == job_type)
-    if location:
-        query = query.where(models.Job.location.ilike(f"%{location}%"))
-    jobs = db.scalars(query.order_by(models.Job.date_added.desc())).all()
-    return [crud.job_to_read(job) for job in jobs]
-
-
-@app.post("/api/jobs", response_model=schemas.JobRead, status_code=201)
-def create_job(payload: schemas.JobCreate, db: Session = Depends(get_db)):
-    if not db.get(models.Company, payload.company_id):
-        raise HTTPException(404, "Company not found")
-    job = models.Job(**payload.model_dump())
-    db.add(job)
-    db.commit()
-    db.refresh(job)
-    crud.recalculate_company_jobs(db, job.company_id)
-    return crud.job_to_read(job)
-
-
-@app.put("/api/jobs/{job_id}", response_model=schemas.JobRead)
-def update_job(job_id: int, payload: schemas.JobUpdate, db: Session = Depends(get_db)):
-    job = db.get(models.Job, job_id)
-    if not job:
-        raise HTTPException(404, "Job not found")
-    old_company_id = job.company_id
+    resume = resume_or_404(db, resume_id)
     for key, value in payload.model_dump(exclude_unset=True).items():
-        setattr(job, key, value)
+        setattr(resume, key, value)
+    resume.updated_at = datetime.now(UTC)
     db.commit()
-    db.refresh(job)
-    crud.recalculate_company_jobs(db, old_company_id)
-    if job.company_id != old_company_id:
-        crud.recalculate_company_jobs(db, job.company_id)
-    return crud.job_to_read(job)
+    return resume_read(resume_or_404(db, resume_id))
 
 
-@app.delete("/api/jobs/{job_id}", status_code=204)
-def delete_job(job_id: int, db: Session = Depends(get_db)):
-    job = db.get(models.Job, job_id)
-    if not job:
-        raise HTTPException(404, "Job not found")
-    company_id = job.company_id
-    db.delete(job)
+@app.delete("/api/resumes/{resume_id}", status_code=204)
+def delete_resume(resume_id: int, db: Session = Depends(get_db)):
+    resume = resume_or_404(db, resume_id)
+    db.delete(resume)
     db.commit()
-    crud.recalculate_company_jobs(db, company_id)
 
 
-@app.get("/api/analytics/summary", response_model=schemas.SummaryRead)
+@app.get("/api/analytics/summary", response_model=schemas.AnalyticsSummary)
 def analytics_summary(db: Session = Depends(get_db)):
-    companies = list(db.scalars(select(models.Company)).all())
-    status_counts = {status: 0 for status in schemas.APPLICATION_STATUSES}
-    category_counts: dict[str, int] = {}
-    tier_counts = {
-        tier: 0 for tier in
-        ["S+", "S", "A+", "A", "B+", "B", "C+", "C", "D+", "D"]
-    }
+    companies = list(db.scalars(select(models.Company)))
+    status_counts = {status: 0 for status in schemas.STATUSES}
+    tier_counts: dict[str, int] = {}
     for company in companies:
-        status_counts[company.application_status] = status_counts.get(company.application_status, 0) + 1
-        category_counts[company.category] = category_counts.get(company.category, 0) + 1
-        tier_counts[company.tier] = tier_counts.get(company.tier, 0) + 1
-    priority = sorted(
-        (c for c in companies if c.application_status == "Not Applied"),
-        key=lambda c: c.match_score,
-        reverse=True,
-    )[:5]
+        status_counts[company.status] = status_counts.get(company.status, 0) + 1
+        tier = company.tier or "Conditional"
+        tier_counts[tier] = tier_counts.get(tier, 0) + 1
+    resumes = list(db.scalars(
+        select(models.GeneratedResume)
+        .options(selectinload(models.GeneratedResume.company))
+        .order_by(models.GeneratedResume.created_at.desc())
+    ))
+    recent = [
+        {
+            "id": resume.id,
+            "company_id": resume.company_id,
+            "company_name": resume.company.name,
+            "resume_name": resume.resume_name,
+            "job_title": resume.job_title or "",
+            "created_at": resume.created_at,
+        }
+        for resume in resumes[:8]
+    ]
     return {
         "total_companies": len(companies),
-        "companies_hiring": sum(c.is_intern_hiring for c in companies),
-        "total_open_roles": sum(c.intern_open_count for c in companies),
         "applied_count": status_counts.get("Applied", 0),
+        "oa_count": status_counts.get("OA", 0),
         "interview_count": status_counts.get("Interview", 0),
         "offer_count": status_counts.get("Offer", 0),
-        "average_match_score": round(sum(c.match_score for c in companies) / len(companies), 1) if companies else 0,
-        "priority_companies": priority,
+        "rejected_count": status_counts.get("Rejected", 0),
+        "watching_interested_count": (
+            status_counts.get("Watching", 0)
+            + status_counts.get("Interested", 0)
+        ),
         "status_counts": status_counts,
-        "category_counts": category_counts,
         "tier_counts": tier_counts,
+        "saved_resume_count": len(resumes),
+        "companies_with_resumes": len({resume.company_id for resume in resumes}),
+        "recent_resumes": recent,
     }
-
-
-@app.post("/api/seed/reset")
-def reset_seed(db: Session = Depends(get_db)):
-    db.execute(delete(models.Job))
-    db.execute(delete(models.Company))
-    db.commit()
-    seed_companies(db)
-    return {"message": "Seed data restored", "companies": len(list(db.scalars(select(models.Company.id))))}

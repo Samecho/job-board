@@ -1,9 +1,13 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
+
+
+def utc_now() -> datetime:
+    return datetime.now(UTC)
 
 
 class Company(Base):
@@ -11,46 +15,59 @@ class Company(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
-    domain: Mapped[str] = mapped_column(String(180))
+    display_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    parent_company: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    domain: Mapped[str | None] = mapped_column(String(180), nullable=True)
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    tier: Mapped[str] = mapped_column(String(2), default="B")
-    category: Mapped[str] = mapped_column(String(80), index=True)
-    career_url: Mapped[str] = mapped_column(String(500))
-    main_locations: Mapped[str] = mapped_column(Text, default="")
-    intern_open_count: Mapped[int] = mapped_column(Integer, default=0)
-    is_intern_hiring: Mapped[bool] = mapped_column(Boolean, default=False)
-    average_intern_pay_min: Mapped[float | None] = mapped_column(Float, nullable=True)
-    average_intern_pay_max: Mapped[float | None] = mapped_column(Float, nullable=True)
-    pay_currency: Mapped[str] = mapped_column(String(8), default="USD")
-    pay_period: Mapped[str] = mapped_column(String(16), default="unknown")
-    match_score: Mapped[int] = mapped_column(Integer, default=50)
-    application_status: Mapped[str] = mapped_column(String(24), default="Not Applied")
-    notes: Mapped[str] = mapped_column(Text, default="")
-    tags: Mapped[str] = mapped_column(Text, default="")
-    last_updated: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    career_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    tier: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    category: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    company_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    main_locations: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tags: Mapped[str | None] = mapped_column(Text, nullable=True)
+    global_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(24), default="Not Applied", index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    link: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
 
-    jobs: Mapped[list["Job"]] = relationship(
+    resumes: Mapped[list["GeneratedResume"]] = relationship(
         back_populates="company", cascade="all, delete-orphan"
     )
 
 
-class Job(Base):
-    __tablename__ = "jobs"
+class ResumeProfile(Base):
+    __tablename__ = "resume_profile"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    linkedin: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    github: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    website: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    education_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    experience_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    projects_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    skills_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    awards_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    other_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+
+
+class GeneratedResume(Base):
+    __tablename__ = "generated_resumes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
-    title: Mapped[str] = mapped_column(String(200))
-    location: Mapped[str] = mapped_column(String(200), default="")
-    job_type: Mapped[str] = mapped_column(String(30), default="Internship")
-    apply_url: Mapped[str] = mapped_column(String(500), default="")
-    salary_min: Mapped[float | None] = mapped_column(Float, nullable=True)
-    salary_max: Mapped[float | None] = mapped_column(Float, nullable=True)
-    currency: Mapped[str] = mapped_column(String(8), default="USD")
-    pay_period: Mapped[str] = mapped_column(String(16), default="unknown")
-    status: Mapped[str] = mapped_column(String(30), default="Open")
-    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
-    notes: Mapped[str] = mapped_column(Text, default="")
-    date_added: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    job_title: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    jd_text: Mapped[str] = mapped_column(Text)
+    generated_latex: Mapped[str] = mapped_column(Text)
+    resume_name: Mapped[str] = mapped_column(String(240))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
 
-    company: Mapped[Company] = relationship(back_populates="jobs")
+    company: Mapped[Company] = relationship(back_populates="resumes")

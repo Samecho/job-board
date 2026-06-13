@@ -65,6 +65,70 @@ MERGED_INTO_PARENT = {
     "Collins Aerospace": "RTX",
 }
 
+
+CATEGORY_MAP = {
+    "AI Lab": "AI & ML",
+    "AI Product": "AI & ML",
+    "AI Platform": "AI & ML",
+    "AI Research": "AI & ML",
+    "AI Infrastructure": "AI & ML",
+    "AI Hardware": "AI & ML",
+    "AI / Biotech": "Health & Biotech",
+    "Big Tech": "Big Tech & Consumer",
+    "Consumer Tech": "Big Tech & Consumer",
+    "Product": "Big Tech & Consumer",
+    "Canadian Tech": "Big Tech & Consumer",
+    "Microsoft": "Big Tech & Consumer",
+    "Amazon": "Big Tech & Consumer",
+    "Developer Tools": "Cloud, Data & DevTools",
+    "Cloud / Data": "Cloud, Data & DevTools",
+    "Cloud / Infrastructure": "Cloud, Data & DevTools",
+    "Data Platform": "Cloud, Data & DevTools",
+    "Database": "Cloud, Data & DevTools",
+    "Analytics": "Cloud, Data & DevTools",
+    "Observability": "Cloud, Data & DevTools",
+    "Communications": "Enterprise Software",
+    "Enterprise": "Enterprise Software",
+    "Fintech": "Finance & Trading",
+    "Finance": "Finance & Trading",
+    "Finance Tech": "Finance & Trading",
+    "Canadian Finance": "Finance & Trading",
+    "Payments": "Finance & Trading",
+    "Quant / Trading": "Finance & Trading",
+    "Security": "Security & Networking",
+    "Networking": "Security & Networking",
+    "Telecom": "Security & Networking",
+    "Telecom / Hardware": "Security & Networking",
+    "Semiconductors": "Hardware & Semiconductors",
+    "Hardware": "Hardware & Semiconductors",
+    "Consumer Hardware": "Hardware & Semiconductors",
+    "EDA": "Hardware & Semiconductors",
+    "Gaming": "Gaming & Media",
+    "Automotive": "Robotics & Mobility",
+    "Autonomy": "Robotics & Mobility",
+    "Robotics": "Robotics & Mobility",
+    "Aerospace": "Aerospace & Defense",
+    "Aerospace / Defense": "Aerospace & Defense",
+    "Defense Tech": "Aerospace & Defense",
+    "Data / Defense": "Aerospace & Defense",
+    "Consulting / Defense": "Aerospace & Defense",
+    "Research / Defense": "Aerospace & Defense",
+    "Space Tech": "Aerospace & Defense",
+    "Health Tech": "Health & Biotech",
+    "Biotech": "Health & Biotech",
+    "Biotech Software": "Health & Biotech",
+    "Pharma": "Health & Biotech",
+    "Industrial": "Industrial & Engineering",
+    "Engineering": "Industrial & Engineering",
+    "Engineering Software": "Industrial & Engineering",
+    "Quantum": "Emerging Tech",
+}
+
+
+def broad_category(category: str) -> str:
+    return CATEGORY_MAP.get(category, category)
+
+
 # name, domain, tier, category
 # Tiers reflect software/quant internship selectivity and career value, not company size.
 LEGACY_COMPANIES = [
@@ -559,20 +623,23 @@ ADDITIONAL_COMPANIES = [
 def _dedupe_companies():
     companies = []
     seen = set()
+    category_details = {}
     for name, domain, tier, category in LEGACY_COMPANIES:
         if name not in seen and name not in MERGED_INTO_PARENT:
             normalized_tier = "D" if name in D_TIER_NAMES else LEGACY_TIER_MAP[tier]
-            companies.append((name, domain, normalized_tier, category))
+            companies.append((name, domain, normalized_tier, broad_category(category)))
+            category_details[name] = category
             seen.add(name)
     for company in ADDITIONAL_COMPANIES:
         if company[0] not in seen and company[0] not in MERGED_INTO_PARENT:
             name, domain, tier, category = company
-            companies.append((name, domain, "D" if name in D_TIER_NAMES else tier, category))
+            companies.append((name, domain, "D" if name in D_TIER_NAMES else tier, broad_category(category)))
+            category_details[name] = category
             seen.add(company[0])
-    return companies
+    return companies, category_details
 
 
-COMPANIES = _dedupe_companies()
+COMPANIES, CATEGORY_DETAILS = _dedupe_companies()
 
 
 CAREER_URLS = {
@@ -630,18 +697,22 @@ def seed_companies(db: Session) -> None:
     for name, domain, tier, category in COMPANIES:
         db.add(Company(
             name=name,
+            display_name=name,
+            parent_company=None,
             domain=domain,
             logo_url=f"https://www.google.com/s2/favicons?domain_url=https://{domain}&sz=128",
             tier=tier,
             category=category,
+            company_type=CATEGORY_DETAILS[name],
             career_url=career_url_for(name, domain),
-            main_locations="See careers page",
-            tags=category.lower().replace(" / ", ",").replace(" ", "-"),
-            match_score=TIER_SCORES[tier],
+            main_locations="",
+            tags=",".join(dict.fromkeys([
+                category.lower().replace(" & ", ",").replace(" ", "-"),
+                CATEGORY_DETAILS[name].lower().replace(" / ", ",").replace(" ", "-"),
+            ])),
+            global_notes="",
+            status="Not Applied",
             notes="",
-            intern_open_count=0,
-            is_intern_hiring=False,
-            application_status="Not Applied",
-            pay_period="unknown",
+            link=career_url_for(name, domain),
         ))
     db.commit()
