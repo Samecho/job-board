@@ -35,11 +35,9 @@ def ensure_simple_schema() -> None:
 
     columns = {column["name"] for column in inspector.get_columns("companies")}
     missing = {"status", "notes", "link"} - columns
-    if not missing:
-        return
 
     backup = DATA_DIR / "internradar-pre-simplify.db"
-    if DATABASE_PATH.exists() and not backup.exists():
+    if missing and DATABASE_PATH.exists() and not backup.exists():
         shutil.copy2(DATABASE_PATH, backup)
 
     with engine.begin() as connection:
@@ -82,4 +80,12 @@ def ensure_simple_schema() -> None:
         connection.execute(text("""
             UPDATE companies
             SET link = COALESCE(NULLIF(link, ''), career_url)
+        """))
+        connection.execute(text("""
+            UPDATE companies
+            SET status = CASE
+                WHEN status IN ('Applied', 'OA', 'Interview', 'Rejected', 'Offer')
+                    THEN 'Applied'
+                ELSE 'Not Applied'
+            END
         """))

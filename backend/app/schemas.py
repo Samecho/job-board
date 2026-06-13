@@ -3,10 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-STATUSES = [
-    "Not Applied", "Watching", "Interested", "Applied", "OA",
-    "Interview", "Rejected", "Offer", "Hidden",
-]
+STATUSES = ["Not Applied", "Applied"]
 
 
 class CompanyRead(BaseModel):
@@ -110,11 +107,6 @@ class RecentResume(BaseModel):
 class AnalyticsSummary(BaseModel):
     total_companies: int
     applied_count: int
-    oa_count: int
-    interview_count: int
-    offer_count: int
-    rejected_count: int
-    watching_interested_count: int
     status_counts: dict[str, int]
     tier_counts: dict[str, int]
     saved_resume_count: int

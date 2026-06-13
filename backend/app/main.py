@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from . import models, schemas
@@ -73,10 +73,18 @@ def list_companies(db: Session = Depends(get_db)):
             ).group_by(models.GeneratedResume.company_id)
         )
     }
+    tier_order = case(
+        {
+            "S+": 0, "S": 1, "A+": 2, "A": 3,
+            "B+": 4, "B": 5, "C": 6, "D": 7,
+        },
+        value=models.Company.tier,
+        else_=8,
+    )
     return [
         company_read(company, resume_counts.get(company.id, 0))
         for company in db.scalars(
-            select(models.Company).order_by(models.Company.name)
+            select(models.Company).order_by(tier_order, models.Company.name)
         )
     ]
 
@@ -325,14 +333,6 @@ def analytics_summary(db: Session = Depends(get_db)):
     return {
         "total_companies": len(companies),
         "applied_count": status_counts.get("Applied", 0),
-        "oa_count": status_counts.get("OA", 0),
-        "interview_count": status_counts.get("Interview", 0),
-        "offer_count": status_counts.get("Offer", 0),
-        "rejected_count": status_counts.get("Rejected", 0),
-        "watching_interested_count": (
-            status_counts.get("Watching", 0)
-            + status_counts.get("Interested", 0)
-        ),
         "status_counts": status_counts,
         "tier_counts": tier_counts,
         "saved_resume_count": len(resumes),

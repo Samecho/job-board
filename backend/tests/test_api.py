@@ -11,19 +11,29 @@ def test_simplified_tracker_and_resume_flow(monkeypatch):
         companies = client.get("/api/companies")
         assert companies.status_code == 200
         assert len(companies.json()) >= 390
+        assert companies.json()[0]["tier"] == "S+"
+        s_plus_names = [
+            item["name"] for item in companies.json() if item["tier"] == "S+"
+        ]
+        assert s_plus_names == sorted(s_plus_names)
         company = next(item for item in companies.json() if item["name"] == "Google")
         original_company = company.copy()
         original_profile = client.get("/api/resume-profile").json()
 
         updated = client.put(f"/api/companies/{company['id']}", json={
-            "status": "Interested",
+            "status": "Applied",
             "notes": "Track this application",
             "link": "https://careers.google.com/",
             "main_locations": "Toronto, Canada",
         })
         assert updated.status_code == 200
-        assert updated.json()["status"] == "Interested"
+        assert updated.json()["status"] == "Applied"
         assert updated.json()["notes"] == "Track this application"
+        invalid_status = client.put(
+            f"/api/companies/{company['id']}",
+            json={"status": "Interview"},
+        )
+        assert invalid_status.status_code == 422
 
         profile = client.put("/api/resume-profile", json={
             "name": "Test Student",

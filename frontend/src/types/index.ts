@@ -1,6 +1,4 @@
-export type CompanyStatus =
-  | "Not Applied" | "Watching" | "Interested" | "Applied" | "OA"
-  | "Interview" | "Rejected" | "Offer" | "Hidden";
+export type CompanyStatus = "Not Applied" | "Applied";
 
 export interface Company {
   id: number;
@@ -69,11 +67,6 @@ export interface ResumeSave {
 export interface Analytics {
   total_companies: number;
   applied_count: number;
-  oa_count: number;
-  interview_count: number;
-  offer_count: number;
-  rejected_count: number;
-  watching_interested_count: number;
   status_counts: Record<string, number>;
   tier_counts: Record<string, number>;
   saved_resume_count: number;

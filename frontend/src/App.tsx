@@ -13,14 +13,8 @@ import type {
 } from "./types";
 
 type Page = "overview" | "analytics" | "resume";
-const statuses: CompanyStatus[] = [
-  "Not Applied", "Watching", "Interested", "Applied", "OA",
-  "Interview", "Rejected", "Offer", "Hidden",
-];
-
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`status status-${status.toLowerCase().replace(/\s/g, "-")}`}>{status}</span>;
-}
+const statuses: CompanyStatus[] = ["Not Applied", "Applied"];
+const tierOrder = ["S+", "S", "A+", "A", "B+", "B", "C", "D"];
 
 function Overview({ companies, onUpdate, onEdit, onResume }: {
   companies: Company[];
@@ -32,30 +26,46 @@ function Overview({ companies, onUpdate, onEdit, onResume }: {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [tier, setTier] = useState("");
-  const tiers = useMemo(() => [...new Set(companies.map(company => company.tier))], [companies]);
+  const [category, setCategory] = useState("");
+  const [sort, setSort] = useState<"tier" | "company">("tier");
+  const [descending, setDescending] = useState(false);
+  const tiers = useMemo(() => tierOrder.filter(value => companies.some(company => company.tier === value)), [companies]);
+  const categories = useMemo(() => [...new Set(companies.map(company => company.category))].sort(), [companies]);
   const filtered = companies.filter(company =>
     (!search || `${company.name} ${company.category} ${company.main_locations}`.toLowerCase().includes(search.toLowerCase())) &&
     (!status || company.status === status) && (!tier || company.tier === tier) &&
-    company.status !== "Hidden"
+    (!category || company.category === category)
   );
+  const sorted = [...filtered].sort((left, right) => {
+    const tierRank = (value: string) => {
+      const rank = tierOrder.indexOf(value);
+      return rank === -1 ? tierOrder.length : rank;
+    };
+    const result = sort === "company"
+      ? left.name.localeCompare(right.name)
+      : (tierRank(left.tier) - tierRank(right.tier)) || left.name.localeCompare(right.name);
+    return descending ? -result : result;
+  });
+  const changeSort = (next: "tier" | "company") => {
+    if (sort === next) setDescending(value => !value);
+    else { setSort(next); setDescending(false); }
+  };
   return <section className="content-panel">
-    <div className="toolbar"><div><span className="eyebrow">{filtered.length} companies</span><h2>Company tracker</h2></div><div className="view-toggle"><button className={view === "table" ? "active" : ""} onClick={() => setView("table")}><List size={17} /> Table</button><button className={view === "cards" ? "active" : ""} onClick={() => setView("cards")}><Grid2X2 size={17} /> Cards</button></div></div>
-    <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, locations..." /></label><select value={tier} onChange={event => setTier(event.target.value)}><option value="">All tiers</option>{tiers.map(value => <option key={value}>{value}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select></div>
-    {view === "table" ? <div className="table-wrap"><table><thead><tr><th>Company</th><th>Tier</th><th>Locations</th><th>Status</th><th>Notes</th><th>Link</th><th>Resume</th></tr></thead><tbody>{filtered.map(company => <tr key={company.id} onDoubleClick={() => onEdit(company)}><td><div className="company-cell"><Logo name={company.name} domain={company.domain} url={company.logo_url} /><div><strong>{company.name}</strong><span>{company.category}</span></div></div></td><td><span className={`tier tier-${company.tier}`}>{company.tier}</span></td><td><span className="location-cell"><MapPin size={14} />{company.main_locations || "Not listed"}</span></td><td><select className="status-select" value={company.status} onChange={event => onUpdate(company, { status: event.target.value as CompanyStatus })}>{statuses.map(value => <option key={value}>{value}</option>)}</select></td><td><button className="table-note edit-note" title={company.notes} onClick={() => onEdit(company)}>{company.notes || "Add notes"}</button></td><td>{company.link ? <a className="button ghost compact-button" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost compact-button" onClick={() => onEdit(company)}>Add link</button>}</td><td><button className="button primary compact-button" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></td></tr>)}</tbody></table></div>
-      : <div className="company-grid">{filtered.map(company => <article className="company-card simple-card" key={company.id}><div className="card-top"><Logo name={company.name} domain={company.domain} url={company.logo_url} size={48} /><span className={`tier tier-${company.tier}`}>{company.tier}</span></div><div className="card-title"><div><h3>{company.name}</h3><span>{company.category}</span></div></div><div className="card-facts"><div><span>Locations</span><strong>{company.main_locations || "Not listed"}</strong></div></div><select className="quick-status" value={company.status} onChange={event => onUpdate(company, { status: event.target.value as CompanyStatus })}>{statuses.map(value => <option key={value}>{value}</option>)}</select><p className="notes-preview" onClick={() => onEdit(company)}>{company.notes || "Add notes for this company."}</p><div className="card-actions"><button className="button ghost" onClick={() => onEdit(company)}>Edit</button>{company.link && <a className="button ghost" href={company.link} target="_blank" rel="noreferrer">Link <ExternalLink size={13} /></a>}<button className="button primary" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></div></article>)}</div>}
+    <div className="toolbar"><div><span className="eyebrow">{sorted.length} companies</span><h2>Company tracker</h2></div><div className="view-toggle"><button className={view === "table" ? "active" : ""} onClick={() => setView("table")}><List size={17} /> Table</button><button className={view === "cards" ? "active" : ""} onClick={() => setView("cards")}><Grid2X2 size={17} /> Cards</button></div></div>
+    <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, categories, locations..." /></label><select value={tier} onChange={event => setTier(event.target.value)}><option value="">All tiers</option>{tiers.map(value => <option key={value}>{value}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select><select value={category} onChange={event => setCategory(event.target.value)}><option value="">All categories</option>{categories.map(value => <option key={value}>{value}</option>)}</select></div>
+    {view === "table" ? <div className="table-wrap overview-table"><table><colgroup><col className="col-tier" /><col className="col-company" /><col className="col-location" /><col className="col-status" /><col className="col-link" /><col className="col-resume" /><col className="col-notes" /></colgroup><thead><tr><th><button className={sort === "tier" ? "active" : ""} onClick={() => changeSort("tier")}>Tier {sort === "tier" ? (descending ? "↓" : "↑") : ""}</button></th><th><button className={sort === "company" ? "active" : ""} onClick={() => changeSort("company")}>Company {sort === "company" ? (descending ? "↓" : "↑") : ""}</button></th><th>Location</th><th>Status</th><th>Link</th><th>Resume</th><th>Notes</th></tr></thead><tbody>{sorted.map(company => <tr key={company.id} onDoubleClick={() => onEdit(company)}><td><span className={`tier tier-${company.tier}`}>{company.tier}</span></td><td><div className="company-cell"><Logo name={company.name} domain={company.domain} url={company.logo_url} /><div><strong>{company.name}</strong><span>{company.category}</span></div></div></td><td><span className="location-cell"><MapPin size={14} />{company.main_locations || "Not listed"}</span></td><td><label className="applied-toggle"><input type="checkbox" checked={company.status === "Applied"} onChange={event => onUpdate(company, { status: event.target.checked ? "Applied" : "Not Applied" })} /><span>{company.status}</span></label></td><td>{company.link ? <a className="button ghost compact-button" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost compact-button" onClick={() => onEdit(company)}>Add link</button>}</td><td><button className="button primary compact-button" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></td><td><button className="table-note edit-note" title={company.notes} onClick={() => onEdit(company)}>{company.notes || "Add notes"}</button></td></tr>)}</tbody></table></div>
+      : <div className="company-grid">{sorted.map(company => <article className="company-card simple-card" key={company.id}><div className="card-top"><Logo name={company.name} domain={company.domain} url={company.logo_url} size={48} /><span className={`tier tier-${company.tier}`}>{company.tier}</span></div><div className="card-title"><div><h3>{company.name}</h3><span>{company.category}</span></div></div><div className="card-facts"><div><span>Location</span><strong>{company.main_locations || "Not listed"}</strong></div></div><label className="applied-toggle card-applied"><input type="checkbox" checked={company.status === "Applied"} onChange={event => onUpdate(company, { status: event.target.checked ? "Applied" : "Not Applied" })} /><span>{company.status}</span></label><button className="notes-preview edit-note" onClick={() => onEdit(company)}>{company.notes || "Add notes for this company."}</button><div className="card-actions"><button className="button ghost" onClick={() => onEdit(company)}>Edit</button>{company.link ? <a className="button ghost" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost" onClick={() => onEdit(company)}>Add link</button>}<button className="button primary" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></div></article>)}</div>}
   </section>;
 }
 
 function AnalyticsPage({ analytics }: { analytics: Analytics }) {
   const cards = [
     ["Total companies", analytics.total_companies], ["Applied", analytics.applied_count],
-    ["OA", analytics.oa_count], ["Interviews", analytics.interview_count],
-    ["Offers", analytics.offer_count], ["Rejected", analytics.rejected_count],
-    ["Watching / Interested", analytics.watching_interested_count],
+    ["Not applied", analytics.status_counts["Not Applied"] || 0],
     ["Saved resumes", analytics.saved_resume_count],
     ["Companies with resumes", analytics.companies_with_resumes],
   ];
-  return <><div className="summary-grid personal-summary">{cards.map(([label, value]) => <div className="summary-card" key={label}><div><span>{label}</span><strong>{value}</strong></div></div>)}</div><div className="analytics-layout"><section className="panel"><div className="panel-head"><h2>Status funnel</h2></div><div className="funnel">{statuses.filter(value => value !== "Hidden").map(value => <div key={value}><span>{value}</span><div><i style={{ width: `${Math.max(2, (analytics.status_counts[value] || 0) / Math.max(1, analytics.total_companies) * 100)}%` }} /></div><strong>{analytics.status_counts[value] || 0}</strong></div>)}</div></section><section className="panel"><div className="panel-head"><h2>Companies by tier</h2></div><div className="tier-stats">{Object.entries(analytics.tier_counts).map(([tier, count]) => <div key={tier}><span className={`tier tier-${tier}`}>{tier}</span><strong>{count}</strong><small>companies</small></div>)}</div></section><section className="panel"><div className="panel-head"><h2>Recent saved resumes</h2></div><div className="recent-list">{analytics.recent_resumes.length ? analytics.recent_resumes.map(item => <div key={item.id}><strong>{item.resume_name}</strong><span>{item.company_name} · {new Date(item.created_at).toLocaleDateString()}</span></div>) : <p>No saved resumes yet.</p>}</div></section></div></>;
+  return <><div className="summary-grid personal-summary">{cards.map(([label, value]) => <div className="summary-card" key={label}><div><span>{label}</span><strong>{value}</strong></div></div>)}</div><div className="analytics-layout"><section className="panel"><div className="panel-head"><h2>Application status</h2></div><div className="funnel">{statuses.map(value => <div key={value}><span>{value}</span><div><i style={{ width: `${Math.max(2, (analytics.status_counts[value] || 0) / Math.max(1, analytics.total_companies) * 100)}%` }} /></div><strong>{analytics.status_counts[value] || 0}</strong></div>)}</div></section><section className="panel"><div className="panel-head"><h2>Companies by tier</h2></div><div className="tier-stats">{Object.entries(analytics.tier_counts).map(([tier, count]) => <div key={tier}><span className={`tier tier-${tier}`}>{tier}</span><strong>{count}</strong><small>companies</small></div>)}</div></section><section className="panel"><div className="panel-head"><h2>Recent saved resumes</h2></div><div className="recent-list">{analytics.recent_resumes.length ? analytics.recent_resumes.map(item => <div key={item.id}><strong>{item.resume_name}</strong><span>{item.company_name} · {new Date(item.created_at).toLocaleDateString()}</span></div>) : <p>No saved resumes yet.</p>}</div></section></div></>;
 }
 
 function ResumePage({ profile, resumes, onProfileSave, onDelete }: {
