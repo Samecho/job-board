@@ -40,12 +40,28 @@ npm install
 From the project root:
 
 ```powershell
-.\start-local.bat
+.\start.bat
 ```
 
 Open `http://localhost:5173`.
 
 The backend runs at `http://localhost:8000`. The app binds only to localhost.
+
+Stop both background processes:
+
+```powershell
+.\stop.bat
+```
+
+For debug mode with visible backend and frontend terminals:
+
+```powershell
+.\start-local.bat
+```
+
+Background process logs are stored in `.runtime/backend.log` and
+`.runtime/frontend.log`. PID files used by `stop.bat` are stored in the same
+directory.
 
 ## Overview
 

@@ -9,4 +9,5 @@ frontend/dist/
 frontend/.env.local
 frontend/*.tsbuildinfo
 .tools/
+.runtime/
 .DS_Store
