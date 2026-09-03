@@ -139,7 +139,7 @@ const additions = [
   [514, "Skild AI", "skild.ai", "A+", "Robotics & Mobility", "Pittsburgh, San Francisco", false, "https://www.skild.ai/careers"],
   [515, "Hadrian", "hadrian.co", "A", "Aerospace & Defense", "Los Angeles", false, "https://www.hadrian.co/careers"],
   [516, "Apptronik", "apptronik.com", "A", "Robotics & Mobility", "Austin", false, "https://apptronik.com/careers"],
-  [517, "Radix Trading", "radix-trading.com", "A+", "Finance & Trading", "Chicago, New York", true, "https://www.radix-trading.com/careers"],
+  [517, "Radix Trading", "radixtrading.com", "A+", "Finance & Trading", "Chicago, New York, Amsterdam", true, "https://www.radixtrading.com/careers"],
   [518, "Aquatic Capital Management", "aquatic.com", "A+", "Finance & Trading", "Chicago, New York", true, "https://www.aquatic.com/careers"],
   [519, "XTX Markets", "xtxmarkets.com", "A+", "Finance & Trading", "New York, London", true, "https://www.xtxmarkets.com/careers/"],
   [520, "PDT Partners", "pdtpartners.com", "A+", "Finance & Trading", "New York", false, "https://pdtpartners.com/careers/"],

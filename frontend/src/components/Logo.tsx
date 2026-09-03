@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 
+const localLogoBase = `${import.meta.env.BASE_URL}logos/`;
+
 const localLogos: Record<string, string> = {
-  ByteDance: "/logos/bytedance.ico",
-  "Five Rings": "/logos/five-rings.svg",
+  ByteDance: `${localLogoBase}bytedance.svg`,
+  "Five Rings": `${localLogoBase}five-rings.svg`,
+  "Radix Trading": `${localLogoBase}radix-trading.png`,
+  "Virtu Financial": `${localLogoBase}virtu-financial.svg`,
 };
 
 export function Logo({

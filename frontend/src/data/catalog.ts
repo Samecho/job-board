@@ -6609,14 +6609,14 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "id": 517,
     "name": "Radix Trading",
     "display_name": "Radix Trading",
-    "domain": "radix-trading.com",
-    "logo_url": "https://www.google.com/s2/favicons?domain_url=https://radix-trading.com&sz=128",
-    "career_url": "https://www.radix-trading.com/careers",
+    "domain": "radixtrading.com",
+    "logo_url": "https://www.google.com/s2/favicons?domain_url=https://radixtrading.com&sz=128",
+    "career_url": "https://www.radixtrading.com/careers",
     "tier": "A+",
     "category": "Finance & Trading",
-    "main_locations": "Chicago, New York",
+    "main_locations": "Chicago, New York, Amsterdam",
     "intern_friendly": true,
-    "link": "https://www.radix-trading.com/careers"
+    "link": "https://www.radixtrading.com/careers"
   },
   {
     "id": 518,
