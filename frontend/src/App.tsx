@@ -1,30 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  BarChart3, Building2, Copy, Download, ExternalLink, FileText,
-  Grid2X2, LayoutDashboard, List, MapPin, Radar, Search, Trash2,
+  BarChart3, Download, ExternalLink, FileText, Grid2X2, LayoutDashboard,
+  List, MapPin, Radar, Search, Upload,
 } from "lucide-react";
 import { api } from "./api/client";
 import { CompanyModal } from "./components/CompanyModal";
 import { Logo } from "./components/Logo";
-import { downloadTex, ResumeModal } from "./components/ResumeModal";
+import { ResumeModal } from "./components/ResumeModal";
+import { downloadBlob } from "./lib/resumeFiles";
 import type {
-  Analytics, Company, CompanyStatus, CompanyUpdate, FeatureStatus,
-  GeneratedResume, ResumeProfile, ResumeProfileUpdate,
+  AiProvider, AiSettings, Analytics, Company, CompanyStatus, CompanyUpdate,
+  FeatureStatus, GeneratedResume, ResumeProfile, ResumeProfileUpdate,
 } from "./types";
 
 type Page = "overview" | "analytics" | "resume";
 const statuses: CompanyStatus[] = ["Not Applied", "Applied"];
 const tierOrder = ["S+", "S", "A+", "A", "B+", "B", "C", "D"];
+const providers: AiProvider[] = ["openai-compatible", "gemini", "glm-compatible"];
 
 function InternBadge() {
   return <span className="intern-badge" title="Recurring internship or co-op hiring">Intern</span>;
 }
 
-function Overview({ companies, onUpdate, onEdit, onResume }: {
+function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply }: {
   companies: Company[];
   onUpdate: (company: Company, data: CompanyUpdate) => Promise<void>;
   onEdit: (company: Company) => void;
   onResume: (company: Company) => void;
+  onQuickApply: (company: Company) => Promise<void>;
 }) {
   const [view, setView] = useState<"table" | "cards">("table");
   const [search, setSearch] = useState("");
@@ -47,46 +50,60 @@ function Overview({ companies, onUpdate, onEdit, onResume }: {
       const rank = tierOrder.indexOf(value);
       return rank === -1 ? tierOrder.length : rank;
     };
-    const result = sort === "company"
-      ? left.name.localeCompare(right.name)
-      : (tierRank(left.tier) - tierRank(right.tier)) || left.name.localeCompare(right.name);
+    const result = sort === "company" ? left.name.localeCompare(right.name) : (tierRank(left.tier) - tierRank(right.tier)) || left.name.localeCompare(right.name);
     return descending ? -result : result;
   });
   const changeSort = (next: "tier" | "company") => {
     if (sort === next) setDescending(value => !value);
     else { setSort(next); setDescending(false); }
   };
+  const statusControl = (company: Company) => <label className="applied-toggle"><input type="checkbox" checked={company.application_count > 0} onChange={() => onQuickApply(company)} /><span>{company.application_count ? `Applied (${company.application_count})` : "Not Applied"}</span></label>;
   return <section className="content-panel">
     <div className="toolbar"><div><span className="eyebrow">{sorted.length} companies</span><h2>Company tracker</h2></div><div className="view-toggle"><button className={view === "table" ? "active" : ""} onClick={() => setView("table")}><List size={17} /> Table</button><button className={view === "cards" ? "active" : ""} onClick={() => setView("cards")}><Grid2X2 size={17} /> Cards</button></div></div>
     <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, categories, locations..." /></label><select value={tier} onChange={event => setTier(event.target.value)}><option value="">All tiers</option>{tiers.map(value => <option key={value}>{value}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select><select value={category} onChange={event => setCategory(event.target.value)}><option value="">All categories</option>{categories.map(value => <option key={value}>{value}</option>)}</select><select value={internHiring} onChange={event => setInternHiring(event.target.value)}><option value="">All intern hiring</option><option value="yes">Regular intern hiring</option><option value="no">Limited or uncommon</option></select></div>
-    {view === "table" ? <div className="table-wrap overview-table"><table><colgroup><col className="col-tier" /><col className="col-company" /><col className="col-location" /><col className="col-status" /><col className="col-link" /><col className="col-resume" /><col className="col-notes" /></colgroup><thead><tr><th><button className={sort === "tier" ? "active" : ""} onClick={() => changeSort("tier")}>Tier {sort === "tier" ? (descending ? "↓" : "↑") : ""}</button></th><th><button className={sort === "company" ? "active" : ""} onClick={() => changeSort("company")}>Company {sort === "company" ? (descending ? "↓" : "↑") : ""}</button></th><th>Location</th><th>Status</th><th>Link</th><th>Resume</th><th>Notes</th></tr></thead><tbody>{sorted.map(company => <tr key={company.id} onDoubleClick={() => onEdit(company)}><td><span className={`tier tier-${company.tier}`}>{company.tier}</span></td><td><div className="company-cell"><Logo name={company.name} domain={company.domain} url={company.logo_url} /><div><strong>{company.name}</strong><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div></td><td><span className="location-cell"><MapPin size={14} />{company.main_locations || "Not listed"}</span></td><td><label className="applied-toggle"><input type="checkbox" checked={company.status === "Applied"} onChange={event => onUpdate(company, { status: event.target.checked ? "Applied" : "Not Applied" })} /><span>{company.status}</span></label></td><td>{company.link ? <a className="button ghost compact-button" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost compact-button" onClick={() => onEdit(company)}>Add link</button>}</td><td><button className="button primary compact-button" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></td><td><button className="table-note edit-note" title={company.notes} onClick={() => onEdit(company)}>{company.notes || "Add notes"}</button></td></tr>)}</tbody></table></div>
-      : <div className="company-grid">{sorted.map(company => <article className="company-card simple-card" key={company.id}><div className="card-top"><Logo name={company.name} domain={company.domain} url={company.logo_url} size={48} /><span className={`tier tier-${company.tier}`}>{company.tier}</span></div><div className="card-title"><div><h3>{company.name}</h3><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div><div className="card-facts"><div><span>Location</span><strong>{company.main_locations || "Not listed"}</strong></div></div><label className="applied-toggle card-applied"><input type="checkbox" checked={company.status === "Applied"} onChange={event => onUpdate(company, { status: event.target.checked ? "Applied" : "Not Applied" })} /><span>{company.status}</span></label><button className="notes-preview edit-note" onClick={() => onEdit(company)}>{company.notes || "Add notes for this company."}</button><div className="card-actions"><button className="button ghost" onClick={() => onEdit(company)}>Edit</button>{company.link ? <a className="button ghost" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost" onClick={() => onEdit(company)}>Add link</button>}<button className="button primary" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></div></article>)}</div>}
+    {view === "table" ? <div className="table-wrap overview-table"><table><colgroup><col className="col-tier" /><col className="col-company" /><col className="col-location" /><col className="col-status" /><col className="col-link" /><col className="col-resume" /><col className="col-notes" /></colgroup><thead><tr><th><button className={sort === "tier" ? "active" : ""} onClick={() => changeSort("tier")}>Tier {sort === "tier" ? (descending ? "↓" : "↑") : ""}</button></th><th><button className={sort === "company" ? "active" : ""} onClick={() => changeSort("company")}>Company {sort === "company" ? (descending ? "↓" : "↑") : ""}</button></th><th>Location</th><th>Status</th><th>Link</th><th>Resume</th><th>Notes</th></tr></thead><tbody>{sorted.map(company => <tr key={company.id} onDoubleClick={() => onEdit(company)}><td><span className={`tier tier-${company.tier}`}>{company.tier}</span></td><td><div className="company-cell"><Logo name={company.name} domain={company.domain} url={company.logo_url} /><div><strong>{company.name}</strong><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div></td><td><span className="location-cell"><MapPin size={14} />{company.main_locations || "Not listed"}</span></td><td>{statusControl(company)}</td><td>{company.link ? <a className="button ghost compact-button" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost compact-button" onClick={() => onEdit(company)}>Add link</button>}</td><td><button className="button primary compact-button" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></td><td><button className="table-note edit-note" title={company.notes} onClick={() => onEdit(company)}>{company.notes || "Add notes"}</button></td></tr>)}</tbody></table></div>
+      : <div className="company-grid">{sorted.map(company => <article className="company-card simple-card" key={company.id}><div className="card-top"><Logo name={company.name} domain={company.domain} url={company.logo_url} size={48} /><span className={`tier tier-${company.tier}`}>{company.tier}</span></div><div className="card-title"><div><h3>{company.name}</h3><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div><div className="card-facts"><div><span>Location</span><strong>{company.main_locations || "Not listed"}</strong></div></div><div className="card-applied">{statusControl(company)}</div><button className="notes-preview edit-note" onClick={() => onEdit(company)}>{company.notes || "Add notes for this company."}</button><div className="card-actions"><button className="button ghost" onClick={() => onEdit(company)}>Edit</button>{company.link ? <a className="button ghost" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost" onClick={() => onEdit(company)}>Add link</button>}<button className="button primary" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></div></article>)}</div>}
   </section>;
 }
 
 function AnalyticsPage({ analytics }: { analytics: Analytics }) {
-  const cards = [
-    ["Total companies", analytics.total_companies], ["Applied", analytics.applied_count],
-    ["Not applied", analytics.status_counts["Not Applied"] || 0],
-    ["Saved resumes", analytics.saved_resume_count],
-    ["Companies with resumes", analytics.companies_with_resumes],
-  ];
-  return <><div className="summary-grid personal-summary">{cards.map(([label, value]) => <div className="summary-card" key={label}><div><span>{label}</span><strong>{value}</strong></div></div>)}</div><div className="analytics-layout"><section className="panel"><div className="panel-head"><h2>Application status</h2></div><div className="funnel">{statuses.map(value => <div key={value}><span>{value}</span><div><i style={{ width: `${Math.max(2, (analytics.status_counts[value] || 0) / Math.max(1, analytics.total_companies) * 100)}%` }} /></div><strong>{analytics.status_counts[value] || 0}</strong></div>)}</div></section><section className="panel"><div className="panel-head"><h2>Companies by tier</h2></div><div className="tier-stats">{tierOrder.map(tier => <div key={tier}><span className={`tier tier-${tier}`}>{tier}</span><strong>{analytics.tier_counts[tier] || 0}</strong><small>companies</small></div>)}</div></section><section className="panel"><div className="panel-head"><h2>Recent saved resumes</h2></div><div className="recent-list">{analytics.recent_resumes.length ? analytics.recent_resumes.map(item => <div key={item.id}><strong>{item.resume_name}</strong><span>{item.company_name} · {new Date(item.created_at).toLocaleDateString()}</span></div>) : <p>No saved resumes yet.</p>}</div></section></div></>;
+  const cards = [["Total companies", analytics.total_companies], ["Applied companies", analytics.applied_count], ["Applications", analytics.total_applications], ["Resume versions", analytics.saved_resume_count], ["Companies with resumes", analytics.companies_with_resumes]];
+  const stages = ["Applied", "OA", "Interview", "Rejected", "Offer"] as const;
+  return <><div className="summary-grid personal-summary">{cards.map(([label, value]) => <div className="summary-card" key={label}><div><span>{label}</span><strong>{value}</strong></div></div>)}</div><div className="analytics-layout"><section className="panel"><div className="panel-head"><h2>Applications by stage</h2></div><div className="funnel">{stages.map(value => <div key={value}><span>{value}</span><div><i style={{ width: `${Math.max(2, (analytics.applications_by_stage[value] || 0) / Math.max(1, analytics.total_applications) * 100)}%` }} /></div><strong>{analytics.applications_by_stage[value] || 0}</strong></div>)}</div></section><section className="panel"><div className="panel-head"><h2>Companies by tier</h2></div><div className="tier-stats">{tierOrder.map(tier => <div key={tier}><span className={`tier tier-${tier}`}>{tier}</span><strong>{analytics.tier_counts[tier] || 0}</strong><small>companies</small></div>)}</div></section><section className="panel"><div className="panel-head"><h2>Recent resume versions</h2></div><div className="recent-list">{analytics.recent_resumes.length ? analytics.recent_resumes.map(item => <div key={item.id}><strong>{item.resume_name}</strong><span>{item.company_name} · {item.job_title || "No job title"} · {new Date(item.created_at).toLocaleDateString()}</span></div>) : <p>No resume versions yet.</p>}</div></section></div></>;
 }
 
-function ResumePage({ profile, resumes, onProfileSave, onDelete }: {
+function AiSettingsPanel({ settings, onSave }: { settings: AiSettings; onSave: () => Promise<void> }) {
+  const [form, setForm] = useState(settings);
+  const [message, setMessage] = useState("");
+  useEffect(() => setForm(settings), [settings.updated_at]);
+  const save = async () => { await api.saveAiSettings(form); setMessage("Saved"); await onSave(); };
+  const remove = async () => { const next = await api.removeAiKey(); setForm(next); setMessage("Key removed"); await onSave(); };
+  const test = async () => { setMessage("Testing..."); try { await api.testAiConnection(form); setMessage("Connection OK"); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Test failed"); } };
+  return <section className="content-panel ai-settings"><div className="toolbar"><div><span className="eyebrow">AI settings</span><h2>Resume generation provider</h2></div><div className="resume-actions"><button className="button ghost" onClick={test}>Test Connection</button><button className="button primary" onClick={save}>Save</button><button className="button ghost" onClick={remove}>Remove Key</button></div></div><div className="profile-grid"><label>Provider<select value={form.provider} onChange={event => setForm(current => ({ ...current, provider: event.target.value as AiProvider }))}>{providers.map(provider => <option key={provider} value={provider}>{provider}</option>)}</select></label><label>Model<input value={form.model} onChange={event => setForm(current => ({ ...current, model: event.target.value }))} /></label><label className="profile-section">API Key<input type="password" value={form.api_key} onChange={event => setForm(current => ({ ...current, api_key: event.target.value }))} /></label><label className="profile-section">Base URL<input value={form.base_url} onChange={event => setForm(current => ({ ...current, base_url: event.target.value }))} placeholder="Optional for compatible APIs" /></label>{message && <p className="inline-error profile-section">{message}</p>}</div></section>;
+}
+
+function ResumePage({ profile, settings, resumes, onProfileSave, onSettingsChanged, onDelete, onExport, onImport }: {
   profile: ResumeProfile;
+  settings: AiSettings;
   resumes: GeneratedResume[];
   onProfileSave: (profile: ResumeProfileUpdate) => Promise<void>;
+  onSettingsChanged: () => Promise<void>;
   onDelete: (resume: GeneratedResume) => Promise<void>;
+  onExport: () => Promise<void>;
+  onImport: (file: File) => Promise<void>;
 }) {
   const [form, setForm] = useState<ResumeProfileUpdate>(() => {
     const { id: _id, updated_at: _updated, ...values } = profile;
     return values;
   });
-  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState("");
+  const importRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const timer = window.setTimeout(async () => { await onProfileSave(form); setSavedAt(new Date().toLocaleTimeString()); }, 600);
+    return () => window.clearTimeout(timer);
+  }, [form]);
   const set = (key: keyof ResumeProfileUpdate, value: string) => setForm(current => ({ ...current, [key]: value }));
-  return <div className="resume-page"><section className="content-panel"><div className="toolbar"><div><span className="eyebrow">Base information</span><h2>Resume profile</h2><p className="helper-text">DeepSeek may only use truthful information stored here.</p></div><button className="button primary" disabled={saving} onClick={async () => { setSaving(true); try { await onProfileSave(form); } finally { setSaving(false); } }}>{saving ? "Saving..." : "Save profile"}</button></div><div className="template-guidance"><strong>Generation format</strong><span>Complete Overleaf-compatible LaTeX, ATS-friendly, concise, one page where possible, and never fabricated.</span></div><div className="profile-grid">{(["name", "email", "phone", "location", "linkedin", "github", "website"] as const).map(key => <label key={key}>{key.replace("_", " ")}<input value={form[key]} onChange={event => set(key, event.target.value)} /></label>)}{(["education_text", "experience_text", "projects_text", "skills_text", "awards_text", "other_text"] as const).map(key => <label className="profile-section" key={key}>{key.replace("_text", "").replace("_", " ")}<textarea rows={key === "experience_text" ? 10 : 6} value={form[key]} onChange={event => set(key, event.target.value)} placeholder="Paste plain text or markdown..." /></label>)}</div></section><section className="content-panel"><div className="toolbar"><div><span className="eyebrow">{resumes.length} saved</span><h2>Generated resumes</h2></div></div>{resumes.length ? <div className="saved-resume-list">{resumes.map(resume => <article key={resume.id}><div><strong>{resume.resume_name}</strong><span>{resume.company_name} · {resume.job_title || "No job title"} · {new Date(resume.created_at).toLocaleDateString()}</span><details><summary>View JD</summary><pre>{resume.jd_text}</pre></details><details><summary>View LaTeX</summary><pre>{resume.generated_latex}</pre></details></div><div><button onClick={() => navigator.clipboard.writeText(resume.generated_latex)}><Copy size={14} /> Copy LaTeX</button><button onClick={() => downloadTex(resume.resume_name, resume.generated_latex)}><Download size={14} /> .tex</button><button className="delete" onClick={() => onDelete(resume)}><Trash2 size={14} /> Delete</button></div></article>)}</div> : <p className="empty-copy">No saved resumes yet. Open Resume from a company to generate one.</p>}</section></div>;
+  return <div className="resume-page"><AiSettingsPanel settings={settings} onSave={onSettingsChanged} /><section className="content-panel"><div className="toolbar"><div><span className="eyebrow">Base information {savedAt && `· Autosaved ${savedAt}`}</span><h2>Resume profile</h2><p className="helper-text">This can be much longer than the final one-page resume.</p></div><div className="resume-actions"><button className="button ghost" onClick={onExport}><Download size={14} /> Export Everything</button><button className="button ghost" onClick={() => importRef.current?.click()}><Upload size={14} /> Import Backup</button><input ref={importRef} hidden type="file" accept=".zip" onChange={event => { const file = event.target.files?.[0]; if (file) onImport(file); }} /></div></div><div className="profile-grid">{(["name", "email", "phone", "location", "linkedin", "github", "website"] as const).map(key => <label key={key}>{key.replace("_", " ")}<input value={form[key]} onChange={event => set(key, event.target.value)} /></label>)}{(["education_text", "experience_text", "projects_text", "research_text", "skills_text", "awards_text", "other_text"] as const).map(key => <label className="profile-section" key={key}>{key.replace("_text", "").replace("_", " ")}<textarea rows={key === "experience_text" || key === "projects_text" ? 10 : 6} value={form[key]} onChange={event => set(key, event.target.value)} placeholder="Paste detailed notes, bullets, metrics, technologies, and context..." /></label>)}</div></section><section className="content-panel"><div className="toolbar"><div><span className="eyebrow">{resumes.length} versions</span><h2>Generated resumes</h2></div></div>{resumes.length ? <div className="saved-resume-list">{resumes.map(resume => <article key={resume.id}><div><strong>{resume.resume_name}</strong><span>{resume.company_name} · {resume.job_title || "No job title"} · {new Date(resume.created_at).toLocaleString()}</span><details><summary>View structured JSON</summary><pre>{JSON.stringify(resume.structured_resume, null, 2)}</pre></details></div><div><button className="delete" onClick={() => onDelete(resume)}>Delete</button></div></article>)}</div> : <p className="empty-copy">No resume versions yet. Open Resume from a company to create an application and generate one.</p>}</section></div>;
 }
 
 export default function App() {
@@ -96,6 +113,7 @@ export default function App() {
   const [profile, setProfile] = useState<ResumeProfile | null>(null);
   const [resumes, setResumes] = useState<GeneratedResume[]>([]);
   const [features, setFeatures] = useState<FeatureStatus | null>(null);
+  const [settings, setSettings] = useState<AiSettings | null>(null);
   const [editing, setEditing] = useState<Company | null>(null);
   const [resumeCompany, setResumeCompany] = useState<Company | null>(null);
   const [error, setError] = useState("");
@@ -103,14 +121,10 @@ export default function App() {
 
   const load = async () => {
     try {
-      const [companyData, analyticsData, profileData, resumeData, featureData] = await Promise.all([
-        api.companies(), api.analytics(), api.profile(), api.resumes(), api.features(),
-      ]);
-      setCompanies(companyData); setAnalytics(analyticsData); setProfile(profileData);
-      setResumes(resumeData); setFeatures(featureData); setError("");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to load InternRadar");
-    } finally { setLoading(false); }
+      const [companyData, analyticsData, profileData, resumeData, featureData, settingsData] = await Promise.all([api.companies(), api.analytics(), api.profile(), api.resumes(), api.features(), api.aiSettings()]);
+      setCompanies(companyData); setAnalytics(analyticsData); setProfile(profileData); setResumes(resumeData); setFeatures(featureData); setSettings(settingsData); setError("");
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to load InternRadar"); }
+    finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
@@ -119,9 +133,14 @@ export default function App() {
     setCompanies(current => current.map(item => item.id === updated.id ? updated : item));
     setAnalytics(await api.analytics());
   };
+  const quickApply = async (company: Company) => {
+    if (company.application_count) { setResumeCompany(company); return; }
+    await api.createApplication({ company_id: company.id, job_title: "", job_description: "", notes: "" });
+    await load();
+  };
   if (loading) return <div className="app-state"><Radar className="spin" size={34} /><strong>Loading InternRadar...</strong></div>;
-  if (error || !analytics || !profile) return <div className="app-state"><Radar size={34} /><strong>Backend unavailable</strong><p>{error}</p><button className="button primary" onClick={load}>Try again</button></div>;
+  if (error || !analytics || !profile || !settings) return <div className="app-state"><Radar size={34} /><strong>Unable to load local data</strong><p>{error}</p><button className="button primary" onClick={load}>Try again</button></div>;
 
   const nav = [["overview", LayoutDashboard, "Overview"], ["analytics", BarChart3, "Analytics"], ["resume", FileText, "Resume"]] as const;
-  return <div className="shell"><aside><div className="brand"><span><Radar size={23} /></span><div><strong>InternRadar</strong><small>Personal application tracker</small></div></div><nav>{nav.map(([id, Icon, label]) => <button className={page === id ? "active" : ""} key={id} onClick={() => setPage(id)}><Icon size={19} /><span>{label}</span></button>)}</nav></aside><main><header><div><span className="eyebrow">Local personal workspace</span><h1>{page === "overview" ? "Company applications" : page === "analytics" ? "Application analytics" : "Resume studio"}</h1><p>{page === "overview" ? "Track company status, notes, links, and tailored resumes." : page === "analytics" ? "A simple view of your application pipeline." : "Maintain your truthful base profile and saved Overleaf resumes."}</p></div></header>{page === "overview" && <Overview companies={companies} onUpdate={updateCompany} onEdit={setEditing} onResume={setResumeCompany} />}{page === "analytics" && <AnalyticsPage analytics={analytics} />}{page === "resume" && <ResumePage profile={profile} resumes={resumes} onProfileSave={async data => setProfile(await api.updateProfile(data))} onDelete={async resume => { if (confirm(`Delete ${resume.resume_name}?`)) { await api.deleteResume(resume.id); await load(); } }} />}</main>{editing && <CompanyModal company={editing} onClose={() => setEditing(null)} onSave={data => updateCompany(editing, data)} />}{resumeCompany && <ResumeModal company={resumeCompany} features={features} onClose={() => setResumeCompany(null)} onSaved={load} />}</div>;
+  return <div className="shell"><aside><div className="brand"><span><Radar size={23} /></span><div><strong>InternRadar</strong><small>Browser-local tracker</small></div></div><nav>{nav.map(([id, Icon, label]) => <button className={page === id ? "active" : ""} key={id} onClick={() => setPage(id)}><Icon size={19} /><span>{label}</span></button>)}</nav></aside><main><header><div><span className="eyebrow">GitHub Pages ready · browser-local data</span><h1>{page === "overview" ? "Company applications" : page === "analytics" ? "Application analytics" : "Resume studio"}</h1><p>{page === "overview" ? "Track companies, applications, notes, links, and resume versions." : page === "analytics" ? "A simple view of your application pipeline." : "Maintain your master profile, AI settings, backups, and generated resumes."}</p></div></header>{page === "overview" && <Overview companies={companies} onUpdate={updateCompany} onEdit={setEditing} onResume={setResumeCompany} onQuickApply={quickApply} />}{page === "analytics" && <AnalyticsPage analytics={analytics} />}{page === "resume" && <ResumePage profile={profile} settings={settings} resumes={resumes} onProfileSave={async data => setProfile(await api.updateProfile(data))} onSettingsChanged={load} onDelete={async resume => { if (confirm(`Delete ${resume.resume_name}?`)) { await api.deleteResume(resume.id); await load(); } }} onExport={async () => downloadBlob(await api.exportBackup(), `InternRadar-backup-${new Date().toISOString().slice(0, 10)}.zip`)} onImport={async file => { await api.importBackup(file); await load(); }} />}</main>{editing && <CompanyModal company={editing} onClose={() => setEditing(null)} onSave={data => updateCompany(editing, data)} />}{resumeCompany && <ResumeModal company={resumeCompany} features={features} onClose={() => setResumeCompany(null)} onSaved={load} />}</div>;
 }

@@ -10,7 +10,6 @@ export function CompanyModal({ company, onClose, onSave }: {
   const [form, setForm] = useState<CompanyUpdate>({});
   const [saving, setSaving] = useState(false);
   useEffect(() => setForm({
-    status: company.status,
     notes: company.notes,
     link: company.link,
     main_locations: company.main_locations,
@@ -23,7 +22,6 @@ export function CompanyModal({ company, onClose, onSave }: {
     }}>
       <div className="modal-head"><div><span className="eyebrow">Company tracker</span><h2>Edit {company.name}</h2></div><button type="button" className="icon-button" onClick={onClose}><X size={20} /></button></div>
       <div className="form-grid">
-        <label className="check"><input type="checkbox" checked={form.status === "Applied"} onChange={event => setForm(current => ({ ...current, status: event.target.checked ? "Applied" : "Not Applied" }))} /> Applied</label>
         <label>Locations<input value={form.main_locations || ""} onChange={event => setForm(current => ({ ...current, main_locations: event.target.value }))} placeholder="Toronto, Vancouver, Remote" /></label>
         <label className="full">Useful link<input type="url" value={form.link || ""} onChange={event => setForm(current => ({ ...current, link: event.target.value }))} placeholder="https://..." /></label>
         <label className="full">Notes<textarea rows={6} value={form.notes || ""} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} /></label>
