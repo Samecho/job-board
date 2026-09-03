@@ -18,7 +18,7 @@ There is no login, Jobs tab, Sources tab, crawler, match score, priority/pin sys
 - Application stages: Applied, OA, Interview, Rejected, Offer
 - Detailed autosaved Resume Profile
 - AI Settings stored locally in the browser
-- Adapter support for OpenAI-compatible APIs, Gemini, and GLM/OpenAI-compatible APIs
+- Closed provider/model adapters for OpenAI, Gemini, and GLM
 - Deterministic browser rendering for PDF and DOCX from structured resume JSON
 - Export Everything / Import Backup ZIP workflow
 
@@ -86,15 +86,27 @@ A company is considered Applied when it has at least one Application. Overview a
 
 ## AI Settings
 
-Open the **Resume** tab to configure:
+Open the **Resume** tab to configure a browser-local provider:
 
-- Provider
-- API key
-- Model
-- Optional Base URL
+- **OpenAI**: GPT-5.6 Sol (Max), GPT-5.6 Terra (Max), or GPT-5.6 Luna (Max); all use maximum reasoning.
+- **Gemini**: Gemini 3.8 Flash with high thinking level.
+- **GLM**: GLM-5.3-Flash through Z.ai's general API endpoint.
+- **API key**: stored only in this browser's IndexedDB and excluded from backups.
 
-The model field is editable so future model names can be used without code changes.
+Model choices are fixed to verified provider IDs. Base URLs are internal adapter details and are not exposed in the UI.
 
+## Catalog Audit
+
+The static catalog contains the September 2026 SWE/SDE audit and uses the tier order `S+`, `S`, `A+`, `A`, `B+`, `B`, `C`, `D`.
+
+To reproduce the audit transform:
+
+```powershell
+cd frontend
+npm run catalog:audit
+```
+
+The audit consolidates aliases while preserving local company notes, applications, and saved resume references through a browser IndexedDB migration.
 ## Backup / Restore
 
 Use **Export Everything** in the Resume tab to download:

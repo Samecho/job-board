@@ -8,23 +8,89 @@ import type {
 import { makeZip, readStoreZip, renderResumeDocx, renderResumePdf } from "../lib/resumeFiles";
 
 const DB_NAME = "internradar-browser";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+const COMPANY_ID_ALIASES: Record<number, number> = {
+  25: 26,
+  118: 110,
+  195: 220,
+  294: 293,
+  307: 293,
+  330: 36,
+  335: 159,
+};
 const stages: ApplicationStage[] = ["Applied", "OA", "Interview", "Rejected", "Offer"];
 const tierOrder = ["S+", "S", "A+", "A", "B+", "B", "C", "D"];
+const providerModels = {
+  openai: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"],
+  gemini: ["gemini-3.8-flash"],
+  glm: ["glm-5.3-flash"],
+} as const;
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const GLM_CHAT_URL = "https://api.z.ai/api/paas/v4/chat/completions";
 
 function now() { return new Date().toISOString(); }
 function slug(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item"; }
 
+
+function canonicalCompanyId(companyId: number) {
+  return COMPANY_ID_ALIASES[companyId] || companyId;
+}
+
+function mergeCompanyStates(current: CompanyState | undefined, incoming: CompanyState, companyId: number): CompanyState {
+  const notes = [...new Set([current?.notes, incoming.notes].filter((value): value is string => Boolean(value)))].join("\n\n");
+  return {
+    company_id: companyId,
+    notes,
+    link: current?.link || incoming.link || "",
+    main_locations: current?.main_locations || incoming.main_locations || "",
+    updated_at: [current?.updated_at, incoming.updated_at].filter(Boolean).sort().slice(-1)[0] || now(),
+  };
+}
+
+function migrateCompanyReferences(transaction: IDBTransaction) {
+  for (const storeName of ["applications", "resume_versions"]) {
+    const store = transaction.objectStore(storeName);
+    const request = store.openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      const value = cursor.value as { company_id: number };
+      const companyId = canonicalCompanyId(value.company_id);
+      if (companyId !== value.company_id) cursor.update({ ...value, company_id: companyId });
+      cursor.continue();
+    };
+  }
+  const stateStore = transaction.objectStore("company_states");
+  const stateRequest = stateStore.openCursor();
+  stateRequest.onsuccess = () => {
+    const cursor = stateRequest.result;
+    if (!cursor) return;
+    const value = cursor.value as CompanyState;
+    const companyId = canonicalCompanyId(value.company_id);
+    if (companyId === value.company_id) {
+      cursor.continue();
+      return;
+    }
+    const targetRequest = stateStore.get(companyId);
+    targetRequest.onsuccess = () => {
+      stateStore.put(mergeCompanyStates(targetRequest.result as CompanyState | undefined, value, companyId));
+      cursor.delete();
+      cursor.continue();
+    };
+  };
+}
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = event => {
       const db = request.result;
       if (!db.objectStoreNames.contains("company_states")) db.createObjectStore("company_states", { keyPath: "company_id" });
       if (!db.objectStoreNames.contains("resume_profile")) db.createObjectStore("resume_profile", { keyPath: "id" });
       if (!db.objectStoreNames.contains("ai_settings")) db.createObjectStore("ai_settings", { keyPath: "id" });
       if (!db.objectStoreNames.contains("applications")) db.createObjectStore("applications", { keyPath: "id", autoIncrement: true });
       if (!db.objectStoreNames.contains("resume_versions")) db.createObjectStore("resume_versions", { keyPath: "id", autoIncrement: true });
+      if (event.oldVersion < 2 && request.transaction) migrateCompanyReferences(request.transaction);
     };
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
@@ -84,9 +150,27 @@ function defaultProfile(): ResumeProfile {
 }
 
 function defaultAiSettings(): AiSettings {
-  return { provider: "openai-compatible", api_key: "", model: "gpt-4.1-mini", base_url: "https://api.openai.com/v1", updated_at: now() };
+  return { provider: "openai", api_key: "", model: "gpt-5.6-sol", updated_at: now() };
 }
 
+function normalizeAiSettings(value?: Partial<AiSettings> & { provider?: string }): AiSettings {
+  const fallback = defaultAiSettings();
+  const legacyProvider = value?.provider as string | undefined;
+  const provider = legacyProvider === "gemini" ? "gemini" : legacyProvider === "glm" || legacyProvider === "glm-compatible" ? "glm" : "openai";
+  const allowedModels = providerModels[provider] as readonly string[];
+  return {
+    provider,
+    api_key: typeof value?.api_key === "string" ? value.api_key : "",
+    model: typeof value?.model === "string" && allowedModels.includes(value.model) ? value.model : allowedModels[0],
+    updated_at: typeof value?.updated_at === "string" ? value.updated_at : fallback.updated_at,
+  };
+}
+
+function validatedAiSettings(value: Omit<AiSettings, "updated_at">): Omit<AiSettings, "updated_at"> {
+  const allowedModels = providerModels[value.provider] as readonly string[];
+  if (!allowedModels.includes(value.model)) throw new Error("Select a model from the provider list");
+  return { provider: value.provider, model: value.model, api_key: value.api_key };
+}
 async function profile() {
   const existing = await get<ResumeProfile>("resume_profile", 1);
   if (existing) return { ...defaultProfile(), ...existing };
@@ -94,11 +178,9 @@ async function profile() {
 }
 
 async function aiSettings() {
-  const existing = await get<AiSettings & { id: number }>("ai_settings", 1);
-  if (existing) return existing;
-  return { id: 1, ...defaultAiSettings() };
+  const existing = await get<(Partial<AiSettings> & { id: number; provider?: string })>("ai_settings", 1);
+  return { id: 1, ...normalizeAiSettings(existing) };
 }
-
 async function applications(companyId?: number) {
   const items = await all<Application>("applications");
   return items.filter(item => !companyId || item.company_id === companyId).sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -178,29 +260,59 @@ async function analytics(): Promise<Analytics> {
   };
 }
 
-async function callOpenAiCompatible(settings: AiSettings, messages: Array<{ role: string; content: string }>) {
-  const response = await fetch(`${settings.base_url.replace(/\/$/, "")}/chat/completions`, {
+async function responseError(response: Response) {
+  const detail = await response.text();
+  throw new Error(`AI request failed (${response.status})${detail ? `: ${detail.slice(0, 240)}` : ""}`);
+}
+
+async function callOpenAi(settings: AiSettings, messages: Array<{ role: "system" | "user"; content: string }>) {
+  const response = await fetch(OPENAI_RESPONSES_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` },
-    body: JSON.stringify({ model: settings.model, messages, temperature: 0.2, response_format: { type: "json_object" } }),
+    body: JSON.stringify({
+      model: settings.model,
+      input: messages,
+      reasoning: { effort: "max" },
+      text: { format: { type: "json_object" } },
+    }),
   });
-  if (!response.ok) throw new Error(`AI request failed (${response.status})`);
+  if (!response.ok) return responseError(response);
   const body = await response.json();
-  return body.choices?.[0]?.message?.content || "";
+  if (typeof body.output_text === "string") return body.output_text;
+  return body.output?.flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || [])
+    .find((item: { type?: string }) => item.type === "output_text")?.text || "";
 }
 
 async function callGemini(settings: AiSettings, prompt: string) {
-  const base = settings.base_url || "https://generativelanguage.googleapis.com/v1beta";
-  const response = await fetch(`${base.replace(/\/$/, "")}/models/${encodeURIComponent(settings.model)}:generateContent?key=${encodeURIComponent(settings.api_key)}`, {
+  const response = await fetch(`${GEMINI_API_BASE}/models/${encodeURIComponent(settings.model)}:generateContent`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.2 } }),
+    headers: { "Content-Type": "application/json", "x-goog-api-key": settings.api_key },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json", thinkingConfig: { thinkingLevel: "high" } },
+    }),
   });
-  if (!response.ok) throw new Error(`AI request failed (${response.status})`);
+  if (!response.ok) return responseError(response);
   const body = await response.json();
-  return body.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  return body.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("") || "";
 }
 
+async function callGlm(settings: AiSettings, messages: Array<{ role: "system" | "user"; content: string }>) {
+  const response = await fetch(GLM_CHAT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` },
+    body: JSON.stringify({
+      model: settings.model,
+      messages,
+      stream: false,
+      thinking: { type: "enabled" },
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!response.ok) return responseError(response);
+  const body = await response.json();
+  return body.choices?.[0]?.message?.content || "";
+}
 function parseStructuredResume(text: string): StructuredResume {
   const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
   const parsed = JSON.parse(cleaned) as StructuredResume;
@@ -221,9 +333,13 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   if (!settings.api_key || !settings.model) throw new Error("Save AI settings before generating resumes");
   const profileData = await profile();
   const userPrompt = generationPrompt(profileData, app, extraInstructions);
+  const messages: Array<{ role: "system" | "user"; content: string }> = [
+    { role: "system", content: resumeSkill },
+    { role: "user", content: userPrompt },
+  ];
   const raw = settings.provider === "gemini"
     ? await callGemini(settings, `${resumeSkill}\n\n${userPrompt}`)
-    : await callOpenAiCompatible(settings, [{ role: "system", content: resumeSkill }, { role: "user", content: userPrompt }]);
+    : settings.provider === "glm" ? await callGlm(settings, messages) : await callOpenAi(settings, messages);
   const structured = parseStructuredResume(raw);
   const existing = await versions(applicationId);
   const version_number = existing.length ? Math.max(...existing.map(item => item.version_number)) + 1 : 1;
@@ -295,12 +411,24 @@ async function importBackup(file: File) {
   const data = JSON.parse(await dataBlob.text());
   await tx(["company_states", "resume_profile", "applications", "resume_versions"], "readwrite", async (_, transaction) => {
     for (const store of ["company_states", "resume_profile", "applications", "resume_versions"]) await req(transaction.objectStore(store).clear());
-    for (const state of data.company_states || []) await req(transaction.objectStore("company_states").put(state));
+    const importedStates = new Map<number, CompanyState>();
+    for (const state of data.company_states || []) {
+      const companyId = canonicalCompanyId(state.company_id);
+      importedStates.set(companyId, mergeCompanyStates(importedStates.get(companyId), state, companyId));
+    }
+    for (const state of importedStates.values()) await req(transaction.objectStore("company_states").put(state));
     if (data.resume_profile) await req(transaction.objectStore("resume_profile").put(data.resume_profile));
-    for (const app of data.applications || []) await req(transaction.objectStore("applications").put(app));
+    for (const app of data.applications || []) {
+      await req(transaction.objectStore("applications").put({ ...app, company_id: canonicalCompanyId(app.company_id) }));
+    }
     for (const meta of data.resume_versions || []) {
       const { pdf_path, docx_path, ...version } = meta;
-      await req(transaction.objectStore("resume_versions").put({ ...version, pdf_file: files[pdf_path], docx_file: files[docx_path] }));
+      await req(transaction.objectStore("resume_versions").put({
+        ...version,
+        company_id: canonicalCompanyId(version.company_id),
+        pdf_file: files[pdf_path],
+        docx_file: files[docx_path],
+      }));
     }
   });
 }
@@ -317,15 +445,18 @@ export const api = {
     return { ai_enabled: true, ai_configured: Boolean(settings.api_key && settings.model) };
   },
   aiSettings,
-  saveAiSettings: (settings: Omit<AiSettings, "updated_at">) => put("ai_settings", { ...settings, id: 1, updated_at: now() }),
+  saveAiSettings: (settings: Omit<AiSettings, "updated_at">) => put("ai_settings", { ...validatedAiSettings(settings), id: 1, updated_at: now() }),
   removeAiKey: async () => {
     const settings = await aiSettings();
     return put("ai_settings", { ...settings, api_key: "", updated_at: now() });
   },
   testAiConnection: async (settings: AiSettings) => {
     if (!settings.api_key || !settings.model) throw new Error("API key and model are required");
-    if (settings.provider === "gemini") await callGemini(settings, "Return JSON only: {\"ok\":true}");
-    else await callOpenAiCompatible(settings, [{ role: "user", content: "Return JSON only: {\"ok\":true}" }]);
+    const checked = normalizeAiSettings(settings);
+    validatedAiSettings(checked);
+    if (checked.provider === "gemini") await callGemini(checked, "Return JSON only: {\"ok\":true}");
+    else if (checked.provider === "glm") await callGlm(checked, [{ role: "user", content: "Return JSON only: {\"ok\":true}" }]);
+    else await callOpenAi(checked, [{ role: "user", content: "Return JSON only: {\"ok\":true}" }]);
     return true;
   },
   applications,

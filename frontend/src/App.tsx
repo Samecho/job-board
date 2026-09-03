@@ -16,7 +16,19 @@ import type {
 type Page = "overview" | "analytics" | "resume";
 const statuses: CompanyStatus[] = ["Not Applied", "Applied"];
 const tierOrder = ["S+", "S", "A+", "A", "B+", "B", "C", "D"];
-const providers: AiProvider[] = ["openai-compatible", "gemini", "glm-compatible"];
+const providerOptions: Array<{ value: AiProvider; label: string; models: Array<{ value: string; label: string }> }> = [
+  {
+    value: "openai",
+    label: "OpenAI",
+    models: [
+      { value: "gpt-5.6-sol", label: "GPT-5.6 Sol (Max)" },
+      { value: "gpt-5.6-terra", label: "GPT-5.6 Terra (Max)" },
+      { value: "gpt-5.6-luna", label: "GPT-5.6 Luna (Max)" },
+    ],
+  },
+  { value: "gemini", label: "Gemini", models: [{ value: "gemini-3.8-flash", label: "Gemini 3.8 Flash" }] },
+  { value: "glm", label: "GLM", models: [{ value: "glm-5.3-flash", label: "GLM-5.3-Flash" }] },
+];
 
 function InternBadge() {
   return <span className="intern-badge" title="Recurring internship or co-op hiring">Intern</span>;
@@ -76,10 +88,16 @@ function AiSettingsPanel({ settings, onSave }: { settings: AiSettings; onSave: (
   const [form, setForm] = useState(settings);
   const [message, setMessage] = useState("");
   useEffect(() => setForm(settings), [settings.updated_at]);
+  const models = providerOptions.find(option => option.value === form.provider)?.models || providerOptions[0].models;
+  const setProvider = (provider: AiProvider) => {
+    const model = providerOptions.find(option => option.value === provider)?.models[0].value || "gpt-5.6-sol";
+    setForm(current => ({ ...current, provider, model }));
+    setMessage("");
+  };
   const save = async () => { await api.saveAiSettings(form); setMessage("Saved"); await onSave(); };
   const remove = async () => { const next = await api.removeAiKey(); setForm(next); setMessage("Key removed"); await onSave(); };
   const test = async () => { setMessage("Testing..."); try { await api.testAiConnection(form); setMessage("Connection OK"); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Test failed"); } };
-  return <section className="content-panel ai-settings"><div className="toolbar"><div><span className="eyebrow">AI settings</span><h2>Resume generation provider</h2></div><div className="resume-actions"><button className="button ghost" onClick={test}>Test Connection</button><button className="button primary" onClick={save}>Save</button><button className="button ghost" onClick={remove}>Remove Key</button></div></div><div className="profile-grid"><label>Provider<select value={form.provider} onChange={event => setForm(current => ({ ...current, provider: event.target.value as AiProvider }))}>{providers.map(provider => <option key={provider} value={provider}>{provider}</option>)}</select></label><label>Model<input value={form.model} onChange={event => setForm(current => ({ ...current, model: event.target.value }))} /></label><label className="profile-section">API Key<input type="password" value={form.api_key} onChange={event => setForm(current => ({ ...current, api_key: event.target.value }))} /></label><label className="profile-section">Base URL<input value={form.base_url} onChange={event => setForm(current => ({ ...current, base_url: event.target.value }))} placeholder="Optional for compatible APIs" /></label>{message && <p className="inline-error profile-section">{message}</p>}</div></section>;
+  return <section className="content-panel ai-settings"><div className="toolbar"><div><span className="eyebrow">AI settings</span><h2>Resume generation provider</h2></div><div className="resume-actions"><button className="button ghost" onClick={test}>Test Connection</button><button className="button primary" onClick={save}>Save</button><button className="button ghost" onClick={remove}>Remove Key</button></div></div><div className="profile-grid"><label>Provider<select value={form.provider} onChange={event => setProvider(event.target.value as AiProvider)}>{providerOptions.map(provider => <option key={provider.value} value={provider.value}>{provider.label}</option>)}</select></label><label>Model<select value={form.model} onChange={event => setForm(current => ({ ...current, model: event.target.value }))}>{models.map(model => <option key={model.value} value={model.value}>{model.label}</option>)}</select></label><label className="profile-section">API Key<input type="password" value={form.api_key} onChange={event => setForm(current => ({ ...current, api_key: event.target.value }))} autoComplete="off" /></label>{message && <p className="inline-error profile-section">{message}</p>}</div></section>;
 }
 
 function ResumePage({ profile, settings, resumes, onProfileSave, onSettingsChanged, onDelete, onExport, onImport }: {

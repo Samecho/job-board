@@ -1,6 +1,6 @@
 export type CompanyStatus = "Not Applied" | "Applied";
 export type ApplicationStage = "Applied" | "OA" | "Interview" | "Rejected" | "Offer";
-export type AiProvider = "openai-compatible" | "gemini" | "glm-compatible";
+export type AiProvider = "openai" | "gemini" | "glm";
 
 export interface CompanyCatalogItem {
   id: number;
@@ -62,7 +62,6 @@ export interface AiSettings {
   provider: AiProvider;
   api_key: string;
   model: string;
-  base_url: string;
   updated_at: string;
 }
 
