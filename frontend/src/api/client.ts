@@ -17,6 +17,7 @@ const COMPANY_ID_ALIASES: Record<number, number> = {
   307: 293,
   330: 36,
   335: 159,
+  512: 549,
 };
 const stages: ApplicationStage[] = ["Applied", "OA", "Interview", "Rejected", "Offer"];
 const tierOrder = ["S+", "S", "A+", "A", "B+", "B", "C", "D"];

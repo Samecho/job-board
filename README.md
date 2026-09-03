@@ -97,7 +97,7 @@ Model choices are fixed to verified provider IDs. Base URLs are internal adapter
 
 ## Catalog Audit
 
-The static catalog contains the September 2026 SWE/SDE audit and uses the tier order `S+`, `S`, `A+`, `A`, `B+`, `B`, `C`, `D`.
+The static catalog contains the September 2026 resume-signal audit. Tiers measure technical reputation and resume recognition; internship availability is tracked separately by the Intern badge. The tier order `S+`, `S`, `A+`, `A`, `B+`, `B`, `C`, `D`.
 
 To reproduce the audit transform:
 

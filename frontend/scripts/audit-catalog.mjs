@@ -5,14 +5,18 @@ const source = fs.readFileSync(catalogPath, "utf8");
 const start = source.indexOf("= [");
 const catalog = JSON.parse(source.slice(start + 2, source.lastIndexOf("]") + 1));
 
-// September 2026 SWE/SDE audit. Unlisted entries retain their reviewed tier.
+// September 2026 resume-signal audit. Internship availability is tracked separately and does not affect tier.
 const tierOverrides = {
   "Millennium": "A",
   "Point72": "A",
   "AQR Capital Management": "A",
   "Mistral AI": "A+",
+  "Moonshot AI": "S",
+  "Supabase": "A+",
+  "Neon": "A+",
+  "Weights & Biases": "A+",
   "Perplexity": "A+",
-  "Cohere": "A",
+  "Cohere": "A+",
   "Scale AI": "A",
   "Character.AI": "A",
   "Microsoft": "S",
@@ -111,18 +115,18 @@ const tierOverrides = {
   "Clerk": "B+",
   "Convex": "A",
   "Turso": "B+",
-  "Alibaba": "B+",
+  "Alibaba": "A+",
   "Kuaishou": "B+",
-  "MiniMax": "A",
-  "Z.ai": "A",
+  "MiniMax": "A+",
+  "Z.ai": "A+",
   "01.AI": "B+",
-  "Moonshot AI": "B+",
+
   "SenseTime": "B",
   "NASA": "B+"
 };
 
 // These are one application target as of September 2026. IDs are never reused.
-const consolidatedIds = new Set([25, 118, 195, 294, 307, 330, 335]);
+const consolidatedIds = new Set([25, 118, 195, 294, 307, 330, 335, 512]);
 
 const additions = [
   [507, "Intuit", "intuit.com", "A", "Enterprise Software", "Mountain View, San Diego, New York, Atlanta, Toronto", true, "https://www.intuit.com/careers/programs/internships/"],
@@ -130,7 +134,7 @@ const additions = [
   [509, "Physical Intelligence", "pi.website", "A+", "Robotics & Mobility", "San Francisco", false, "https://www.pi.website/join-us"],
   [510, "Reflection AI", "reflection.ai", "A+", "AI & ML", "New York, San Francisco", false, "https://reflection.ai/careers"],
   [511, "Periodic Labs", "periodic.ai", "A", "AI & ML", "San Francisco", false, "https://periodic.ai/careers"],
-  [512, "Anyscale", "anyscale.com", "A", "AI & ML", "San Francisco, Palo Alto", false, "https://www.anyscale.com/careers"],
+
   [513, "Saronic", "saronic.com", "A+", "Aerospace & Defense", "Austin, Washington, D.C.", false, "https://www.saronic.com/careers"],
   [514, "Skild AI", "skild.ai", "A+", "Robotics & Mobility", "Pittsburgh, San Francisco", false, "https://www.skild.ai/careers"],
   [515, "Hadrian", "hadrian.co", "A", "Aerospace & Defense", "Los Angeles", false, "https://www.hadrian.co/careers"],
@@ -164,7 +168,16 @@ const additions = [
   [543, "Wispr Flow", "wisprflow.ai", "A", "AI & ML", "San Francisco", false, "https://wisprflow.ai/careers"],
   [544, "Black Forest Labs", "blackforestlabs.ai", "A", "AI & ML", "San Francisco, Freiburg", false, "https://blackforestlabs.ai/careers"],
   [545, "Decart", "decart.ai", "A", "AI & ML", "San Francisco, Tel Aviv", false, "https://www.decart.ai/careers"],
-  [546, "Kalshi", "kalshi.com", "A", "Finance & Trading", "New York", false, "https://kalshi.com/careers"]
+  [546, "Kalshi", "kalshi.com", "A", "Finance & Trading", "New York", false, "https://kalshi.com/careers"],
+  [547, "DeepSeek", "deepseek.com", "S", "AI & ML", "Hangzhou, China, Global", false, "https://deepseek.com/"],
+  [548, "Nebius", "nebius.com", "A+", "Cloud & Infrastructure", "United States, Europe, Israel, Remote", false, "https://careers.nebius.com/"],
+  [549, "Nscale", "nscale.com", "A+", "Cloud & Infrastructure", "London, San Francisco, North America, Europe", false, "https://www.nscale.com/open-positions"],
+  [550, "Runpod", "runpod.io", "A", "Cloud & Infrastructure", "United States, Canada, Europe, Remote", false, "https://www.runpod.io/careers"],
+  [551, "Generalist AI", "generalistai.com", "A+", "Robotics & Mobility", "United States", false, "https://generalistai.com/"],
+  [552, "Fluidstack", "fluidstack.io", "A", "Cloud & Infrastructure", "New York, San Francisco, Austin, Seattle", false, "https://www.fluidstack.io/"],
+  [553, "Voleon", "voleon.com", "A", "Finance & Trading", "Berkeley, New York, Remote", false, "https://voleon.com/jobs/"],
+  [554, "Quadrature Capital", "quadrature.ai", "A", "Finance & Trading", "London, New York, Singapore", true, "https://job-boards.greenhouse.io/quadraturecapital"],
+  [555, "WorldQuant", "worldquant.com", "A", "Finance & Trading", "New York, London, Singapore, Global", true, "https://www.worldquant.com/careers/"]
 ].map(([id, name, domain, tier, category, main_locations, intern_friendly, career_url]) => ({
   id,
   name,
@@ -185,7 +198,7 @@ const updated = catalog
   .map(company => ({ ...company, tier: tierOverrides[company.name] || company.tier }));
 
 for (const addition of additions) {
-  if (!updated.some(company => company.id === addition.id || company.name === addition.name || company.domain === addition.domain)) updated.push(addition);
+  if (!consolidatedIds.has(addition.id) && !updated.some(company => company.id === addition.id || company.name === addition.name || company.domain === addition.domain)) updated.push(addition);
 }
 
 const ids = new Set();
