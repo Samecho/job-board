@@ -31,6 +31,11 @@ const latexCharacters: Record<string, string> = {
   "}": "\\}",
   "~": "{\\ttfamily\\char126}",
   "^": "{\\ttfamily\\char94}",
+  "×": "$\\times$",
+  "−": "$-$",
+  "±": "$\\pm$",
+  "≤": "$\\leq$",
+  "≥": "$\\geq$",
 };
 
 export function escapeLatex(value: string): string {

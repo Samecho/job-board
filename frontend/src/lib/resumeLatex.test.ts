@@ -38,6 +38,12 @@ describe("fixed LaTeX renderer", () => {
     expect(normalizeResumeText("Engineer\u00e2\u20ac\u2122s result")).toBe("Engineer's result");
   });
 
+  it("escapes extended Unicode math symbols without TS1", () => {
+    const input = "Improved numerical agreement to 1.2\u00d710\u221216 while preserving R&D_50%, \u00b1 tolerance, and x \u2264 y \u2265 z.";
+    expect(escapeLatex(input)).toBe(String.raw`Improved numerical agreement to 1.2$\times$10$-$16 while preserving R\&D{\ttfamily\char95}50\%, $\pm$ tolerance, and x $\leq$ y $\geq$ z.`);
+    expect(escapeLatex("\u201cquote\u201d \u2018single\u2019 \u2013 \u2014 \u00a0 \u2022")).toBe(String.raw`"quote" 'single' -- --- -`);
+  });
+
   it("detects page count, US Letter size, and PDF links", () => {
     const bytes = new TextEncoder().encode("/Type /Pages /Count 1 /Type /Page /MediaBox [0 0 612 792] /Subtype /Link /URI (https://example.com)");
     expect(inspectPdf(bytes)).toEqual({ pageCount: 1, isUsLetter: true, hasLinks: true });
