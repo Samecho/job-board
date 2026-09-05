@@ -63,7 +63,8 @@ export interface ResumeProfile {
     isCurrent: boolean;
     subprojects: Array<{
       name: string;
-      bullets: Array<{ text: string; highlights: string[] }>;
+      details?: string;
+    bullets?: Array<{ text: string; highlights: string[] }>;
     }>;
   }>;
   researchExperiences: Array<{
@@ -75,14 +76,16 @@ export interface ResumeProfile {
     isCurrent: boolean;
     subprojects: Array<{
       name: string;
-      bullets: Array<{ text: string; highlights: string[] }>;
+      details?: string;
+    bullets?: Array<{ text: string; highlights: string[] }>;
     }>;
   }>;
   projects: Array<{
     name: string;
     technologies: string[];
     dates: string;
-    bullets: Array<{ text: string; highlights: string[] }>;
+    details?: string;
+    bullets?: Array<{ text: string; highlights: string[] }>;
   }>;
   skills: {
     languages: string[];

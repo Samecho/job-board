@@ -1,3 +1,4 @@
+import { compileResumeLatex } from "../lib/resumeLatex";
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { completeResume } from "../test/resumeFixtures";
@@ -97,4 +98,48 @@ describe("resume version persistence", () => {
     expect(await api.applications(1)).toHaveLength(1);
     expect(await api.resumeVersions(application.id)).toHaveLength(1);
   });
-});
+  it("migrates all legacy notes, preserves archived bullets, and sends only current details to AI", async () => {
+    await api.updateProfile(profile);
+    const migrated = await api.profile();
+    expect(migrated.workExperiences[0].subprojects[0].details).toBe("Built Go services");
+    expect(migrated.workExperiences[0].subprojects[0].bullets).toEqual(profile.workExperiences[0].subprojects[0].bullets);
+    const notes = "Messy raw notes: built a queue with Go; measured p99 latency.\n".repeat(100);
+    migrated.workExperiences[0].subprojects[0].details = notes;
+    await api.updateProfile(migrated);
+    expect((await api.profile()).workExperiences[0].subprojects[0].details).toBe(notes);
+    await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-sol", api_key: "test-local" });
+    const app = await api.createApplication({ company_id: 1, job_title: "Backend Intern", job_description: "Go queues", notes: "" });
+    await api.generateResumeVersion(app.id, "Prioritize reliability");
+    const requestBodies = vi.mocked(fetch).mock.calls.map(call => String(call[1]?.body));
+    expect(requestBodies[0]).toContain("Messy raw notes");
+    expect(requestBodies[0]).not.toContain("Built Go services");
+    expect(requestBodies.join("\n")).not.toContain("2-4 bullets");
+    expect(requestBodies.every(body => body.includes("Prioritize reliability"))).toBe(true);
+  });
+
+  it("retains complete multiline flat profile notes during migration", async () => {
+    const legacy = { ...profile, workExperiences: [], researchExperiences: [], projects: [],
+      experience_text: "first line\n" + "work source ".repeat(100),
+      research_text: "research\nsecond line", projects_text: "project\narchitecture" };
+    await api.updateProfile(legacy);
+    const migrated = await api.profile();
+    expect(migrated.workExperiences[0].subprojects[0].details).toBe(legacy.experience_text);
+    expect(migrated.researchExperiences[0].subprojects[0].details).toBe(legacy.research_text);
+    expect(migrated.projects[0].details).toBe(legacy.projects_text);
+    expect(await api.profile()).toEqual(migrated);
+  });
+  it("keeps the verified one-page version when an AI expansion overflows", async () => {
+    await api.updateProfile(profile);
+    await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-sol", api_key: "test-local" });
+    const app = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "Go", notes: "" });
+    const expanded = structuredClone(completeResume);
+    expanded.education[0].details.push("Additional source-grounded content");
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(completeResume) })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(expanded) })));
+    const onePage = { pdfFile: new Blob(["pdf"], { type: "application/pdf" }), pdfBytes: new Uint8Array(), pageCount: 1, log: "ok" };
+    vi.mocked(compileResumeLatex).mockResolvedValueOnce(onePage).mockResolvedValueOnce({ ...onePage, pageCount: 2 });
+    await api.generateResumeVersion(app.id, "");
+    const versions = await api.resumeVersions(app.id);
+    expect(versions).toHaveLength(1);
+    expect((await api.getResumeVersion(versions[0].id))?.tex_source).not.toContain("Additional source-grounded content");
+  });});

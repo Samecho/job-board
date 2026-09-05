@@ -356,17 +356,17 @@ function getAllBullets(experience: StructuredResume["experience"][number]): Arra
 
 export function trimLowestPriorityContent(resume: StructuredResume): StructuredResume | null {
   const next = cloneResume(resume);
-  // 1. Trim from verbose subproject bullets (>2 or >3)
+  // Remove lower-ranked redundant bullets first without reserving a fixed quota.
   for (const exp of [...next.experience].reverse()) {
     const subs = exp.subprojects || [];
     for (const sub of [...subs].reverse()) {
-      if (sub.bullets.length > 2) { sub.bullets.pop(); return next; }
+      if (sub.bullets.length > 1) { sub.bullets.pop(); return next; }
     }
   }
   // legacy bullets
   const verboseExperienceLegacy = [...next.experience].reverse().find(item => {
     const legacy = (item as unknown as { bullets?: string[] }).bullets;
-    return legacy && legacy.length > 3;
+    return legacy && legacy.length > 1;
   });
   if (verboseExperienceLegacy) { (verboseExperienceLegacy as unknown as { bullets: string[] }).bullets.pop(); return next; }
 

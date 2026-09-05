@@ -1,3 +1,4 @@
+import { profileDetails } from "../lib/profileDetails";
 import { COMPANY_CATALOG } from "../data/catalog";
 import resumeSkill from "../skills/resume-generation.md?raw";
 import type {
@@ -201,7 +202,7 @@ function migrateProfileData(raw: Record<string, unknown>): ResumeProfile {
       startDate: "",
       endDate: "",
       isCurrent: false,
-      subprojects: [{ name: "General", bullets: [{ text: raw.experience_text.trim().split("\n")[0]?.slice(0, 200) || "Contributed.", highlights: [] }] }],
+      subprojects: [{ name: "General", details: raw.experience_text }],
     }];
   }
   // researchExperiences
@@ -213,7 +214,7 @@ function migrateProfileData(raw: Record<string, unknown>): ResumeProfile {
       startDate: "",
       endDate: "",
       isCurrent: false,
-      subprojects: [{ name: "Research Project", bullets: [{ text: raw.research_text.trim().split("\n")[0]?.slice(0, 200) || "Research.", highlights: [] }] }],
+      subprojects: [{ name: "Research Project", details: raw.research_text }],
     }];
   }
   // projects
@@ -222,7 +223,7 @@ function migrateProfileData(raw: Record<string, unknown>): ResumeProfile {
       name: "Project",
       technologies: [] as string[],
       dates: "",
-      bullets: [{ text: raw.projects_text.trim().split("\n")[0]?.slice(0, 200) || "Built project.", highlights: [] }],
+      details: raw.projects_text,
     }];
   }
   // skills: if new skills empty but legacy skills_text present
@@ -237,6 +238,9 @@ function migrateProfileData(raw: Record<string, unknown>): ResumeProfile {
     merged.firstName = parts[0] || "";
     merged.lastName = parts.slice(1).join(" ") || "";
   }
+  merged.workExperiences = merged.workExperiences.map(entry => ({ ...entry, subprojects: entry.subprojects.map(sub => ({ ...sub, details: profileDetails(sub) })) }));
+  merged.researchExperiences = merged.researchExperiences.map(entry => ({ ...entry, subprojects: entry.subprojects.map(sub => ({ ...sub, details: profileDetails(sub) })) }));
+  merged.projects = merged.projects.map(project => ({ ...project, details: profileDetails(project) }));
   return merged;
 }
 
@@ -267,8 +271,8 @@ async function profile() {
   if (existing) {
     const migrated = migrateProfileData(existing as unknown as Record<string, unknown>);
     // persist migration if needed
-    const needsPersist = (!existing.firstName && !!migrated.firstName) || (!existing.education?.length && !!migrated.education.length);
-    if (needsPersist) await put("resume_profile", { ...migrated, id: 1, updated_at: now() });
+    const needsPersist = JSON.stringify(existing) !== JSON.stringify(migrated);
+    if (needsPersist) return put<ResumeProfile>("resume_profile", { ...migrated, id: 1, updated_at: now() });
     return { ...defaultProfile(), ...migrated, id: 1 };
   }
   return put("resume_profile", defaultProfile());
@@ -448,25 +452,33 @@ async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<S
   return parseStructuredResumeJson(raw);
 }
 
+// Archived bullet/highlight fields remain in storage, but only current raw notes go to AI.
+function profileSource(profileData: ResumeProfile) {
+  const sourceEntry = (entry: ResumeProfile["workExperiences"][number] | ResumeProfile["researchExperiences"][number]) => ({
+    ...entry, subprojects: entry.subprojects.map(sub => ({ name: sub.name, details: profileDetails(sub) })),
+  });
+  const { experience_text, research_text, projects_text, ...source } = profileData;
+  return { ...source,
+    workExperiences: profileData.workExperiences.map(sourceEntry),
+    researchExperiences: profileData.researchExperiences.map(sourceEntry),
+    projects: profileData.projects.map(({ bullets, ...project }) => ({ ...project, details: profileDetails({ ...project, bullets }) })),
+  };
+}
 function generationPrompt(profileData: ResumeProfile, app: Application, extraInstructions: string) {
-  return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (the only factual source):\n${JSON.stringify(profileData, null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
+  return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (the only factual source):\n${JSON.stringify(profileSource(profileData), null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
 }
 
 function compactionPrompt(resume: StructuredResume, app: Application, pageCount: number, attempt: number) {
   return `The structured resume below compiled to ${pageCount} pages in the locked template. Return a complete schema-valid revision that will fit one page. Preserve truth and the strongest JD-relevant content. Shorten or remove content from the end of arrays in this order: redundant bullets, weaker bullets, weaker projects, secondary education details, then low-value skills. Keep at least one work entry and one research entry. Do not change the schema or add commentary. This is compaction attempt ${attempt}.\n\nTarget job description:\n${app.job_description}\n\nCurrent structured resume:\n${JSON.stringify(resume, null, 2)}`;
 }
 
-async function renderOnePageResume(settings: AiSettings, app: Application, initial: StructuredResume, profileData?: ResumeProfile) {
+async function renderOnePageResume(settings: AiSettings, app: Application, initial: StructuredResume, profileData: ResumeProfile, extraInstructions: string) {
   let structuredResume = initial;
   let texSource = renderResumeLatex(structuredResume);
   let compilation = await compileResumeLatex(texSource);
-  const originalInitial = JSON.parse(JSON.stringify(initial)) as StructuredResume;
+
   if (compilation.pageCount === 1) {
-    // Check for underfilled after initial 1-page
-    const underfilledCheck = await isPdfUnderfilled(compilation.pdfBytes, structuredResume);
-    if (!underfilledCheck) return { structuredResume, texSource, pdfFile: compilation.pdfFile };
-    // Try to expand if underfilled
-    const expanded = await tryExpandToFill(structuredResume, originalInitial, profileData, app, compilation.pdfBytes);
+    const expanded = await tryExpandToFill(settings, structuredResume, profileData, app, extraInstructions);
     if (expanded) return expanded;
     return { structuredResume, texSource, pdfFile: compilation.pdfFile };
   }
@@ -486,9 +498,7 @@ async function renderOnePageResume(settings: AiSettings, app: Application, initi
       break;
     }
     if (compilation.pageCount === 1) {
-      const underfilledCheck = await isPdfUnderfilled(compilation.pdfBytes, structuredResume);
-      if (!underfilledCheck) return { structuredResume, texSource, pdfFile: compilation.pdfFile };
-      const expanded = await tryExpandToFill(structuredResume, originalInitial, profileData, app, compilation.pdfBytes);
+      const expanded = await tryExpandToFill(settings, structuredResume, profileData, app, extraInstructions);
       if (expanded) return expanded;
       return { structuredResume, texSource, pdfFile: compilation.pdfFile };
     }
@@ -504,128 +514,44 @@ async function renderOnePageResume(settings: AiSettings, app: Application, initi
 
   if (compilation.pageCount !== 1) throw new Error("Resume could not be reduced to exactly one page without changing the locked template");
 
-  // After fitting to 1 page, check for underfilled and try to expand
-  const underfilledFinal = await isPdfUnderfilled(compilation.pdfBytes, structuredResume);
-  if (underfilledFinal) {
-    const expanded = await tryExpandToFill(structuredResume, originalInitial, profileData, app, compilation.pdfBytes);
+  // Probe for additional high-value content within the verified page limit.
+  {
+    const expanded = await tryExpandToFill(settings, structuredResume, profileData, app, extraInstructions);
     if (expanded) return expanded;
   }
   return { structuredResume, texSource, pdfFile: compilation.pdfFile };
 }
 
-async function isPdfUnderfilled(pdfBytes: Uint8Array, resume: StructuredResume): Promise<boolean> {
-  // Heuristic + geometry check: if resume is sparse but PDF still 1 page, add content
-  // Use bullet count and quick PDF text extraction length
-  const expBullets = resume.experience.reduce((sum, e) => sum + (e.subprojects || []).reduce((s, sub) => s + sub.bullets.length, 0), 0);
-  const projBullets = resume.projects.reduce((sum, p) => sum + p.bullets.length, 0);
-  const totalBullets = expBullets + projBullets;
-  const eduDetails = resume.education.reduce((sum, e) => sum + e.details.length, 0);
-  // If very few bullets, definitely underfilled
-  if (totalBullets < 6) return true;
-  if (totalBullets < 9 && resume.projects.length === 0 && eduDetails < 2) return true;
-  // Try geometry via PDF.js if available - check bottom whitespace
-  try {
-    // Use simple text length check as proxy for geometry: underfilled PDFs have less text
-    const text = new TextDecoder("latin1").decode(pdfBytes);
-    // Count occurrences of bullet char or text length
-    // If PDF is small (< 8000 bytes) and few bullets, likely underfilled - but not reliable
-    // Alternative: try to use pdf-parse if available in browser (dynamic import)
-    // For now, rely on bullet count heuristic
-  } catch {}
-  return false;
-}
-
 async function tryExpandToFill(
+  settings: AiSettings,
   current: StructuredResume,
-  original: StructuredResume,
   profileData: ResumeProfile | undefined,
   app: Application,
-  currentPdfBytes: Uint8Array,
+  extraInstructions: string,
 ): Promise<{ structuredResume: StructuredResume; texSource: string; pdfFile: Blob } | null> {
-  // Try to add one bullet from original that is missing, prioritizing most relevant (first work subproject)
-  const candidates: Array<{ expIdx: number; subIdx: number; bulletIdx: number; bullet: { text: string; highlights: string[] } }> = [];
-  for (let i = 0; i < original.experience.length; i++) {
-    const origExp = original.experience[i];
-    const curExp = current.experience[i];
-    if (!origExp || !curExp) continue;
-    const origSubs = origExp.subprojects || [];
-    const curSubs = curExp.subprojects || [];
-    for (let j = 0; j < origSubs.length; j++) {
-      const origSub = origSubs[j];
-      const curSub = curSubs[j];
-      const curLen = curSub?.bullets.length || 0;
-      for (let k = curLen; k < origSub.bullets.length; k++) {
-        candidates.push({ expIdx: i, subIdx: j, bulletIdx: k, bullet: origSub.bullets[k] });
-      }
-      if (!curSub && origSub.bullets.length) {
-        candidates.push({ expIdx: i, subIdx: j, bulletIdx: 0, bullet: origSub.bullets[0] });
-      }
-    }
-  }
-  // Also try adding a standalone project from original if current has none
-  if (original.projects.length > current.projects.length) {
-    const nextProj = original.projects[current.projects.length];
-    if (nextProj) {
-      const test = JSON.parse(JSON.stringify(current)) as StructuredResume;
-      test.projects.push(nextProj);
-      const tex = renderResumeLatex(test);
-      try {
-        const comp = await compileResumeLatex(tex);
-        if (comp.pageCount === 1) {
-          const underfilled = await isPdfUnderfilled(comp.pdfBytes, test);
-          // Accept if not overfilled and still not drastically overfilled
-          return { structuredResume: test, texSource: tex, pdfFile: comp.pdfFile };
-        }
-      } catch {}
-    }
-  }
-  // Try each candidate bullet
-  for (const c of candidates) {
-    const test = JSON.parse(JSON.stringify(current)) as StructuredResume;
-    const targetSub = test.experience[c.expIdx]?.subprojects?.[c.subIdx];
-    if (!targetSub) {
-      // create subproject if missing
-      if (!test.experience[c.expIdx].subprojects) test.experience[c.expIdx].subprojects = [];
-      const origName = original.experience[c.expIdx].subprojects?.[c.subIdx]?.name || "General";
-      test.experience[c.expIdx].subprojects!.push({ name: origName, bullets: [c.bullet] });
-    } else {
-      targetSub.bullets.splice(c.bulletIdx, 0, c.bullet);
-    }
-    const tex = renderResumeLatex(test);
+  if (!profileData) return null;
+  let best = current;
+  let accepted: { structuredResume: StructuredResume; texSource: string; pdfFile: Blob } | null = null;
+  // Probe spare capacity with small, source-grounded additions; never save an overflowing probe.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const comp = await compileResumeLatex(tex);
-      if (comp.pageCount === 1) {
-        const stillUnderfilled = await isPdfUnderfilled(comp.pdfBytes, test);
-        // Accept expansion if it fills more but still 1 page; we want dense, so accept even if still underfilled slightly, but prefer not to exceed
-        return { structuredResume: test, texSource: tex, pdfFile: comp.pdfFile };
-      }
-    } catch {}
-  }
-  // Fallback: try to add a skill from profile if underfilled and skills sparse
-  if (profileData && current.technicalSkills) {
-    const allSkills = [...profileData.skills.languages, ...profileData.skills.frameworks, ...profileData.skills.developerTools, ...profileData.skills.libraries];
-    const curSkills = [...current.technicalSkills.languages, ...current.technicalSkills.frameworks, ...current.technicalSkills.developerTools, ...current.technicalSkills.libraries];
-    const missing = allSkills.filter(s => !curSkills.includes(s));
-    if (missing.length) {
-      const test = JSON.parse(JSON.stringify(current)) as StructuredResume;
-      // Add to smallest skill group
-      const groups: Array<keyof StructuredResume["technicalSkills"]> = ["libraries", "developerTools", "frameworks", "languages"];
-      for (const g of groups) {
-        if (test.technicalSkills[g].length < 4 && missing.length) {
-          test.technicalSkills[g].push(missing[0]);
-          const tex = renderResumeLatex(test);
-          try {
-            const comp = await compileResumeLatex(tex);
-            if (comp.pageCount === 1) return { structuredResume: test, texSource: tex, pdfFile: comp.pdfFile };
-          } catch {}
-          break;
-        }
-      }
+      const expanded = await callResumeAi(settings, `${generationPrompt(profileData, app, extraInstructions)}
+The current resume fits one page. Check whether unused source material offers a genuinely stronger, JD-relevant contribution. If so, add only a small amount of high-value content (a concise bullet or a useful detail), keeping existing strong content and assigning it to the correct named subproject. Do not add filler, repeat claims, or pad skills. Return the current JSON unchanged if no worthwhile addition exists. There is no per-subproject bullet quota. This is capacity probe ${attempt + 1}.
+Current structured resume:
+${JSON.stringify(best)}`);
+      if (JSON.stringify(expanded) === JSON.stringify(best)) break;
+      const texSource = renderResumeLatex(expanded);
+      const compilation = await compileResumeLatex(texSource);
+      if (compilation.pageCount !== 1) break;
+      best = expanded;
+      accepted = { structuredResume: expanded, texSource, pdfFile: compilation.pdfFile };
+    } catch (error) {
+      console.warn("Optional resume expansion failed; keeping the verified one-page version", error);
+      break;
     }
   }
-  return null;
+  return accepted;
 }
-
 async function generateResumeVersion(applicationId: number, extraInstructions: string) {
   const app = await get<Application>("applications", applicationId);
   if (!app) throw new Error("Application not found");
@@ -633,7 +559,7 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   if (!settings.api_key || !settings.model) throw new Error("Save AI settings before generating resumes");
   const profileData = await profile();
   const initialResume = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions));
-  const rendered = await renderOnePageResume(settings, app, initialResume, profileData);
+  const rendered = await renderOnePageResume(settings, app, initialResume, profileData, extraInstructions);
   const existing = await versions(applicationId);
   const version_number = existing.length ? Math.max(...existing.map(item => item.version_number)) + 1 : 1;
   return add<Partial<ResumeVersion>>("resume_versions", {

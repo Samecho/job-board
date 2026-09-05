@@ -92,3 +92,5 @@ main{grid-column:2;padding:32px 38px 70px;max-width:1800px;width:100%;margin:aut
   .profile-editor textarea{min-height:112px}
   .profile-entry-heading{gap:8px}
 }
+
+.profile-editor textarea.profile-details { min-height: 190px; line-height: 1.65; }

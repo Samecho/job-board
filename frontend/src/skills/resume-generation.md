@@ -13,9 +13,10 @@ Hierarchy rules (critical):
 
 Content rules:
 - Keep entries and bullets ordered strongest to weakest so deterministic trimming can remove from the end.
-- For each subproject, provide 2-4 bullets, each as { "text": "...", "highlights": ["Python", "FastAPI"] }. Highlights are 0-2 important phrases per bullet (technologies, systems, metrics) to be bolded. Do not bold entire sentences. Do not output LaTeX or Markdown; provide plain text for highlights.
+- Input subproject details are raw source notes, not finished bullets. Generate bullets and highlights yourself. Allocate space dynamically by JD relevance, technical strength, and remaining page capacity. There is no fixed bullet quota or range per subproject. Strong relevant subprojects may receive more bullets; omit weak subprojects entirely when they deserve none. For each included subproject, provide generated bullets, each as { "text": "...", "highlights": ["Python", "FastAPI"] }. Highlights are 0-2 important phrases per bullet (technologies, systems, metrics) to be bolded. Do not bold entire sentences. Do not output LaTeX or Markdown; provide plain text for highlights.
 - Use Profile dates exactly; do not invent dates. Render consistent like "Sep. 2024 -- Expected May 2029", "May 2026 -- Present", "Dec. 2025 -- Present". Do not omit dates when Profile contains them.
 - Keep technical skills selective and grouped into languages, frameworks, developerTools, and libraries.
+- Use the one-page space efficiently: expand with additional supported, high-value JD-relevant content when underfilled; remove the weakest or redundant content first when overflowing. Never add filler to occupy space. Highlights must be exact substrings of the generated bullet text and are output only.
 - Keep every field concise enough for a one-page US Letter resume in a fixed 11pt Jake-style template.
 - Use English unless the job description is predominantly French.
 - If a claim is not supported, omit it silently rather than adding a warning.

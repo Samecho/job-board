@@ -1,7 +1,8 @@
 import { useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
+import { profileDetails } from "../lib/profileDetails";
 import { Plus, Trash2 } from "lucide-react";
-import type { ResumeBullet, ResumeProfileUpdate, ResumeSubproject } from "../types";
+import type { ResumeProfileUpdate } from "../types";
 
 function AddButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return <button type="button" className="profile-add" onClick={onClick}><Plus size={14} />{children}</button>;
@@ -20,44 +21,33 @@ function Section({ title, description, children, action }: { title: string; desc
 }
 
 // Keep separators visible while typing; persist the existing array value on every edit.
-function ListField({ label, value, onChange, placeholder, limit, secondary = false }: {
-  label: string; value: string[]; onChange: (value: string[]) => void; placeholder?: string; limit?: number; secondary?: boolean;
+function ListField({ label, value, onChange, placeholder }: {
+  label: string; value: string[]; onChange: (value: string[]) => void; placeholder?: string;
 }) {
   const [draft, setDraft] = useState(value.join(", "));
   const [focused, setFocused] = useState(false);
   const serialized = value.join(", ");
   useEffect(() => { if (!focused) setDraft(serialized); }, [serialized, focused]);
-  return <label className={secondary ? "profile-field profile-secondary" : "profile-field"}>
-    <span>{label}{secondary && <small>Optional, up to 2 phrases</small>}</span>
+  return <label className="profile-field">
+    <span>{label}</span>
     <input value={draft} placeholder={placeholder} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onChange={event => {
       setDraft(event.target.value);
-      onChange(event.target.value.split(",").map(item => item.trim()).filter(Boolean).slice(0, limit));
+      onChange(event.target.value.split(",").map(item => item.trim()).filter(Boolean));
     }} />
   </label>;
 }
 
-function BulletsEditor({ bullets, onChange }: { bullets: ResumeBullet[]; onChange: (value: ResumeBullet[]) => void }) {
-  const id = useId();
-  const update = (index: number, patch: Partial<ResumeBullet>) => onChange(bullets.map((bullet, i) => i === index ? { ...bullet, ...patch } : bullet));
-  return <div className="profile-bullets">
-    {bullets.map((bullet, index) => <div className="profile-bullet-editor" key={index}>
-      <div className="profile-bullet-heading"><label htmlFor={`${id}-${index}`}>Bullet {index + 1}</label><RemoveButton label="Remove bullet" onClick={() => onChange(bullets.filter((_, i) => i !== index))} /></div>
-      <textarea id={`${id}-${index}`} rows={3} value={bullet.text} placeholder="What did you build, how did you do it, and what changed?" onChange={event => update(index, { text: event.target.value })} />
-      <ListField label="Highlights" value={bullet.highlights} limit={2} secondary placeholder="e.g. reduced latency by 38%, Kubernetes" onChange={highlights => update(index, { highlights })} />
-    </div>)}
-    <AddButton onClick={() => onChange([...bullets, { text: "", highlights: [] }])}>Add bullet</AddButton>
-  </div>;
-}
+type ProfileSubproject = ResumeProfileUpdate["workExperiences"][number]["subprojects"][number];
 
-function SubprojectsEditor({ subprojects, onChange }: { subprojects: ResumeSubproject[]; onChange: (value: ResumeSubproject[]) => void }) {
-  const update = (index: number, patch: Partial<ResumeSubproject>) => onChange(subprojects.map((subproject, i) => i === index ? { ...subproject, ...patch } : subproject));
+function SubprojectsEditor({ subprojects, onChange }: { subprojects: ProfileSubproject[]; onChange: (value: ProfileSubproject[]) => void }) {
+  const update = (index: number, patch: Partial<ProfileSubproject>) => onChange(subprojects.map((subproject, i) => i === index ? { ...subproject, ...patch } : subproject));
   return <div className="profile-subprojects">
     {subprojects.map((subproject, index) => <section className="profile-subproject-card" key={index} aria-label={`Subproject ${index + 1}`}>
       <div className="profile-entry-heading"><span>Subproject {index + 1}</span><RemoveButton label="Remove subproject" onClick={() => onChange(subprojects.filter((_, i) => i !== index))} /></div>
       <label className="profile-field"><span>Subproject name</span><input value={subproject.name} placeholder="e.g. Deployment automation" onChange={event => update(index, { name: event.target.value })} /></label>
-      <BulletsEditor bullets={subproject.bullets} onChange={bullets => update(index, { bullets })} />
+      <label className="profile-field"><span>Details / What I did</span><textarea className="profile-details" rows={8} value={profileDetails(subproject)} placeholder="Describe your work freely: tasks, architecture, technologies, challenges, results, and metrics. AI will select and write the resume bullets for each job." onChange={event => update(index, { details: event.target.value })} /></label>
     </section>)}
-    <AddButton onClick={() => onChange([...subprojects, { name: "", bullets: [{ text: "", highlights: [] }] }])}>Add subproject</AddButton>
+    <AddButton onClick={() => onChange([...subprojects, { name: "", details: "" }])}>Add subproject</AddButton>
   </div>;
 }
 
@@ -115,15 +105,15 @@ export function ProfileEditor({ value, onChange }: { value: ResumeProfileUpdate;
       </article>)}
       {!value.education.length && <p className="profile-empty">Add an institution to get started.</p>}
     </Section>
-    <Section title="Work Experience" description="Keep your actual title, then group your contributions into named subprojects." action={<AddButton onClick={() => edit(draft => { draft.workExperiences.push({ company: "", title: "", location: "", startDate: "", endDate: "", isCurrent: false, subprojects: [{ name: "", bullets: [{ text: "", highlights: [] }] }] }); })}>Add work</AddButton>}>
+    <Section title="Work Experience" description="Keep your actual title, then group your contributions into named subprojects." action={<AddButton onClick={() => edit(draft => { draft.workExperiences.push({ company: "", title: "", location: "", startDate: "", endDate: "", isCurrent: false, subprojects: [{ name: "", details: "" }] }); })}>Add work</AddButton>}>
       {value.workExperiences.map((experience, index) => <ExperienceCard key={index} value={experience} index={index} research={false} onChange={patch => edit(draft => { Object.assign(draft.workExperiences[index], patch); })} onRemove={() => edit(draft => { draft.workExperiences.splice(index, 1); })} />)}
       {!value.workExperiences.length && <p className="profile-empty">Add a role, then describe the work you contributed.</p>}
     </Section>
-    <Section title="Research Experience" description="Add your research roles and the projects you contributed to." action={<AddButton onClick={() => edit(draft => { draft.researchExperiences.push({ organization: "", title: "", location: "", startDate: "", endDate: "", isCurrent: false, subprojects: [{ name: "", bullets: [{ text: "", highlights: [] }] }] }); })}>Add research</AddButton>}>
+    <Section title="Research Experience" description="Add your research roles and the projects you contributed to." action={<AddButton onClick={() => edit(draft => { draft.researchExperiences.push({ organization: "", title: "", location: "", startDate: "", endDate: "", isCurrent: false, subprojects: [{ name: "", details: "" }] }); })}>Add research</AddButton>}>
       {value.researchExperiences.map((experience, index) => <ExperienceCard key={index} value={experience} index={index} research onChange={patch => edit(draft => { Object.assign(draft.researchExperiences[index], patch); })} onRemove={() => edit(draft => { draft.researchExperiences.splice(index, 1); })} />)}
       {!value.researchExperiences.length && <p className="profile-empty">Add a research role and its named subprojects.</p>}
     </Section>
-    <Section title="Standalone Projects" description="Optional. Include independent projects worth considering for a tailored resume." action={<AddButton onClick={() => edit(draft => { draft.projects.push({ name: "", technologies: [], dates: "", bullets: [{ text: "", highlights: [] }] }); })}>Add project</AddButton>}>
+    <Section title="Standalone Projects" description="Optional. Include independent projects worth considering for a tailored resume." action={<AddButton onClick={() => edit(draft => { draft.projects.push({ name: "", technologies: [], dates: "", details: "" }); })}>Add project</AddButton>}>
       {value.projects.map((project, index) => <article className="profile-entry-card" key={index} aria-label={`Project entry ${index + 1}`}>
         <div className="profile-entry-heading"><span>Project {index + 1}</span><RemoveButton label="Remove project" onClick={() => edit(draft => { draft.projects.splice(index, 1); })} /></div>
         <div className="profile-fields profile-fields-two">
@@ -131,7 +121,7 @@ export function ProfileEditor({ value, onChange }: { value: ResumeProfileUpdate;
           <label className="profile-field"><span>Dates</span><input value={project.dates} placeholder="Jan. 2026 - Present" onChange={event => edit(draft => { draft.projects[index].dates = event.target.value; })} /></label>
         </div>
         <ListField label="Technologies" value={project.technologies} placeholder="e.g. Rust, PostgreSQL, Docker" onChange={technologies => edit(draft => { draft.projects[index].technologies = technologies; })} />
-        <BulletsEditor bullets={project.bullets} onChange={bullets => edit(draft => { draft.projects[index].bullets = bullets; })} />
+        <label className="profile-field"><span>Details / What I did</span><textarea className="profile-details" rows={8} value={profileDetails(project)} placeholder="Raw notes about what you built, how it works, and its impact." onChange={event => edit(draft => { draft.projects[index].details = event.target.value; })} /></label>
       </article>)}
       {!value.projects.length && <p className="profile-empty">No standalone projects added.</p>}
     </Section>
