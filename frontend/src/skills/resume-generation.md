@@ -4,10 +4,17 @@ Use only facts supported by the user's master resume profile. Read the target jo
 
 The application owns all layout. You control content only. Do not output LaTeX, Markdown, prose, analysis, scores, warnings, comments, confirmation requests, or internal reasoning. Return exactly one JSON object matching the supplied schema, with no code fence and no extra keys.
 
+Hierarchy rules (critical):
+- `experience[].title` = the real role title exactly as in Profile (e.g., "Automation Co-op, MLOps and Agentic AI" or "Undergraduate Researcher" / actual research title). NEVER replace it with a project name.
+- `experience[].organization` = employer or university (e.g., "Ericsson", "University of British Columbia").
+- `experience[].subprojects[].name` = named project/workstream completed inside that role (e.g., "Agentic Operations Intelligence Platform", "TR Impact Analyzer", or a research project name). This appears as a bold subheading under the role.
+- Keep work and research together under the single EXPERIENCE section (type="work" or "research"), do not create separate Work Experience / Research Experience sections.
+- Standalone `projects` are independent/personal projects, different from subprojects inside experience. Only include `projects` when they materially strengthen the application for the JD.
+
 Content rules:
 - Keep entries and bullets ordered strongest to weakest so deterministic trimming can remove from the end.
-- Include both work and research entries directly in the single experience array. Set type to work or research; never print or describe the type in content.
-- Include projects only when they materially strengthen this application. Use an empty projects array when experience deserves the space.
+- For each subproject, provide 2-4 bullets, each as { "text": "...", "highlights": ["Python", "FastAPI"] }. Highlights are 0-2 important phrases per bullet (technologies, systems, metrics) to be bolded. Do not bold entire sentences. Do not output LaTeX or Markdown; provide plain text for highlights.
+- Use Profile dates exactly; do not invent dates. Render consistent like "Sep. 2024 -- Expected May 2029", "May 2026 -- Present", "Dec. 2025 -- Present". Do not omit dates when Profile contains them.
 - Keep technical skills selective and grouped into languages, frameworks, developerTools, and libraries.
 - Keep every field concise enough for a one-page US Letter resume in a fixed 11pt Jake-style template.
 - Use English unless the job description is predominantly French.
@@ -35,23 +42,53 @@ Required JSON shape:
   ],
   "experience": [
     {
-      "organization": "",
-      "title": "",
-      "location": "",
-      "dates": "",
+      "organization": "Ericsson",
+      "title": "Automation Co-op, MLOps and Agentic AI",
+      "location": "Ottawa, ON",
+      "dates": "May 2026 -- Present",
       "type": "work",
-      "bullets": []
+      "subprojects": [
+        {
+          "name": "Agentic Operations Intelligence Platform",
+          "bullets": [
+            { "text": "Engineered a modular Python agent runtime with structured tool calling and streaming.", "highlights": ["Python", "structured tool calling"] },
+            { "text": "Reduced incident triage time by 30% with FastAPI services.", "highlights": ["FastAPI"] }
+          ]
+        },
+        {
+          "name": "TR Impact Analyzer",
+          "bullets": [
+            { "text": "Built data pipeline processing 1M events daily.", "highlights": ["1M events"] }
+          ]
+        }
+      ]
     },
     {
-      "organization": "",
-      "title": "",
-      "location": "",
-      "dates": "",
+      "organization": "University of British Columbia",
+      "title": "Undergraduate Researcher",
+      "location": "Vancouver, BC",
+      "dates": "Sep. 2024 -- Present",
       "type": "research",
-      "bullets": []
+      "subprojects": [
+        {
+          "name": "Research Project Name",
+          "bullets": [
+            { "text": "Designed experiments on 80-node cluster.", "highlights": ["80-node cluster"] }
+          ]
+        }
+      ]
     }
   ],
-  "projects": [],
+  "projects": [
+    {
+      "name": "Vector Search Engine",
+      "technologies": ["Rust", "CUDA"],
+      "dates": "2026",
+      "bullets": [
+        { "text": "Implemented HNSW indexing for million-vector datasets.", "highlights": ["HNSW"] }
+      ]
+    }
+  ],
   "technicalSkills": {
     "languages": [],
     "frameworks": [],

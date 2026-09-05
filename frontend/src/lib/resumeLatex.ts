@@ -42,6 +42,26 @@ export function escapeLatex(value: string): string {
   return [...normalizeResumeText(value)].map(character => latexCharacters[character] || character).join("");
 }
 
+// Single canonical sanitizer for highlights: highlight phrases are escaped then wrapped with \textbf{}
+export function escapeWithHighlights(text: string, highlights: string[]): string {
+  const base = escapeLatex(text);
+  if (!highlights?.length) return base;
+  let result = base;
+  for (const raw of highlights.slice(0, 2)) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const escapedHighlight = escapeLatex(trimmed);
+    if (!escapedHighlight || result.includes(`\\textbf{${escapedHighlight}}`)) continue;
+    // Do not bold entire sentence and avoid raw LaTeX/Markdown from AI
+    if (escapedHighlight.length >= result.length) continue;
+    // Replace first occurrence only, case-sensitive
+    if (result.includes(escapedHighlight)) {
+      result = result.replace(escapedHighlight, `\\textbf{${escapedHighlight}}`);
+    }
+  }
+  return result;
+}
+
 export function escapeLatexUrl(value: string): string {
   return normalizeResumeText(value)
     .replace(/\\/g, "%5C")
@@ -87,6 +107,16 @@ function itemList(items: string[]): string {
   return ["\\resumeItemListStart", ...items.map(item => `  \\resumeItem{${escapeLatex(item)}}`), "\\resumeItemListEnd"].join("\n");
 }
 
+function bulletList(bullets: Array<{ text: string; highlights: string[] } | string>): string {
+  if (!bullets.length) return "";
+  const rendered = bullets.map(b => {
+    const text = typeof b === "string" ? b : b.text;
+    const highlights = typeof b === "string" ? [] : b.highlights || [];
+    return `  \\resumeItem{${escapeWithHighlights(text, highlights)}}`;
+  });
+  return ["\\resumeItemListStart", ...rendered, "\\resumeItemListEnd"].join("\n");
+}
+
 function educationSection(resume: StructuredResume): string {
   const entries = resume.education.map(entry => [
     `  \\resumeSubheading{${escapeLatex(entry.institution)}}{${escapeLatex(entry.dates)}}{${escapeLatex(entry.degree)}}{${escapeLatex(entry.location)}}`,
@@ -96,10 +126,24 @@ function educationSection(resume: StructuredResume): string {
 }
 
 function experienceSection(resume: StructuredResume): string {
-  const entries = resume.experience.map(entry => [
-    `  \\resumeSubheading{${escapeLatex(entry.title)}}{${escapeLatex(entry.dates)}}{${escapeLatex(entry.organization)}}{${escapeLatex(entry.location)}}`,
-    `  ${itemList(entry.bullets).replace(/\n/g, "\n  ")}`,
-  ].join("\n"));
+  const entries = resume.experience.map(entry => {
+    const header = `  \\resumeSubheading{${escapeLatex(entry.title)}}{${escapeLatex(entry.dates)}}{${escapeLatex(entry.organization)}}{${escapeLatex(entry.location)}}`;
+    const subs = (entry as unknown as { subprojects?: Array<{ name: string; bullets: Array<{ text: string; highlights: string[] }> }>; bullets?: string[] }).subprojects;
+    let body = "";
+    if (subs?.length) {
+      const subBlocks = subs.map(sub => {
+        const title = sub.name ? `  \\resumeSubproject{${escapeLatex(sub.name)}}` : "";
+        const list = bulletList(sub.bullets).replace(/\n/g, "\n  ");
+        return [title, list ? `  ${list}` : ""].filter(Boolean).join("\n");
+      }).join("\n");
+      body = subBlocks;
+    } else {
+      const legacyBullets = (entry as unknown as { bullets?: Array<{ text: string; highlights: string[] } | string> }).bullets || [];
+      body = bulletList(legacyBullets as Array<{ text: string; highlights: string[] }>).replace(/\n/g, "\n  ");
+      if (body) body = `  ${body}`;
+    }
+    return [header, body].filter(Boolean).join("\n");
+  });
   return ["\\section{Experience}", "\\resumeSubHeadingListStart", ...entries, "\\resumeSubHeadingListEnd"].join("\n");
 }
 
@@ -109,7 +153,7 @@ function projectsSection(resume: StructuredResume): string {
     const technologies = project.technologies.length ? ` $|$ \\emph{${escapeLatex(project.technologies.join(", "))}}` : "";
     return [
       `  \\resumeProjectHeading{\\textbf{${escapeLatex(project.name)}}${technologies}}{${escapeLatex(project.dates)}}`,
-      `  ${itemList(project.bullets).replace(/\n/g, "\n  ")}`,
+      `  ${bulletList(project.bullets as Array<{ text: string; highlights: string[] }>).replace(/\n/g, "\n  ")}`,
     ].join("\n");
   });
   return ["\\section{Projects}", "\\resumeSubHeadingListStart", ...entries, "\\resumeSubHeadingListEnd"].join("\n");
@@ -177,6 +221,7 @@ export function renderResumeLatex(resume: StructuredResume): string {
     \small#1 & #2 \\
   \end{tabular*}\vspace{1pt}
 }
+\newcommand{\resumeSubproject}[1]{\vspace{2pt}\noindent\textbf{\small #1}\vspace{1pt}}
 \newcommand{\resumeItemListStart}{\begin{list}{$\bullet$}{\setlength{\leftmargin}{0.25in}\setlength{\itemsep}{0pt}\setlength{\parsep}{0pt}\setlength{\topsep}{2pt}}}
 \newcommand{\resumeItemListEnd}{\end{list}\vspace{2pt}}
 \newcommand{\resumeSubHeadingListStart}{\begin{list}{}{\setlength{\leftmargin}{0.15in}\setlength{\itemsep}{0pt}\setlength{\parsep}{0pt}\setlength{\topsep}{0pt}}}

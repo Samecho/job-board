@@ -35,7 +35,10 @@ describe("structured resume schema", () => {
     }
     expect(current.experience.some(item => item.type === "work")).toBe(true);
     expect(current.experience.some(item => item.type === "research")).toBe(true);
-    expect(current.experience.every(item => item.bullets.length >= 1)).toBe(true);
+    expect(current.experience.every(item => {
+      const count = item.subprojects ? item.subprojects.flatMap(s => s.bullets).length : ((item as unknown as { bullets?: string[] }).bullets?.length || 0);
+      return count >= 1;
+    })).toBe(true);
     expect(current.education.length).toBeGreaterThanOrEqual(1);
   });
 });

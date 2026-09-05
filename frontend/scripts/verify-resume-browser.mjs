@@ -17,33 +17,50 @@ const compactResume = {
     website: "https://ada.example.com",
   },
   education: [{
-    institution: "University of Toronto",
-    location: "Toronto, ON",
+    institution: "University of British Columbia",
+    location: "Vancouver, BC",
     degree: "BASc in Computer Engineering",
-    dates: "2024 -- 2028",
+    dates: "Sep. 2024 -- Expected May 2029",
     details: ["Coursework: Operating Systems, Distributed Systems, and Machine Learning"],
   }],
   experience: [
     {
-      organization: "Example Cloud",
-      title: "Software Engineer Intern",
-      location: "Toronto, ON",
-      dates: "May 2026 -- Aug 2026",
+      organization: "Ericsson",
+      title: "Automation Co-op, MLOps and Agentic AI",
+      location: "Ottawa, ON",
+      dates: "May 2026 -- Present",
       type: "work",
-      bullets: [
-        "Built R&D Go services with 50% fewer errors and $5K savings.",
-        "Automated Kubernetes canary deployments and added OpenTelemetry tracing across 12 services.",
+      subprojects: [
+        {
+          name: "Agentic Operations Intelligence Platform",
+          bullets: [
+            { text: "Engineered a modular Python agent runtime with structured tool calling and streaming.", highlights: ["Python", "structured tool calling"] },
+            { text: "Built R&D Go services with 50% fewer errors and $5K savings.", highlights: ["Go", "50%"] },
+          ],
+        },
+        {
+          name: "TR Impact Analyzer",
+          bullets: [
+            { text: "Automated Kubernetes canary deployments and added OpenTelemetry tracing across 12 services.", highlights: ["Kubernetes", "OpenTelemetry"] },
+            { text: "Improved numerical agreement to 1.2×10−16 while preserving ± tolerance, and x ≤ y ≥ z.", highlights: ["1.2×10−16"] },
+          ],
+        },
       ],
     },
     {
-      organization: "Systems Research Lab",
+      organization: "University of British Columbia",
       title: "Undergraduate Researcher",
-      location: "Toronto, ON",
-      dates: "Sep 2025 -- Present",
+      location: "Vancouver, BC",
+      dates: "Dec. 2025 -- Present",
       type: "research",
-      bullets: [
-        "Designed reproducible distributed-systems experiments across an 80-node cluster.",
-        "Built Rust tooling that reduced experiment setup time by 45 percent.",
+      subprojects: [
+        {
+          name: "Distributed Systems Research Project",
+          bullets: [
+            { text: "Designed reproducible distributed-systems experiments across an 80-node cluster.", highlights: ["80-node cluster"] },
+            { text: "Built Rust tooling that reduced experiment setup time by 45 percent.", highlights: ["Rust"] },
+          ],
+        },
       ],
     },
   ],
@@ -60,17 +77,26 @@ const longResume = structuredClone(compactResume);
 longResume.education[0].details = Array.from({ length: 6 }, (_, index) => `Detailed academic achievement ${index + 1} involving distributed systems, databases, operating systems, and machine learning.`);
 longResume.experience = Array.from({ length: 8 }, (_, index) => ({
   organization: index < 6 ? `Engineering Organization ${index + 1}` : `Research Laboratory ${index - 5}`,
-  title: index < 6 ? "Software Engineering Intern" : "Undergraduate Researcher",
+  title: index < 6 ? "Automation Co-op, MLOps and Agentic AI" : "Undergraduate Researcher",
   location: "Toronto, ON",
   dates: `Term ${index + 1}, 202${index % 7}`,
   type: index < 6 ? "work" : "research",
-  bullets: Array.from({ length: 5 }, (_, bullet) => `Implemented a production-grade distributed system capability ${bullet + 1} using Go, Rust, Kubernetes, PostgreSQL, observability, load testing, and automated deployment workflows with measurable reliability improvements.`),
+  subprojects: Array.from({ length: 2 }, (_, subIdx) => ({
+    name: `Subproject ${subIdx + 1} for ${index < 6 ? "Work" : "Research"} ${index + 1}`,
+    bullets: Array.from({ length: 3 }, (_, bullet) => ({
+      text: `Implemented a production-grade distributed system capability ${bullet + 1} using Go, Rust, Kubernetes, PostgreSQL, observability, load testing, and automated deployment workflows with measurable reliability improvements.`,
+      highlights: ["Go", "Kubernetes"],
+    })),
+  })),
 }));
 longResume.projects = Array.from({ length: 4 }, (_, index) => ({
   name: `Infrastructure Project ${index + 1}`,
   technologies: ["Rust", "Go", "Kubernetes", "PostgreSQL"],
   dates: "2026",
-  bullets: Array.from({ length: 3 }, (_, bullet) => `Designed and benchmarked project component ${bullet + 1} under realistic failure and concurrency conditions.`),
+  bullets: Array.from({ length: 3 }, (_, bullet) => ({
+    text: `Designed and benchmarked project component ${bullet + 1} under realistic failure and concurrency conditions.`,
+    highlights: ["Rust"],
+  })),
 }));
 
 const browser = await chromium.launch({
@@ -107,7 +133,7 @@ try {
   await page.goto("http://127.0.0.1:4173/", { waitUntil: "networkidle" });
   await page.evaluate(async ({ profile }) => {
     const database = await new Promise((resolve, reject) => {
-      const request = indexedDB.open("internradar-browser", 2);
+      const request = indexedDB.open("internradar-browser", 3);
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -121,20 +147,46 @@ try {
     database.close();
   }, {
     profile: {
-      name: "Ada Lovelace",
+      firstName: "Ada",
+      lastName: "Lovelace",
       email: "ada@example.com",
       phone: "+1 416 555 0100",
       location: "Toronto, ON",
       linkedin: "https://linkedin.com/in/ada_lovelace",
       github: "https://github.com/ada-lovelace",
       website: "https://ada.example.com",
-      education_text: "BASc Computer Engineering at the University of Toronto, 2024-2028.",
-      experience_text: "Software Engineer Intern building Go backend services, Kubernetes deployments, PostgreSQL systems, and observability.",
-      projects_text: "Rust vector search engine and distributed job scheduler.",
-      research_text: "Undergraduate researcher running distributed systems experiments on an 80-node cluster.",
-      skills_text: "Go, Rust, Python, C++, Docker, Kubernetes, Terraform, PostgreSQL, OpenTelemetry.",
+      education: [{ institution: "University of British Columbia", degree: "BASc in Computer Engineering", location: "Vancouver, BC", startDate: "Sep. 2024", endDate: "Expected May 2029" }],
+      workExperiences: [{
+        company: "Ericsson",
+        title: "Automation Co-op, MLOps and Agentic AI",
+        location: "Ottawa, ON",
+        startDate: "May 2026",
+        endDate: "Present",
+        isCurrent: true,
+        subprojects: [
+          { name: "Agentic Operations Intelligence Platform", bullets: [{ text: "Engineered Python runtime", highlights: ["Python"] }] },
+          { name: "TR Impact Analyzer", bullets: [{ text: "Built analyzer", highlights: [] }] },
+        ],
+      }],
+      researchExperiences: [{
+        organization: "University of British Columbia",
+        title: "Undergraduate Researcher",
+        location: "Vancouver, BC",
+        startDate: "Dec. 2025",
+        endDate: "Present",
+        isCurrent: true,
+        subprojects: [{ name: "Distributed Systems Research Project", bullets: [{ text: "Designed experiments", highlights: [] }] }],
+      }],
+      projects: [],
+      skills: { languages: ["Go", "Rust", "Python"], frameworks: ["React"], developerTools: ["Docker", "Kubernetes"], libraries: ["PyTorch"] },
+      education_text: "",
+      experience_text: "",
+      projects_text: "",
+      research_text: "",
+      skills_text: "",
       awards_text: "",
       other_text: "",
+      name: "Ada Lovelace",
     },
   });
   await page.reload({ waitUntil: "networkidle" });
@@ -178,9 +230,18 @@ try {
   if (pdfInfo.total !== 1) throw new Error(`Expected one PDF page, got ${pdfInfo.total}`);
   const [pageInfo] = pdfInfo.pages;
   if (!pageInfo || Math.abs(pageInfo.width - 612) > 1 || Math.abs(pageInfo.height - 792) > 1) throw new Error("Generated PDF is not US Letter size");
-  for (const expected of ["Ada Lovelace", "Software Engineer Intern", "Undergraduate Researcher", "Technical Skills", "R&D", "50%"]) {
+  for (const expected of ["Ada Lovelace", "Automation Co-op, MLOps and Agentic AI", "University of British Columbia", "Ericsson", "Agentic Operations Intelligence Platform", "TR Impact Analyzer", "Distributed Systems Research Project", "Technical Skills", "R&D", "50%", "Python"]) {
     if (!pdfText.text.includes(expected)) throw new Error(`ATS text extraction is missing: ${expected}`);
   }
+  // Check highlights are bold (tex contains \textbf)
+  if (!texSource.includes("\\textbf{Python}") && !texSource.includes("\\textbf{Go}")) throw new Error("Highlights not bold in tex");
+  // Check subproject hierarchy
+  if (!texSource.includes("\\resumeSubproject{Agentic Operations Intelligence Platform}")) throw new Error("Subproject macro missing");
+  if (texSource.includes("\\section{Work Experience}") || texSource.includes("\\section{Research Experience}")) throw new Error("Should not have separate Work/Research sections, only EXPERIENCE");
+  // Check dates from profile
+  if (!pdfText.text.includes("May 2026 -- Present") && !texSource.includes("May 2026 -- Present")) throw new Error("Dates from profile missing");
+  if (!texSource.includes("Sep. 2024 -- Expected May 2029") && !pdfText.text.includes("Sep. 2024")) throw new Error("Education dates missing");
+
   const links = pdfInfo.pages.flatMap(page => page.links.map(link => link.url));
   for (const expected of ["mailto:ada@example.com", "https://linkedin.com/in/ada_lovelace", "https://github.com/ada-lovelace", "https://ada.example.com"]) {
     if (!links.some(link => link.startsWith(expected))) throw new Error(`Compiled PDF is missing link: ${expected}`);

@@ -11,40 +11,61 @@ export const completeResume: StructuredResume = {
     website: "https://ada.example.com/path?a=1&b=2",
   },
   education: [{
-    institution: "University of Toronto",
-    location: "Toronto, ON",
+    institution: "University of British Columbia",
+    location: "Vancouver, BC",
     degree: "BASc in Computer Engineering",
-    dates: "2024 -- 2028",
+    dates: "Sep. 2024 -- Expected May 2029",
     details: ["Dean's List", "Coursework: Operating Systems & Distributed Systems"],
   }],
   experience: [
     {
-      organization: "Example Cloud",
-      title: "Software Engineer Intern",
-      location: "Toronto, ON",
-      dates: "May 2026 -- Aug 2026",
+      organization: "Ericsson",
+      title: "Automation Co-op, MLOps and Agentic AI",
+      location: "Ottawa, ON",
+      dates: "May 2026 -- Present",
       type: "work",
-      bullets: [
-        "Built a Go service processing 2M events per day.",
-        "Reduced p95 latency by 38% with Redis caching.",
-        "Added OpenTelemetry tracing across 12 services.",
-        "Automated canary deployments with Kubernetes.",
+      subprojects: [
+        {
+          name: "Agentic Operations Intelligence Platform",
+          bullets: [
+            { text: "Engineered a modular Python agent runtime with structured tool calling and streaming.", highlights: ["Python", "structured tool calling"] },
+            { text: "Built FastAPI services handling 1M events daily with OpenTelemetry tracing across 12 services.", highlights: ["FastAPI", "1M events"] },
+          ],
+        },
+        {
+          name: "TR Impact Analyzer",
+          bullets: [
+            { text: "Automated Kubernetes canary deployments reducing rollout time by 40%.", highlights: ["Kubernetes"] },
+            { text: "Improved numerical agreement to 1.2×10−16 while preserving ± tolerance, and x ≤ y ≥ z.", highlights: ["1.2×10−16"] },
+          ],
+        },
       ],
     },
     {
-      organization: "Systems Research Lab",
+      organization: "University of British Columbia",
       title: "Undergraduate Researcher",
-      location: "Toronto, ON",
-      dates: "Sep 2025 -- Present",
+      location: "Vancouver, BC",
+      dates: "Dec. 2025 -- Present",
       type: "research",
-      bullets: ["Designed reproducible distributed-systems experiments.", "Co-authored an artifact evaluated on 80 nodes."],
+      subprojects: [
+        {
+          name: "Distributed Systems Research Project",
+          bullets: [
+            { text: "Designed reproducible distributed-systems experiments on 80-node cluster.", highlights: ["80-node cluster"] },
+            { text: "Co-authored an artifact evaluated on 80 nodes with x ≤ y ≥ z and R&D_50% costs.", highlights: ["x ≤ y ≥ z"] },
+          ],
+        },
+      ],
     },
   ],
   projects: [{
     name: "Vector Search Engine",
     technologies: ["Rust", "CUDA"],
     dates: "2026",
-    bullets: ["Implemented HNSW indexing for million-vector datasets.", "Benchmarked recall and latency against FAISS."],
+    bullets: [
+      { text: "Implemented HNSW indexing for million-vector datasets.", highlights: ["HNSW"] },
+      { text: "Benchmarked recall and latency against FAISS.", highlights: ["FAISS"] },
+    ],
   }],
   technicalSkills: {
     languages: ["Go", "Rust", "Python", "C++"],

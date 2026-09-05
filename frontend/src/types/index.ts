@@ -39,24 +39,73 @@ export interface CompanyState {
 
 export interface ResumeProfile {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string;
   location: string;
   linkedin: string;
   github: string;
   website: string;
-  education_text: string;
-  experience_text: string;
-  projects_text: string;
-  research_text: string;
-  skills_text: string;
-  awards_text: string;
-  other_text: string;
+  education: Array<{
+    institution: string;
+    degree: string;
+    location: string;
+    startDate: string;
+    endDate: string;
+  }>;
+  workExperiences: Array<{
+    company: string;
+    title: string;
+    location: string;
+    startDate: string;
+    endDate: string;
+    isCurrent: boolean;
+    subprojects: Array<{
+      name: string;
+      bullets: Array<{ text: string; highlights: string[] }>;
+    }>;
+  }>;
+  researchExperiences: Array<{
+    organization: string;
+    title: string;
+    location: string;
+    startDate: string;
+    endDate: string;
+    isCurrent: boolean;
+    subprojects: Array<{
+      name: string;
+      bullets: Array<{ text: string; highlights: string[] }>;
+    }>;
+  }>;
+  projects: Array<{
+    name: string;
+    technologies: string[];
+    dates: string;
+    bullets: Array<{ text: string; highlights: string[] }>;
+  }>;
+  skills: {
+    languages: string[];
+    frameworks: string[];
+    developerTools: string[];
+    libraries: string[];
+  };
+  // legacy flat fields for migration
+  name?: string;
+  education_text?: string;
+  experience_text?: string;
+  projects_text?: string;
+  research_text?: string;
+  skills_text?: string;
+  awards_text?: string;
+  other_text?: string;
   updated_at: string;
 }
 
 export type ResumeProfileUpdate = Omit<ResumeProfile, "id" | "updated_at">;
+
+export type ResumeBullet = { text: string; highlights: string[] };
+export type ResumeSubproject = { name: string; bullets: ResumeBullet[] };
 
 export interface AiSettings {
   provider: AiProvider;
@@ -99,13 +148,17 @@ export interface StructuredResume {
     location: string;
     dates: string;
     type: "work" | "research";
-    bullets: string[];
+    bullets?: string[];
+    subprojects?: Array<{
+      name: string;
+      bullets: Array<{ text: string; highlights: string[] }>;
+    }>;
   }>;
   projects: Array<{
     name: string;
     technologies: string[];
     dates: string;
-    bullets: string[];
+    bullets: Array<string | { text: string; highlights: string[] }>;
   }>;
   technicalSkills: {
     languages: string[];

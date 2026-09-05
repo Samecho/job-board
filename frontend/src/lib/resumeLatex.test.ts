@@ -13,10 +13,18 @@ describe("fixed LaTeX renderer", () => {
     expect(experience).toBeGreaterThan(education);
     expect(projects).toBeGreaterThan(experience);
     expect(skills).toBeGreaterThan(projects);
-    expect(tex).toContain("Software Engineer Intern");
-    expect(tex).toContain("Undergraduate Researcher");
+    expect(tex).toContain(escapeLatex(completeResume.experience[0].title));
+    expect(tex).toContain(escapeLatex(completeResume.experience[0].organization));
+    expect(tex).toContain(escapeLatex(completeResume.experience[1].title));
+    expect(tex).toContain(escapeLatex(completeResume.experience[1].organization));
     expect(tex).not.toContain("\\section{Research Experience}");
+    expect(tex).not.toContain("\\section{Work Experience}");
     expect(tex).not.toContain("USER CONFIRMATION NEEDED");
+    // subproject hierarchy
+    expect(tex).toContain("\\resumeSubproject{Agentic Operations Intelligence Platform}");
+    expect(tex).toContain("\\resumeSubproject{TR Impact Analyzer}");
+    expect(tex).toContain("\\resumeSubproject{Distributed Systems Research Project}");
+    expect(tex).toContain("\\textbf{Python}");
   });
 
   it("omits the complete Projects section when projects are empty", () => {
