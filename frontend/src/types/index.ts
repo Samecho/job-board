@@ -76,29 +76,43 @@ export interface Application {
   updated_at: string;
 }
 
-export interface ResumeSectionItem {
-  title: string;
-  subtitle?: string;
-  location?: string;
-  dates?: string;
-  bullets: string[];
-}
-
 export interface StructuredResume {
   header: {
     name: string;
-    email?: string;
-    phone?: string;
-    location?: string;
-    linkedin?: string;
-    github?: string;
-    website?: string;
+    email: string;
+    phone: string;
+    location: string;
+    linkedin: string;
+    github: string;
+    website: string;
   };
-  education: ResumeSectionItem[];
-  experience: ResumeSectionItem[];
-  projects: ResumeSectionItem[];
-  skills: string[];
-  confirmation_needed?: string[];
+  education: Array<{
+    institution: string;
+    location: string;
+    degree: string;
+    dates: string;
+    details: string[];
+  }>;
+  experience: Array<{
+    organization: string;
+    title: string;
+    location: string;
+    dates: string;
+    type: "work" | "research";
+    bullets: string[];
+  }>;
+  projects: Array<{
+    name: string;
+    technologies: string[];
+    dates: string;
+    bullets: string[];
+  }>;
+  technicalSkills: {
+    languages: string[];
+    frameworks: string[];
+    developerTools: string[];
+    libraries: string[];
+  };
 }
 
 export interface ResumeVersion {
@@ -107,8 +121,9 @@ export interface ResumeVersion {
   company_id: number;
   version_number: number;
   structured_resume: StructuredResume;
+  tex_source: string;
   pdf_file: Blob;
-  docx_file: Blob;
+  docx_file?: Blob;
   provider: string;
   model: string;
   created_at: string;

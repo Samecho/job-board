@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
-import { Download, Eye, Sparkles, Trash2, X } from "lucide-react";
+import { Download, Eye, FileCode2, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "../api/client";
 import { downloadBlob } from "../lib/resumeFiles";
 import type { Application, ApplicationStage, Company, FeatureStatus, ResumeVersionRead } from "../types";
 
 const stages: ApplicationStage[] = ["Applied", "OA", "Interview", "Rejected", "Offer"];
 const filename = (value: string, ext: string) => `${value.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-|-$/g, "") || "resume"}.${ext}`;
-
-export function downloadTex(name: string, content: string) {
-  downloadBlob(new Blob([content], { type: "application/json" }), filename(name, "json"));
-}
 
 export function ResumeModal({ company, features, onClose, onSaved }: {
   company: Company;
@@ -24,9 +20,13 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
   const [extraInstructions, setExtraInstructions] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewName, setPreviewName] = useState("");
 
   const selected = apps.find(app => app.id === selectedId) || null;
   const aiAvailable = features?.ai_enabled && features.ai_configured;
+
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   const load = async (nextId = selectedId) => {
     const nextApps = await api.applications(company.id);
@@ -83,13 +83,23 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
 
   const preview = async (version: ResumeVersionRead) => {
     const record = await api.getResumeVersion(version.id);
-    if (record?.pdf_file) window.open(URL.createObjectURL(record.pdf_file), "_blank", "noreferrer");
+    if (!record?.pdf_file) return;
+    setPreviewName(`${company.name} - ${form.job_title || "Resume"} - Version ${version.version_number}`);
+    setPreviewUrl(URL.createObjectURL(record.pdf_file));
   };
 
-  const download = async (version: ResumeVersionRead, ext: "pdf" | "docx") => {
+  const closePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl("");
+    setPreviewName("");
+  };
+
+  const download = async (version: ResumeVersionRead, ext: "pdf" | "tex") => {
     const record = await api.getResumeVersion(version.id);
-    const blob = ext === "pdf" ? record?.pdf_file : record?.docx_file;
-    if (blob) downloadBlob(blob, filename(`${company.name}-${form.job_title || "resume"}-v${version.version_number}`, ext));
+    if (!record) return;
+    const baseName = `${company.name}-${form.job_title || "resume"}-v${version.version_number}`;
+    if (ext === "pdf" && record.pdf_file) downloadBlob(record.pdf_file, filename(baseName, "pdf"));
+    if (ext === "tex" && record.tex_source) downloadBlob(new Blob([record.tex_source], { type: "application/x-tex;charset=utf-8" }), filename(baseName, "tex"));
   };
 
   const deleteVersion = async (version: ResumeVersionRead) => {
@@ -104,26 +114,35 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
     await load(null); await onSaved();
   };
 
-  return <div className="modal-backdrop" onMouseDown={onClose}>
-    <section className="modal resume-modal" onMouseDown={event => event.stopPropagation()}>
-      <div className="modal-head"><div><span className="eyebrow">Applications and resume versions</span><h2>{company.name}</h2></div><button className="icon-button" onClick={onClose}><X size={20} /></button></div>
-      <div className="resume-workspace">
-        <div className="resume-inputs">
-          <div className="app-picker"><span className="eyebrow">Applications</span><button className={!selected ? "active" : ""} onClick={newApplication}>+ New application</button>{apps.map(app => <button key={app.id} className={selectedId === app.id ? "active" : ""} onClick={() => setSelectedId(app.id)}>{app.job_title || "Untitled role"}<small>{app.application_stage}</small></button>)}</div>
-          <label>Job title<input value={form.job_title} onChange={event => setForm(current => ({ ...current, job_title: event.target.value }))} placeholder="Software Engineering Intern" /></label>
-          <label>Job description<textarea rows={10} value={form.job_description} onChange={event => setForm(current => ({ ...current, job_description: event.target.value }))} placeholder="Paste the full JD here..." /></label>
-          <label>Application stage<select value={form.application_stage} onChange={event => setForm(current => ({ ...current, application_stage: event.target.value as ApplicationStage }))}>{stages.map(stage => <option key={stage}>{stage}</option>)}</select></label>
-          <label>Notes<textarea rows={3} value={form.notes} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} /></label>
-          <div className="resume-actions"><button className="button ghost" disabled={busy === "save"} onClick={saveApplication}>{busy === "save" ? "Saving..." : "Save application"}</button>{selected && <button className="button ghost delete" onClick={deleteApplication}>Delete application</button>}</div>
+  return <>
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <section className="modal resume-modal" onMouseDown={event => event.stopPropagation()}>
+        <div className="modal-head"><div><span className="eyebrow">Applications and resume versions</span><h2>{company.name}</h2></div><button className="icon-button" onClick={onClose}><X size={20} /></button></div>
+        <div className="resume-workspace">
+          <div className="resume-inputs">
+            <div className="app-picker"><span className="eyebrow">Applications</span><button className={!selected ? "active" : ""} onClick={newApplication}>+ New application</button>{apps.map(app => <button key={app.id} className={selectedId === app.id ? "active" : ""} onClick={() => setSelectedId(app.id)}>{app.job_title || "Untitled role"}<small>{app.application_stage}</small></button>)}</div>
+            <label>Job title<input value={form.job_title} onChange={event => setForm(current => ({ ...current, job_title: event.target.value }))} placeholder="Software Engineering Intern" /></label>
+            <label>Job description<textarea rows={10} value={form.job_description} onChange={event => setForm(current => ({ ...current, job_description: event.target.value }))} placeholder="Paste the full JD here..." /></label>
+            <label>Application stage<select value={form.application_stage} onChange={event => setForm(current => ({ ...current, application_stage: event.target.value as ApplicationStage }))}>{stages.map(stage => <option key={stage}>{stage}</option>)}</select></label>
+            <label>Notes<textarea rows={3} value={form.notes} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} /></label>
+            <div className="resume-actions"><button className="button ghost" disabled={busy === "save"} onClick={saveApplication}>{busy === "save" ? "Saving..." : "Save application"}</button>{selected && <button className="button ghost delete" onClick={deleteApplication}>Delete application</button>}</div>
+          </div>
+          <div className="resume-output">
+            <label>Extra instructions<textarea rows={4} value={extraInstructions} onChange={event => setExtraInstructions(event.target.value)} placeholder="Optional truthful tailoring preferences..." /></label>
+            {!aiAvailable && <p className="inline-error">Save AI settings before generating resumes.</p>}
+            <p className="compiler-note">Generation compiles a locked Jake-style LaTeX template locally in your browser. The first run downloads the TeX engine assets.</p>
+            <button className="button primary" disabled={!aiAvailable || form.job_description.trim().length < 20 || busy === "generate"} onClick={generate}><Sparkles size={15} /> {busy === "generate" ? "Tailoring and compiling..." : "Generate new version"}</button>
+            {error && <p className="inline-error">{error}</p>}
+            <div className="resume-history"><span className="eyebrow">Resume versions</span>{versions.length ? versions.map(version => <article key={version.id}><div><strong>Version {version.version_number}</strong><span>{version.provider} · {version.model} · {new Date(version.created_at).toLocaleString()}</span></div><div><button onClick={() => preview(version)}><Eye size={13} /> Preview PDF</button><button onClick={() => download(version, "pdf")}><Download size={13} /> PDF</button><button onClick={() => download(version, "tex")}><FileCode2 size={13} /> .tex</button><button className="delete" onClick={() => deleteVersion(version)}><Trash2 size={13} /> Delete</button></div></article>) : <p>No resume versions for this application yet.</p>}</div>
+          </div>
         </div>
-        <div className="resume-output">
-          <label>Extra instructions<textarea rows={4} value={extraInstructions} onChange={event => setExtraInstructions(event.target.value)} placeholder="Optional truthful tailoring preferences..." /></label>
-          {!aiAvailable && <p className="inline-error">Save AI settings before generating resumes.</p>}
-          <button className="button primary" disabled={!aiAvailable || form.job_description.trim().length < 20 || busy === "generate"} onClick={generate}><Sparkles size={15} /> {busy === "generate" ? "Generating version..." : "Generate new version"}</button>
-          {error && <p className="inline-error">{error}</p>}
-          <div className="resume-history"><span className="eyebrow">Resume versions</span>{versions.length ? versions.map(version => <article key={version.id}><div><strong>Version {version.version_number}</strong><span>{version.provider} · {version.model} · {new Date(version.created_at).toLocaleString()}</span></div><div><button onClick={() => preview(version)}><Eye size={13} /> Preview PDF</button><button onClick={() => download(version, "pdf")}><Download size={13} /> PDF</button><button onClick={() => download(version, "docx")}><Download size={13} /> DOCX</button><button className="delete" onClick={() => deleteVersion(version)}><Trash2 size={13} /> Delete</button></div></article>) : <p>No resume versions for this application yet.</p>}</div>
-        </div>
-      </div>
-    </section>
-  </div>;
+      </section>
+    </div>
+    {previewUrl && <div className="pdf-preview-backdrop" onMouseDown={closePreview}>
+      <section className="pdf-preview" onMouseDown={event => event.stopPropagation()}>
+        <div className="modal-head"><div><span className="eyebrow">Compiled PDF preview</span><h2>{previewName}</h2></div><button className="icon-button" onClick={closePreview}><X size={20} /></button></div>
+        <iframe title={previewName} src={previewUrl} />
+      </section>
+    </div>}
+  </>;
 }

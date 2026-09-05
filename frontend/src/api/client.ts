@@ -5,7 +5,9 @@ import type {
   CompanyUpdate, FeatureStatus, GeneratedResume, ResumeProfile, ResumeProfileUpdate,
   ResumeVersion, ResumeVersionRead, StructuredResume,
 } from "../types";
-import { makeZip, readStoreZip, renderResumeDocx, renderResumePdf } from "../lib/resumeFiles";
+import { makeZip, readStoreZip } from "../lib/resumeFiles";
+import { compileResumeLatex, renderResumeLatex } from "../lib/resumeLatex";
+import { normalizeStoredStructuredResume, parseStructuredResumeJson, RESUME_JSON_SCHEMA, trimLowestPriorityContent } from "../lib/resumeSchema";
 
 const DB_NAME = "internradar-browser";
 const DB_VERSION = 2;
@@ -187,8 +189,24 @@ async function applications(companyId?: number) {
   return items.filter(item => !companyId || item.company_id === companyId).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
+type StoredResumeVersion = Omit<ResumeVersion, "structured_resume" | "tex_source"> & {
+  structured_resume: unknown;
+  tex_source?: string;
+};
+
+function hydrateResumeVersion(version: StoredResumeVersion): ResumeVersion {
+  const structuredResume = normalizeStoredStructuredResume(version.structured_resume);
+  return {
+    ...version,
+    structured_resume: structuredResume,
+    tex_source: typeof version.tex_source === "string" && version.tex_source.trim()
+      ? version.tex_source
+      : renderResumeLatex(structuredResume),
+  };
+}
+
 async function versions(applicationId?: number) {
-  const items = await all<ResumeVersion>("resume_versions");
+  const items = (await all<StoredResumeVersion>("resume_versions")).map(hydrateResumeVersion);
   return items.filter(item => !applicationId || item.application_id === applicationId).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
@@ -266,7 +284,7 @@ async function responseError(response: Response) {
   throw new Error(`AI request failed (${response.status})${detail ? `: ${detail.slice(0, 240)}` : ""}`);
 }
 
-async function callOpenAi(settings: AiSettings, messages: Array<{ role: "system" | "user"; content: string }>) {
+async function callOpenAi(settings: AiSettings, messages: Array<{ role: "system" | "user"; content: string }>, strictResume = false) {
   const response = await fetch(OPENAI_RESPONSES_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` },
@@ -274,7 +292,11 @@ async function callOpenAi(settings: AiSettings, messages: Array<{ role: "system"
       model: settings.model,
       input: messages,
       reasoning: { effort: "max" },
-      text: { format: { type: "json_object" } },
+      text: {
+        format: strictResume
+          ? { type: "json_schema", name: "structured_resume", strict: true, schema: RESUME_JSON_SCHEMA }
+          : { type: "json_object" },
+      },
     }),
   });
   if (!response.ok) return responseError(response);
@@ -284,13 +306,17 @@ async function callOpenAi(settings: AiSettings, messages: Array<{ role: "system"
     .find((item: { type?: string }) => item.type === "output_text")?.text || "";
 }
 
-async function callGemini(settings: AiSettings, prompt: string) {
+async function callGemini(settings: AiSettings, prompt: string, strictResume = false) {
   const response = await fetch(`${GEMINI_API_BASE}/models/${encodeURIComponent(settings.model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": settings.api_key },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", thinkingConfig: { thinkingLevel: "high" } },
+      generationConfig: {
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingLevel: "high" },
+        ...(strictResume ? { responseJsonSchema: RESUME_JSON_SCHEMA } : {}),
+      },
     }),
   });
   if (!response.ok) return responseError(response);
@@ -314,17 +340,61 @@ async function callGlm(settings: AiSettings, messages: Array<{ role: "system" | 
   const body = await response.json();
   return body.choices?.[0]?.message?.content || "";
 }
-function parseStructuredResume(text: string): StructuredResume {
-  const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
-  const parsed = JSON.parse(cleaned) as StructuredResume;
-  if (!parsed.header || !Array.isArray(parsed.education) || !Array.isArray(parsed.experience) || !Array.isArray(parsed.projects) || !Array.isArray(parsed.skills)) {
-    throw new Error("AI response did not match the resume JSON schema");
-  }
-  return parsed;
+
+async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<StructuredResume> {
+  const messages: Array<{ role: "system" | "user"; content: string }> = [
+    { role: "system", content: resumeSkill },
+    { role: "user", content: userPrompt },
+  ];
+  const raw = settings.provider === "gemini"
+    ? await callGemini(settings, `${resumeSkill}\n\n${userPrompt}`, true)
+    : settings.provider === "glm"
+      ? await callGlm(settings, messages)
+      : await callOpenAi(settings, messages, true);
+  return parseStructuredResumeJson(raw);
 }
 
 function generationPrompt(profileData: ResumeProfile, app: Application, extraInstructions: string) {
-  return `Template: Modern Engineering ATS\n\nMaster resume profile:\n${JSON.stringify(profileData, null, 2)}\n\nApplication:\n${JSON.stringify(app, null, 2)}\n\nExtra instructions:\n${extraInstructions || "None"}`;
+  return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (the only factual source):\n${JSON.stringify(profileData, null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
+}
+
+function compactionPrompt(resume: StructuredResume, app: Application, pageCount: number, attempt: number) {
+  return `The structured resume below compiled to ${pageCount} pages in the locked template. Return a complete schema-valid revision that will fit one page. Preserve truth and the strongest JD-relevant content. Shorten or remove content from the end of arrays in this order: redundant bullets, weaker bullets, weaker projects, secondary education details, then low-value skills. Keep at least one work entry and one research entry. Do not change the schema or add commentary. This is compaction attempt ${attempt}.\n\nTarget job description:\n${app.job_description}\n\nCurrent structured resume:\n${JSON.stringify(resume, null, 2)}`;
+}
+
+async function renderOnePageResume(settings: AiSettings, app: Application, initial: StructuredResume) {
+  let structuredResume = initial;
+  let texSource = renderResumeLatex(structuredResume);
+  let compilation = await compileResumeLatex(texSource);
+  if (compilation.pageCount === 1) return { structuredResume, texSource, pdfFile: compilation.pdfFile };
+
+  for (let attempt = 1; attempt <= 2 && compilation.pageCount > 1; attempt += 1) {
+    try {
+      const compacted = await callResumeAi(settings, compactionPrompt(structuredResume, app, compilation.pageCount, attempt));
+      const compactedTex = renderResumeLatex(compacted);
+      const compactedCompilation = await compileResumeLatex(compactedTex);
+      if (compactedCompilation.pageCount <= compilation.pageCount) {
+        structuredResume = compacted;
+        texSource = compactedTex;
+        compilation = compactedCompilation;
+      }
+    } catch (error) {
+      console.warn("AI resume compaction failed; continuing with deterministic trimming", error);
+      break;
+    }
+    if (compilation.pageCount === 1) return { structuredResume, texSource, pdfFile: compilation.pdfFile };
+  }
+
+  for (let step = 0; step < 64 && compilation.pageCount > 1; step += 1) {
+    const trimmed = trimLowestPriorityContent(structuredResume);
+    if (!trimmed) break;
+    structuredResume = trimmed;
+    texSource = renderResumeLatex(structuredResume);
+    compilation = await compileResumeLatex(texSource);
+  }
+
+  if (compilation.pageCount !== 1) throw new Error("Resume could not be reduced to exactly one page without changing the locked template");
+  return { structuredResume, texSource, pdfFile: compilation.pdfFile };
 }
 
 async function generateResumeVersion(applicationId: number, extraInstructions: string) {
@@ -333,31 +403,22 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   const settings = await aiSettings();
   if (!settings.api_key || !settings.model) throw new Error("Save AI settings before generating resumes");
   const profileData = await profile();
-  const userPrompt = generationPrompt(profileData, app, extraInstructions);
-  const messages: Array<{ role: "system" | "user"; content: string }> = [
-    { role: "system", content: resumeSkill },
-    { role: "user", content: userPrompt },
-  ];
-  const raw = settings.provider === "gemini"
-    ? await callGemini(settings, `${resumeSkill}\n\n${userPrompt}`)
-    : settings.provider === "glm" ? await callGlm(settings, messages) : await callOpenAi(settings, messages);
-  const structured = parseStructuredResume(raw);
+  const initialResume = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions));
+  const rendered = await renderOnePageResume(settings, app, initialResume);
   const existing = await versions(applicationId);
   const version_number = existing.length ? Math.max(...existing.map(item => item.version_number)) + 1 : 1;
-  const [pdf_file, docx_file] = await Promise.all([renderResumePdf(structured), renderResumeDocx(structured)]);
   return add<Partial<ResumeVersion>>("resume_versions", {
     application_id: applicationId,
     company_id: app.company_id,
     version_number,
-    structured_resume: structured,
-    pdf_file,
-    docx_file,
+    structured_resume: rendered.structuredResume,
+    tex_source: rendered.texSource,
+    pdf_file: rendered.pdfFile,
     provider: settings.provider,
     model: settings.model,
     created_at: now(),
   } as ResumeVersion);
 }
-
 function versionRead(version: ResumeVersion, app?: Application): ResumeVersionRead {
   return {
     id: version.id,
@@ -381,7 +442,7 @@ async function resumeReads(): Promise<GeneratedResume[]> {
       ...versionRead(version, app),
       resume_name: `${companyName(version.company_id)} ${app?.job_title || "Resume"} v${version.version_number}`,
       jd_text: app?.job_description || "",
-      generated_latex: JSON.stringify(version.structured_resume, null, 2),
+      generated_latex: version.tex_source,
       notes: app?.notes || "",
       updated_at: version.created_at,
     };
@@ -397,9 +458,9 @@ async function exportBackup() {
     const app = apps.find(item => item.id === version.application_id);
     const path = `resumes/${slug(companyName(version.company_id))}/${slug(app?.job_title || "application")}/v${version.version_number}`;
     files[`${path}.pdf`] = version.pdf_file;
-    files[`${path}.docx`] = version.docx_file;
-    const { pdf_file: _pdf, docx_file: _docx, ...rest } = version;
-    return { ...rest, pdf_path: `${path}.pdf`, docx_path: `${path}.docx` };
+    files[`${path}.tex`] = version.tex_source;
+    const { pdf_file: _pdf, docx_file: _legacyDocx, tex_source: _tex, ...rest } = version;
+    return { ...rest, pdf_path: `${path}.pdf`, tex_path: `${path}.tex` };
   });
   files["data.json"] = JSON.stringify({ company_states: states, resume_profile: profileData, ai_settings: { ...settings, api_key: "" }, applications: apps, resume_versions: metadata }, null, 2);
   return makeZip(files);
@@ -409,7 +470,38 @@ async function importBackup(file: File) {
   const files = await readStoreZip(file);
   const dataBlob = files["data.json"];
   if (!dataBlob) throw new Error("Backup is missing data.json");
-  const data = JSON.parse(await dataBlob.text());
+  const data = JSON.parse(await dataBlob.text()) as {
+    company_states?: CompanyState[];
+    resume_profile?: ResumeProfile;
+    applications?: Application[];
+    resume_versions?: Array<Record<string, unknown> & {
+      company_id: number;
+      structured_resume: unknown;
+      pdf_path?: string;
+      tex_path?: string;
+      docx_path?: string;
+      tex_source?: string;
+    }>;
+  };
+  const importedVersions = await Promise.all((data.resume_versions || []).map(async meta => {
+    const { pdf_path: pdfPath, tex_path: texPath, docx_path: _legacyDocxPath, ...version } = meta;
+    const pdfFile = pdfPath ? files[pdfPath] : undefined;
+    if (!pdfFile) throw new Error(`Backup is missing resume PDF: ${pdfPath || "unknown path"}`);
+    const structuredResume = normalizeStoredStructuredResume(version.structured_resume);
+    const texSource = texPath && files[texPath]
+      ? await files[texPath].text()
+      : typeof version.tex_source === "string" && version.tex_source.trim()
+        ? version.tex_source
+        : renderResumeLatex(structuredResume);
+    return {
+      ...version,
+      company_id: canonicalCompanyId(Number(version.company_id)),
+      structured_resume: structuredResume,
+      tex_source: texSource,
+      pdf_file: pdfFile,
+    };
+  }));
+
   await tx(["company_states", "resume_profile", "applications", "resume_versions"], "readwrite", async (_, transaction) => {
     for (const store of ["company_states", "resume_profile", "applications", "resume_versions"]) await req(transaction.objectStore(store).clear());
     const importedStates = new Map<number, CompanyState>();
@@ -422,18 +514,9 @@ async function importBackup(file: File) {
     for (const app of data.applications || []) {
       await req(transaction.objectStore("applications").put({ ...app, company_id: canonicalCompanyId(app.company_id) }));
     }
-    for (const meta of data.resume_versions || []) {
-      const { pdf_path, docx_path, ...version } = meta;
-      await req(transaction.objectStore("resume_versions").put({
-        ...version,
-        company_id: canonicalCompanyId(version.company_id),
-        pdf_file: files[pdf_path],
-        docx_file: files[docx_path],
-      }));
-    }
+    for (const version of importedVersions) await req(transaction.objectStore("resume_versions").put(version));
   });
 }
-
 export const api = {
   companies,
   company,
@@ -477,7 +560,7 @@ export const api = {
     const [app, items] = await Promise.all([get<Application>("applications", applicationId), versions(applicationId)]);
     return items.map(item => versionRead(item, app));
   },
-  getResumeVersion: (id: number) => get<ResumeVersion>("resume_versions", id),
+  getResumeVersion: async (id: number) => { const item = await get<StoredResumeVersion>("resume_versions", id); return item ? hydrateResumeVersion(item) : undefined; },
   deleteResumeVersion: (id: number) => del("resume_versions", id),
   resumes: resumeReads,
   companyResumes: async (companyId: number) => (await resumeReads()).filter(item => item.company_id === companyId),
