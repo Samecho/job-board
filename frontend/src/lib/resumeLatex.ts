@@ -1,3 +1,4 @@
+import { skillCategories } from "./technicalSkills";
 import { PdfLatex } from "@typeward/texlive-wasm";
 import type { StructuredResume } from "../types";
 
@@ -160,13 +161,8 @@ function projectsSection(resume: StructuredResume): string {
 }
 
 function technicalSkillsSection(resume: StructuredResume): string {
-  const groups: Array<[string, string[]]> = [
-    ["Languages", resume.technicalSkills.languages],
-    ["Frameworks", resume.technicalSkills.frameworks],
-    ["Developer Tools", resume.technicalSkills.developerTools],
-    ["Libraries", resume.technicalSkills.libraries],
-  ];
-  const rows = groups.filter(([, values]) => values.length).map(([label, values]) => `    \\textbf{${label}}{: ${escapeLatex(values.join(", "))}} \\\\`);
+  const groups: Array<[string, string[]]> = skillCategories(resume.technicalSkills).map(group => [group.name, group.skills]);
+  const rows = groups.filter(([, values]) => values.length).map(([label, values]) => `    \\textbf{${escapeLatex(label)}}{: ${escapeLatex(values.join(", "))}} \\\\`);
   return [
     "\\section{Technical Skills}",
     " \\resumeSubHeadingListStart",

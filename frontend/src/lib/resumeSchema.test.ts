@@ -23,7 +23,7 @@ describe("structured resume schema", () => {
     });
     expect(normalized.experience[0].type).toBe("research");
     expect(normalized.projects[0].technologies).toEqual(["Rust", "LLVM"]);
-    expect(normalized.technicalSkills.languages).toEqual(["Rust", "Python"]);
+    expect("languages" in normalized.technicalSkills && normalized.technicalSkills.languages).toEqual(["Rust", "Python"]);
   });
 
   it("trims from lower-priority array tails while preserving both experience types", () => {

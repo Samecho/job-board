@@ -1,3 +1,4 @@
+import { masterSkills } from "../lib/technicalSkills";
 import { preserveSubprojectTitles } from "../lib/subprojectTitles";
 import { profileDetails } from "../lib/profileDetails";
 import { COMPANY_CATALOG } from "../data/catalog";
@@ -242,6 +243,7 @@ function migrateProfileData(raw: Record<string, unknown>): ResumeProfile {
   merged.workExperiences = merged.workExperiences.map(entry => ({ ...entry, subprojects: entry.subprojects.map(sub => ({ ...sub, details: profileDetails(sub) })) }));
   merged.researchExperiences = merged.researchExperiences.map(entry => ({ ...entry, subprojects: entry.subprojects.map(sub => ({ ...sub, details: profileDetails(sub) })) }));
   merged.projects = merged.projects.map(project => ({ ...project, details: profileDetails(project) }));
+  merged.skillInventory = masterSkills(merged);
   return merged;
 }
 
@@ -458,15 +460,15 @@ function profileSource(profileData: ResumeProfile) {
   const sourceEntry = (entry: ResumeProfile["workExperiences"][number] | ResumeProfile["researchExperiences"][number]) => ({
     ...entry, subprojects: entry.subprojects.map(sub => ({ name: sub.omitTitle ? "" : sub.name, omitTitle: !!sub.omitTitle, details: profileDetails(sub) })),
   });
-  const { experience_text, research_text, projects_text, ...source } = profileData;
-  return { ...source,
+  const { experience_text, research_text, projects_text, skills, skills_text, ...source } = profileData;
+  return { ...source, skillInventory: masterSkills(profileData),
     workExperiences: profileData.workExperiences.map(sourceEntry),
     researchExperiences: profileData.researchExperiences.map(sourceEntry),
     projects: profileData.projects.map(({ bullets, ...project }) => ({ ...project, details: profileDetails({ ...project, bullets }) })),
   };
 }
 function generationPrompt(profileData: ResumeProfile, app: Application, extraInstructions: string) {
-  return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (the only factual source):\n${JSON.stringify(profileSource(profileData), null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
+  return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (factual basis for experience; skill inventory is non-exhaustive, and Technical Skills may be supplemented from the JD):\n${JSON.stringify(profileSource(profileData), null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
 }
 
 function compactionPrompt(resume: StructuredResume, app: Application, pageCount: number, attempt: number) {

@@ -1,3 +1,4 @@
+import { masterSkills } from "../lib/technicalSkills";
 import { useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
 import { profileDetails } from "../lib/profileDetails";
@@ -126,10 +127,8 @@ export function ProfileEditor({ value, onChange }: { value: ResumeProfileUpdate;
       </article>)}
       {!value.projects.length && <p className="profile-empty">No standalone projects added.</p>}
     </Section>
-    <Section title="Technical Skills" description="Separate skills with commas. Generation selects the skills relevant to each role.">
-      <div className="profile-fields profile-fields-two">
-        {([["languages", "Languages", "Python, Go, TypeScript"], ["frameworks", "Frameworks", "React, FastAPI"], ["developerTools", "Developer Tools", "Git, Docker, Kubernetes"], ["libraries", "Libraries", "PyTorch, NumPy"]] as const).map(([key, label, placeholder]) => <ListField key={key} label={label} value={value.skills[key]} placeholder={placeholder} onChange={skills => edit(draft => { draft.skills[key] = skills; })} />)}
-      </div>
+    <Section title="Technical Skills" description="Your master inventory is a starting pool, not a whitelist. AI selects relevant skills and may supplement them from the JD; review the result before applying.">
+      <label className="profile-field"><span>Master skill inventory</span><textarea className="profile-details" rows={8} value={masterSkills(value)} placeholder="Languages, frameworks, tools, platforms, and engineering concepts you know. Use commas or new lines." onChange={event => update("skillInventory", event.target.value)} /></label>
     </Section>
   </div>;
 }

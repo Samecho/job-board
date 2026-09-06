@@ -65,12 +65,11 @@ const compactResume = {
     },
   ],
   projects: [],
-  technicalSkills: {
-    languages: ["Go", "Rust", "Python", "C++"],
-    frameworks: ["React", "FastAPI"],
-    developerTools: ["Docker", "Kubernetes", "Terraform", "GitHub Actions"],
-    libraries: ["PyTorch", "NumPy"],
-  },
+  technicalSkills: { categories: [
+    { name: "Languages", skills: ["Go", "Rust", "Python", "C++"] },
+    { name: "Engineering", skills: ["REST APIs", "Distributed Systems"] },
+    { name: "Tools & Systems", skills: ["Docker", "Kubernetes", "Terraform", "GitHub Actions"] },
+  ] },
 };
 
 const longResume = structuredClone(compactResume);
@@ -232,6 +231,9 @@ try {
   if (!pageInfo || Math.abs(pageInfo.width - 612) > 1 || Math.abs(pageInfo.height - 792) > 1) throw new Error("Generated PDF is not US Letter size");
   for (const expected of ["Ada Lovelace", "Automation Co-op, MLOps and Agentic AI", "University of British Columbia", "Ericsson", "Agentic Operations Intelligence Platform", "TR Impact Analyzer", "Distributed Systems Research Project", "Technical Skills", "R&D", "50%", "Python"]) {
     if (!pdfText.text.includes(expected)) throw new Error(`ATS text extraction is missing: ${expected}`);
+  }
+  for (const label of ["Engineering", "Tools & Systems", "REST APIs"]) {
+    if (!pdfText.text.includes(label)) throw new Error(`Dynamic skill category missing from PDF: ${label}`);
   }
   // Check highlights are bold (tex contains \textbf)
   if (!texSource.includes("\\textbf{Python}") && !texSource.includes("\\textbf{Go}")) throw new Error("Highlights not bold in tex");

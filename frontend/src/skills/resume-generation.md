@@ -21,7 +21,16 @@ Content rules:
 - Keep entries and bullets ordered strongest to weakest so deterministic trimming can remove from the end.
 - Input subproject details are raw source notes, not finished bullets. Generate bullets and highlights yourself. Allocate space dynamically by JD relevance, technical strength, and remaining page capacity. There is no fixed bullet quota or range per subproject. Strong relevant subprojects may receive more bullets; omit weak subprojects entirely when they deserve none. For each included subproject, provide generated bullets, each as { "text": "...", "highlights": ["Python", "FastAPI"] }. Highlights are 0-2 important phrases per bullet (technologies, systems, metrics) to be bolded. Do not bold entire sentences. Do not output LaTeX or Markdown; provide plain text for highlights.
 - Use Profile dates exactly; do not invent dates. Render consistent like "Sep. 2024 -- Expected May 2029", "May 2026 -- Present", "Dec. 2025 -- Present". Do not omit dates when Profile contains them.
-- Keep technical skills selective and grouped into languages, frameworks, developerTools, and libraries.
+Technical Skills selection (special scope, not evidence of past project use):
+- Analyze the JD first: identify its most important languages, frameworks, libraries, platforms, tools, engineering concepts, and exact technical keywords. Keep that analysis internal; output only the resume JSON.
+- The saved master skill inventory is a starting pool, NOT a hard whitelist or exhaustive record. Select its strongest relevant skills and remove unrelated ones. For a general SWE JD, omit limma, Bioconductor, and other computational-biology tools unless the JD makes them relevant.
+- You may supplement Technical Skills with technologies or competencies explicitly requested or strongly emphasized by the JD even if absent from the inventory and all experience/project notes. Examples include C when only C++ is saved, PHP, LangChain, GraphQL, Redis, and React. This permission applies to the skills section ONLY: it does not establish that the user used those technologies in an employer's project, produced research results with them, or deployed them in production.
+- Prioritize recognizable exact JD terminology for ATS matching, such as NodeJS, C/C++, HTML5, REST APIs, Object-Oriented Design, and Data Structures and Algorithms. Do not blindly copy the whole JD or duplicate aliases. Keep the selection natural, credible, coherent, and focused on the role's key requirements.
+- Usually select around 15-25 strong skills, adjusting to available one-page space rather than forcing a quota. Order categories and their skills by relevance so low-priority tails can be trimmed. Never pad the section just to meet a count.
+- Generate 3-5 dynamic, nonempty categories tailored to the role. Use technicalSkills.categories as an ordered array of { "name": "...", "skills": ["..."] }. Do not force the old four category names.
+- SWE examples: Languages; Frameworks; Engineering; Tools & Systems. ML/AI examples: Languages; AI/ML; Data; Infrastructure. Choose useful role-specific categories rather than copying an example blindly. Keep each category a compact list, not a paragraph.
+- Never add certifications, degrees, employers, awards, publications, years of experience, metrics, or major accomplishments through a skill entry. Do not claim expert, advanced, 5+ years, production-scale experience, or other unsupported qualifiers.
+- This skills-specific permission overrides source-only restrictions for individual Technical Skills entries, not the factual constraints for Education, Experience, Research, or Projects. Apply this selection policy during initial generation, compaction, and expansion.
 - Use the one-page space efficiently: expand with additional supported, high-value JD-relevant content when underfilled; remove the weakest or redundant content first when overflowing. Never add filler to occupy space. Highlights must be exact substrings of the generated bullet text and are output only.
 - Keep every field concise enough for a one-page US Letter resume in a fixed 11pt Jake-style template.
 - Use English unless the job description is predominantly French.
@@ -97,9 +106,10 @@ Required JSON shape:
     }
   ],
   "technicalSkills": {
-    "languages": [],
-    "frameworks": [],
-    "developerTools": [],
-    "libraries": []
+    "categories": [
+      { "name": "Languages", "skills": ["Python", "SQL"] },
+      { "name": "Engineering", "skills": ["REST APIs", "Data Structures and Algorithms"] },
+      { "name": "Tools & Systems", "skills": ["Git", "Linux", "Docker"] }
+    ]
   }
 }

@@ -89,6 +89,7 @@ export interface ResumeProfile {
     details?: string;
     bullets?: Array<{ text: string; highlights: string[] }>;
   }>;
+  skillInventory?: string;
   skills: {
     languages: string[];
     frameworks: string[];
@@ -165,7 +166,7 @@ export interface StructuredResume {
     dates: string;
     bullets: Array<string | { text: string; highlights: string[] }>;
   }>;
-  technicalSkills: {
+  technicalSkills: { categories: Array<{ name: string; skills: string[] }> } | {
     languages: string[];
     frameworks: string[];
     developerTools: string[];

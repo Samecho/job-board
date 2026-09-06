@@ -1,3 +1,4 @@
+import { skillCategories } from "./technicalSkills";
 import type { StructuredResume } from "../types";
 
 export const RESUME_JSON_SCHEMA = {
@@ -92,14 +93,18 @@ export const RESUME_JSON_SCHEMA = {
       },
     },
     technicalSkills: {
-      type: "object",
-      additionalProperties: false,
-      required: ["languages", "frameworks", "developerTools", "libraries"],
+      type: "object", additionalProperties: false, required: ["categories"],
       properties: {
-        languages: { type: "array", items: { type: "string" } },
-        frameworks: { type: "array", items: { type: "string" } },
-        developerTools: { type: "array", items: { type: "string" } },
-        libraries: { type: "array", items: { type: "string" } },
+        categories: {
+          type: "array", minItems: 3, maxItems: 5,
+          items: {
+            type: "object", additionalProperties: false, required: ["name", "skills"],
+            properties: {
+              name: { type: "string" },
+              skills: { type: "array", minItems: 1, items: { type: "string" } },
+            },
+          },
+        },
       },
     },
   },
@@ -249,15 +254,34 @@ function validateResume(value: unknown, requireBothExperienceTypes: boolean): St
     };
   });
 
-  const skillValue = exactRecord(root.technicalSkills, "technicalSkills", ["languages", "frameworks", "developerTools", "libraries"]);
-  const technicalSkills = {
-    languages: textArray(skillValue.languages, "technicalSkills.languages"),
-    frameworks: textArray(skillValue.frameworks, "technicalSkills.frameworks"),
-    developerTools: textArray(skillValue.developerTools, "technicalSkills.developerTools"),
-    libraries: textArray(skillValue.libraries, "technicalSkills.libraries"),
-  };
-  if (!Object.values(technicalSkills).some(items => items.length)) throw new Error("technicalSkills must contain at least one skill");
-
+  let technicalSkills: StructuredResume["technicalSkills"];
+  if ("categories" in asRecord(root.technicalSkills, "technicalSkills")) {
+    const value = exactRecord(root.technicalSkills, "technicalSkills", ["categories"]);
+    if (!Array.isArray(value.categories) || value.categories.length < 3 || value.categories.length > 5) {
+      throw new Error("technicalSkills must contain 3-5 categories");
+    }
+    const names = new Set<string>();
+    technicalSkills = { categories: value.categories.map((raw, index) => {
+      const path = `technicalSkills.categories[${index}]`;
+      const group = exactRecord(raw, path, ["name", "skills"]);
+      const name = text(group.name, `${path}.name`, true);
+      if (names.has(name.toLowerCase())) throw new Error("Duplicate Technical Skills category");
+      names.add(name.toLowerCase());
+      const skills = textArray(group.skills, `${path}.skills`);
+      if (!skills.length) throw new Error(`${path} must contain skills`);
+      return { name, skills };
+    }) };
+  } else {
+    // Existing saved versions retain their original four-category representation.
+    const value = exactRecord(root.technicalSkills, "technicalSkills", ["languages", "frameworks", "developerTools", "libraries"]);
+    technicalSkills = {
+      languages: textArray(value.languages, "technicalSkills.languages"),
+      frameworks: textArray(value.frameworks, "technicalSkills.frameworks"),
+      developerTools: textArray(value.developerTools, "technicalSkills.developerTools"),
+      libraries: textArray(value.libraries, "technicalSkills.libraries"),
+    };
+    if (!skillCategories(technicalSkills).some(group => group.skills.length)) throw new Error("technicalSkills must contain at least one skill");
+  }
   return { header, education, experience, projects, technicalSkills };
 }
 
@@ -377,12 +401,12 @@ export function trimLowestPriorityContent(resume: StructuredResume): StructuredR
   const educationWithDetail = [...next.education].reverse().find(item => item.details.length);
   if (educationWithDetail) { educationWithDetail.details.pop(); return next; }
 
-  const skillGroups: Array<keyof StructuredResume["technicalSkills"]> = ["libraries", "developerTools", "frameworks", "languages"];
-  const skillCount = Object.values(next.technicalSkills).reduce((sum, items) => sum + items.length, 0);
-  for (const group of skillGroups) {
-    if (next.technicalSkills[group].length && skillCount > 1) { next.technicalSkills[group].pop(); return next; }
+  const groups = skillCategories(next.technicalSkills);
+  const skillCount = groups.reduce((sum, group) => sum + group.skills.length, 0);
+  for (const group of [...groups].reverse()) {
+    const minimum = "categories" in next.technicalSkills ? 1 : 0;
+    if (group.skills.length > minimum && skillCount > 1) { group.skills.pop(); return next; }
   }
-
   // trim any experience subproject with >1 bullet
   for (const exp of [...next.experience].reverse()) {
     const subs = exp.subprojects || [];
@@ -419,7 +443,7 @@ export function isResumeUnderfilled(resume: StructuredResume, pdfBytes?: Uint8Ar
   const projBullets = resume.projects.reduce((sum, p) => sum + p.bullets.length, 0);
   const totalBullets = expBullets + projBullets;
   const eduDetails = resume.education.reduce((sum, e) => sum + e.details.length, 0);
-  const skillCount = Object.values(resume.technicalSkills).reduce((s, arr) => s + arr.length, 0);
+  const skillCount = skillCategories(resume.technicalSkills).reduce((s, group) => s + group.skills.length, 0);
   // Very dense CS resume typically has 10-16 bullets, 3-6 skills groups
   // If we have < 8 bullets and < 3 details and projects empty, likely underfilled
   // Also use PDF geometry if available: check text length
