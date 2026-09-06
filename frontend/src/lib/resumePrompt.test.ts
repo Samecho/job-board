@@ -1,12 +1,12 @@
 import { expect, it } from "vitest";
 import prompt from "../skills/resume-generation.md?raw";
 
-it("allows bounded JD adaptation consistently across all project contexts", () => {
-  expect(prompt).toContain("rewrite descriptive names");
-  expect(prompt).toContain("work Experience, Research, and standalone Projects");
-  expect(prompt).toContain("implementation-level details may be inferred");
-  expect(prompt).toContain("Do not contradict explicit technologies");
-  expect(prompt).toContain("Do not invent an employer, project, research result");
+it("uses general JD-first judgment without anchoring on sample companies or stacks", () => {
+  expect(prompt).toContain("check coverage of the JD's central languages");
+  expect(prompt).toContain("core requirements from optional or incidental keywords");
+  expect(prompt).toContain("do not assume a universal stack");
   expect(prompt).toContain("omitTitle=true");
-  expect(prompt).not.toContain("Preserve supplied names exactly");
+  expect(prompt).toContain("do not contradict the source");
+  expect(prompt).not.toMatch(/Ericsson|British Columbia|TypeScript|limma|LangChain|30%|1M events/);
+  expect(prompt).not.toContain("Required JSON shape");
 });

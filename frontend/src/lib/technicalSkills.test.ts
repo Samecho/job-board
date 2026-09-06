@@ -49,9 +49,9 @@ it("retains valid nonempty categories during one-page trimming", () => {
 });
 
 it("allows JD-only skills without manufacturing experience claims", () => {
-  expect(prompt).toContain("NOT a hard whitelist");
-  expect(prompt).toContain("even if absent from the inventory");
-  expect(prompt).toContain("skills section ONLY");
-  expect(prompt).toContain("3-5 dynamic, nonempty categories");
-  expect(prompt).toContain("15-25 strong skills");
+  expect(prompt).toContain("not an exhaustive whitelist");
+  expect(prompt).toContain("even when absent from the profile");
+  expect(prompt).toContain("only to the skills list");
+  expect(prompt).toContain("3-5 concise, nonempty categories");
+  expect(prompt).toContain("15-25 useful skills");
 });

@@ -35,13 +35,7 @@ function InternBadge() {
   return <span className="intern-badge" title="Recurring internship or co-op hiring">Intern</span>;
 }
 
-function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply }: {
-  companies: Company[];
-  onUpdate: (company: Company, data: CompanyUpdate) => Promise<void>;
-  onEdit: (company: Company) => void;
-  onResume: (company: Company) => void;
-  onQuickApply: (company: Company) => Promise<void>;
-}) {
+function useOverviewFilters() {
   const [view, setView] = useState<"table" | "cards">("table");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -50,6 +44,18 @@ function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply }: {
   const [internHiring, setInternHiring] = useState("");
   const [sort, setSort] = useState<"tier" | "company">("tier");
   const [descending, setDescending] = useState(false);
+  return { view, setView, search, setSearch, status, setStatus, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending };
+}
+
+function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters }: {
+  filters: ReturnType<typeof useOverviewFilters>;
+  companies: Company[];
+  onUpdate: (company: Company, data: CompanyUpdate) => Promise<void>;
+  onEdit: (company: Company) => void;
+  onResume: (company: Company) => void;
+  onQuickApply: (company: Company) => Promise<void>;
+}) {
+  const { view, setView, search, setSearch, status, setStatus, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending } = filters;
   const tiers = useMemo(() => tierOrder.filter(value => companies.some(company => company.tier === value)), [companies]);
   const categories = useMemo(() => [...new Set(companies.map(company => company.category))].sort(), [companies]);
   const filtered = companies.filter(company =>
@@ -133,6 +139,7 @@ function ResumePage({ profile, settings, resumes, onProfileSave, onSettingsChang
 
 export default function App() {
   const [page, setPage] = useState<Page>("overview");
+  const overviewFilters = useOverviewFilters();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [profile, setProfile] = useState<ResumeProfile | null>(null);
@@ -167,5 +174,5 @@ export default function App() {
   if (error || !analytics || !profile || !settings) return <div className="app-state"><Radar size={34} /><strong>Unable to load local data</strong><p>{error}</p><button className="button primary" onClick={load}>Try again</button></div>;
 
   const nav = [["overview", LayoutDashboard, "Overview"], ["analytics", BarChart3, "Analytics"], ["resume", FileText, "Resume"]] as const;
-  return <div className="shell"><aside><div className="brand"><span><Radar size={23} /></span><div><strong>InternRadar</strong><small>Browser-local tracker</small></div></div><nav>{nav.map(([id, Icon, label]) => <button className={page === id ? "active" : ""} key={id} onClick={() => setPage(id)}><Icon size={19} /><span>{label}</span></button>)}</nav></aside><main><header><div><span className="eyebrow">GitHub Pages ready · browser-local data</span><h1>{page === "overview" ? "Company applications" : page === "analytics" ? "Application analytics" : "Resume studio"}</h1><p>{page === "overview" ? "Track companies, applications, notes, links, and resume versions." : page === "analytics" ? "A simple view of your application pipeline." : "Maintain your master profile, AI settings, backups, and generated resumes."}</p></div></header>{page === "overview" && <Overview companies={companies} onUpdate={updateCompany} onEdit={setEditing} onResume={setResumeCompany} onQuickApply={quickApply} />}{page === "analytics" && <AnalyticsPage analytics={analytics} />}{page === "resume" && <ResumePage profile={profile} settings={settings} resumes={resumes} onProfileSave={async data => setProfile(await api.updateProfile(data))} onSettingsChanged={load} onDelete={async resume => { if (confirm(`Delete ${resume.resume_name}?`)) { await api.deleteResume(resume.id); await load(); } }} onExport={async () => downloadBlob(await api.exportBackup(), `InternRadar-backup-${new Date().toISOString().slice(0, 10)}.zip`)} onImport={async file => { await api.importBackup(file); await load(); }} />}</main>{editing && <CompanyModal company={editing} onClose={() => setEditing(null)} onSave={data => updateCompany(editing, data)} />}{resumeCompany && <ResumeModal company={resumeCompany} features={features} onClose={() => setResumeCompany(null)} onSaved={load} />}</div>;
+  return <div className="shell"><aside><div className="brand"><span><Radar size={23} /></span><div><strong>InternRadar</strong><small>Browser-local tracker</small></div></div><nav>{nav.map(([id, Icon, label]) => <button className={page === id ? "active" : ""} key={id} onClick={() => setPage(id)}><Icon size={19} /><span>{label}</span></button>)}</nav></aside><main><header><div><span className="eyebrow">GitHub Pages ready · browser-local data</span><h1>{page === "overview" ? "Company applications" : page === "analytics" ? "Application analytics" : "Resume studio"}</h1><p>{page === "overview" ? "Track companies, applications, notes, links, and resume versions." : page === "analytics" ? "A simple view of your application pipeline." : "Maintain your master profile, AI settings, backups, and generated resumes."}</p></div></header>{page === "overview" && <Overview filters={overviewFilters} companies={companies} onUpdate={updateCompany} onEdit={setEditing} onResume={setResumeCompany} onQuickApply={quickApply} />}{page === "analytics" && <AnalyticsPage analytics={analytics} />}{page === "resume" && <ResumePage profile={profile} settings={settings} resumes={resumes} onProfileSave={async data => setProfile(await api.updateProfile(data))} onSettingsChanged={load} onDelete={async resume => { if (confirm(`Delete ${resume.resume_name}?`)) { await api.deleteResume(resume.id); await load(); } }} onExport={async () => downloadBlob(await api.exportBackup(), `InternRadar-backup-${new Date().toISOString().slice(0, 10)}.zip`)} onImport={async file => { await api.importBackup(file); await load(); }} />}</main>{editing && <CompanyModal company={editing} onClose={() => setEditing(null)} onSave={data => updateCompany(editing, data)} />}{resumeCompany && <ResumeModal company={resumeCompany} features={features} onClose={() => setResumeCompany(null)} onSaved={load} />}</div>;
 }

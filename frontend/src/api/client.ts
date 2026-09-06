@@ -444,11 +444,11 @@ async function callGlm(settings: AiSettings, messages: Array<{ role: "system" | 
 
 async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<StructuredResume> {
   const messages: Array<{ role: "system" | "user"; content: string }> = [
-    { role: "system", content: resumeSkill },
+    { role: "system", content: `${resumeSkill}\n\nOutput JSON Schema:\n${JSON.stringify(RESUME_JSON_SCHEMA)}` },
     { role: "user", content: userPrompt },
   ];
   const raw = settings.provider === "gemini"
-    ? await callGemini(settings, `${resumeSkill}\n\n${userPrompt}`, true)
+    ? await callGemini(settings, `${messages[0].content}\n\n${userPrompt}`, true)
     : settings.provider === "glm"
       ? await callGlm(settings, messages)
       : await callOpenAi(settings, messages, true);
