@@ -163,7 +163,7 @@ function subprojectArray(value: unknown, path: string): Array<{ name: string; bu
   if (!value.length) throw new Error(`${path} must contain at least one subproject`);
   return value.map((item, index) => {
     const rec = exactRecord(item, `${path}[${index}]`, ["name", "bullets"]);
-    const name = text(rec.name, `${path}[${index}].name`, true);
+    const name = text(rec.name, `${path}[${index}].name`);
     if (!Array.isArray(rec.bullets) || !rec.bullets.length) throw new Error(`${path}[${index}].bullets must contain at least one bullet`);
     const bullets = (rec.bullets as unknown[]).map((b, bi) => {
       // handle legacy string bullet inside subproject

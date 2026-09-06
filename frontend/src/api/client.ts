@@ -1,3 +1,4 @@
+import { preserveSubprojectTitles } from "../lib/subprojectTitles";
 import { profileDetails } from "../lib/profileDetails";
 import { COMPANY_CATALOG } from "../data/catalog";
 import resumeSkill from "../skills/resume-generation.md?raw";
@@ -455,7 +456,7 @@ async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<S
 // Archived bullet/highlight fields remain in storage, but only current raw notes go to AI.
 function profileSource(profileData: ResumeProfile) {
   const sourceEntry = (entry: ResumeProfile["workExperiences"][number] | ResumeProfile["researchExperiences"][number]) => ({
-    ...entry, subprojects: entry.subprojects.map(sub => ({ name: sub.name, details: profileDetails(sub) })),
+    ...entry, subprojects: entry.subprojects.map(sub => ({ name: sub.omitTitle ? "" : sub.name, omitTitle: !!sub.omitTitle || !sub.name.trim(), details: profileDetails(sub) })),
   });
   const { experience_text, research_text, projects_text, ...source } = profileData;
   return { ...source,
@@ -473,7 +474,7 @@ function compactionPrompt(resume: StructuredResume, app: Application, pageCount:
 }
 
 async function renderOnePageResume(settings: AiSettings, app: Application, initial: StructuredResume, profileData: ResumeProfile, extraInstructions: string) {
-  let structuredResume = initial;
+  let structuredResume = preserveSubprojectTitles(initial, profileData);
   let texSource = renderResumeLatex(structuredResume);
   let compilation = await compileResumeLatex(texSource);
 
@@ -485,7 +486,7 @@ async function renderOnePageResume(settings: AiSettings, app: Application, initi
 
   for (let attempt = 1; attempt <= 2 && compilation.pageCount > 1; attempt += 1) {
     try {
-      const compacted = await callResumeAi(settings, compactionPrompt(structuredResume, app, compilation.pageCount, attempt));
+      const compacted = preserveSubprojectTitles(await callResumeAi(settings, compactionPrompt(structuredResume, app, compilation.pageCount, attempt)), profileData);
       const compactedTex = renderResumeLatex(compacted);
       const compactedCompilation = await compileResumeLatex(compactedTex);
       if (compactedCompilation.pageCount <= compilation.pageCount) {
@@ -535,10 +536,10 @@ async function tryExpandToFill(
   // Probe spare capacity with small, source-grounded additions; never save an overflowing probe.
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const expanded = await callResumeAi(settings, `${generationPrompt(profileData, app, extraInstructions)}
+      const expanded = preserveSubprojectTitles(await callResumeAi(settings, `${generationPrompt(profileData, app, extraInstructions)}
 The current resume fits one page. Check whether unused source material offers a genuinely stronger, JD-relevant contribution. If so, add only a small amount of high-value content (a concise bullet or a useful detail), keeping existing strong content and assigning it to the correct named subproject. Do not add filler, repeat claims, or pad skills. Return the current JSON unchanged if no worthwhile addition exists. There is no per-subproject bullet quota. This is capacity probe ${attempt + 1}.
 Current structured resume:
-${JSON.stringify(best)}`);
+${JSON.stringify(best)}`), profileData);
       if (JSON.stringify(expanded) === JSON.stringify(best)) break;
       const texSource = renderResumeLatex(expanded);
       const compilation = await compileResumeLatex(texSource);

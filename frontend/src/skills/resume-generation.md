@@ -5,6 +5,7 @@ Use only facts supported by the user's master resume profile. Read the target jo
 The application owns all layout. You control content only. Do not output LaTeX, Markdown, prose, analysis, scores, warnings, comments, confirmation requests, or internal reasoning. Return exactly one JSON object matching the supplied schema, with no code fence and no extra keys.
 
 Hierarchy rules (critical):
+- Subproject names are optional. If the source name is blank or omitTitle is true, return name="" for its generated subproject. Never invent a title, use a placeholder, merge it into a titled subproject, or promote a bullet into a heading. Its bullets render directly under the parent role. Preserve supplied names exactly. Keep this rule during compaction and expansion.
 - `experience[].title` = the real role title exactly as in Profile (e.g., "Automation Co-op, MLOps and Agentic AI" or "Undergraduate Researcher" / actual research title). NEVER replace it with a project name.
 - `experience[].organization` = employer or university (e.g., "Ericsson", "University of British Columbia").
 - `experience[].subprojects[].name` = named project/workstream completed inside that role (e.g., "Agentic Operations Intelligence Platform", "TR Impact Analyzer", or a research project name). This appears as a bold subheading under the role.

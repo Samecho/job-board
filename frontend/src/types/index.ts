@@ -63,6 +63,7 @@ export interface ResumeProfile {
     isCurrent: boolean;
     subprojects: Array<{
       name: string;
+      omitTitle?: boolean;
       details?: string;
     bullets?: Array<{ text: string; highlights: string[] }>;
     }>;
@@ -76,6 +77,7 @@ export interface ResumeProfile {
     isCurrent: boolean;
     subprojects: Array<{
       name: string;
+      omitTitle?: boolean;
       details?: string;
     bullets?: Array<{ text: string; highlights: string[] }>;
     }>;

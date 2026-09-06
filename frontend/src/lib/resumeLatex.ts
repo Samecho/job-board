@@ -132,7 +132,7 @@ function experienceSection(resume: StructuredResume): string {
     let body = "";
     if (subs?.length) {
       const subBlocks = subs.map(sub => {
-        const title = sub.name ? `  \\resumeSubproject{${escapeLatex(sub.name)}}` : "";
+        const title = sub.name?.trim() ? `  \\resumeSubproject{${escapeLatex(sub.name)}}` : "";
         const list = bulletList(sub.bullets).replace(/\n/g, "\n  ");
         return [title, list ? `  ${list}` : ""].filter(Boolean).join("\n");
       }).join("\n");

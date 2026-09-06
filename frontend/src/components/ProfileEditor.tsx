@@ -40,11 +40,12 @@ function ListField({ label, value, onChange, placeholder }: {
 type ProfileSubproject = ResumeProfileUpdate["workExperiences"][number]["subprojects"][number];
 
 function SubprojectsEditor({ subprojects, onChange }: { subprojects: ProfileSubproject[]; onChange: (value: ProfileSubproject[]) => void }) {
+  const id = useId();
   const update = (index: number, patch: Partial<ProfileSubproject>) => onChange(subprojects.map((subproject, i) => i === index ? { ...subproject, ...patch } : subproject));
   return <div className="profile-subprojects">
     {subprojects.map((subproject, index) => <section className="profile-subproject-card" key={index} aria-label={`Subproject ${index + 1}`}>
       <div className="profile-entry-heading"><span>Subproject {index + 1}</span><RemoveButton label="Remove subproject" onClick={() => onChange(subprojects.filter((_, i) => i !== index))} /></div>
-      <label className="profile-field"><span>Subproject name</span><input value={subproject.name} placeholder="e.g. Deployment automation" onChange={event => update(index, { name: event.target.value })} /></label>
+      <div className="profile-field"><div className="profile-entry-heading"><label htmlFor={`${id}-${index}`}>Subproject name (optional)</label><button type="button" className="profile-remove" aria-pressed={!!subproject.omitTitle} onClick={() => update(index, { name: "", omitTitle: true })}>No subproject title</button></div><input id={`${id}-${index}`} value={subproject.omitTitle ? "" : subproject.name} placeholder={subproject.omitTitle ? "" : "e.g. Deployment automation"} onChange={event => update(index, { name: event.target.value, omitTitle: !event.target.value.trim() })} /></div>
       <label className="profile-field"><span>Details / What I did</span><textarea className="profile-details" rows={8} value={profileDetails(subproject)} placeholder="Describe your work freely: tasks, architecture, technologies, challenges, results, and metrics. AI will select and write the resume bullets for each job." onChange={event => update(index, { details: event.target.value })} /></label>
     </section>)}
     <AddButton onClick={() => onChange([...subprojects, { name: "", details: "" }])}>Add subproject</AddButton>
