@@ -108,6 +108,8 @@ const browserErrors = [];
 const failedRequests = [];
 const networkRequests = [];
 let aiRequestCount = 0;
+let releaseGeneration;
+const generationGate = new Promise(resolve => { releaseGeneration = resolve; });
 page.on("console", message => { if (message.type() === "error") browserErrors.push(message.text()); });
 page.on("pageerror", error => browserErrors.push(error.message));
 page.on("request", request => networkRequests.push(`${request.method()} ${request.url()}`));
@@ -120,6 +122,7 @@ await page.route("https://api.openai.com/**", async route => {
     return;
   }
   aiRequestCount += 1;
+  if (aiRequestCount === 1) await generationGate;
   await route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -129,7 +132,7 @@ await page.route("https://api.openai.com/**", async route => {
 });
 
 try {
-  await page.goto("http://127.0.0.1:4173/", { waitUntil: "networkidle" });
+  await page.goto(process.env.TEST_URL || "http://127.0.0.1:4173/", { waitUntil: "networkidle" });
   await page.evaluate(async ({ profile }) => {
     const database = await new Promise((resolve, reject) => {
       const request = indexedDB.open("internradar-browser", 3);
@@ -196,6 +199,18 @@ try {
   await page.getByLabel("Job title").fill("Software Engineer Intern");
   await page.getByLabel("Job description").fill("Build reliable distributed backend services and infrastructure in Go, Kubernetes, PostgreSQL, and Terraform. Improve observability, latency, and production reliability.");
   await page.getByRole("button", { name: "Generate new version" }).click();
+  await page.locator(".resume-modal .modal-head .icon-button").click();
+  await page.locator("nav").getByRole("button", { name: "Analytics", exact: true }).click();
+  const runningStatus = page.getByRole("button", { name: "Jane Street: Generating resume...", exact: true });
+  await runningStatus.waitFor();
+  await runningStatus.click();
+  const runningButton = page.getByRole("button", { name: "Tailoring and compiling...", exact: true });
+  await runningButton.waitFor();
+  if (!await runningButton.isDisabled()) throw new Error("Reopened modal allows duplicate generation");
+  await page.locator(".resume-modal .modal-head .icon-button").click();
+  await page.locator("nav").getByRole("button", { name: "Overview", exact: true }).click();
+  await runningStatus.click();
+  releaseGeneration();
   await Promise.race([
     page.getByText("Version 1", { exact: true }).waitFor({ timeout: 180_000 }),
     page.locator(".resume-output .inline-error").waitFor({ timeout: 180_000 }).then(async () => { throw new Error(await page.locator(".resume-output .inline-error").innerText()); }),

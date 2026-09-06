@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { getGenerationTasks, subscribeGeneration, runResumeGeneration } from "../lib/resumeGeneration";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Download, Eye, FileCode2, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "../api/client";
 import { downloadBlob } from "../lib/resumeFiles";
@@ -15,6 +16,7 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
 }) {
   const [apps, setApps] = useState<Application[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [versionRevision, setVersionRevision] = useState(0);
   const [versions, setVersions] = useState<ResumeVersionRead[]>([]);
   const [form, setForm] = useState({ job_title: "", job_description: "", notes: "", application_stage: "Applied" as ApplicationStage });
   const [extraInstructions, setExtraInstructions] = useState("");
@@ -23,6 +25,9 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewName, setPreviewName] = useState("");
 
+  const tasks = useSyncExternalStore(subscribeGeneration, getGenerationTasks);
+  const task = tasks.find(item => item.companyId === company.id);
+  const generating = task?.status === "running";
   const selected = apps.find(app => app.id === selectedId) || null;
   const aiAvailable = features?.ai_enabled && features.ai_configured;
 
@@ -33,10 +38,17 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
     setApps(nextApps);
     const id = nextId ?? nextApps[0]?.id ?? null;
     setSelectedId(id);
-    setVersions(id ? await api.resumeVersions(id) : []);
+    setVersionRevision(value => value + 1);
+
   };
 
-  useEffect(() => { load(); }, [company.id]);
+  useEffect(() => { load(selectedId ?? task?.applicationId ?? null); }, [company.id, task]);
+  useEffect(() => {
+    let active = true;
+    setVersions([]);
+    if (selectedId) api.resumeVersions(selectedId).then(items => { if (active) setVersions(items); }).catch(reason => { if (active) setError(String(reason)); });
+    return () => { active = false; };
+  }, [selectedId, task, versionRevision]);
   useEffect(() => {
     if (!selected) return setForm({ job_title: "", job_description: "", notes: "", application_stage: "Applied" });
     setForm({
@@ -66,8 +78,8 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
   };
 
   const generate = async () => {
-    setBusy("generate"); setError("");
-    try {
+    setError("");
+    await runResumeGeneration(company, async () => {
       let app = selected;
       if (!app) {
         app = await api.createApplication({ company_id: company.id, job_title: form.job_title, job_description: form.job_description, notes: form.notes });
@@ -75,12 +87,10 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
       } else {
         app = await api.updateApplication(app.id, form);
       }
-      await api.generateResumeVersion(app.id, extraInstructions);
-      await load(app.id); await onSaved();
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Generation failed"); }
-    finally { setBusy(""); }
+      return app.id;
+    }, id => api.generateResumeVersion(id, extraInstructions));
+    await onSaved();
   };
-
   const preview = async (version: ResumeVersionRead) => {
     const record = await api.getResumeVersion(version.id);
     if (!record?.pdf_file) return;
@@ -125,13 +135,14 @@ export function ResumeModal({ company, features, onClose, onSaved }: {
             <label>Job description<textarea rows={10} value={form.job_description} onChange={event => setForm(current => ({ ...current, job_description: event.target.value }))} placeholder="Paste the full JD here..." /></label>
             <label>Application stage<select value={form.application_stage} onChange={event => setForm(current => ({ ...current, application_stage: event.target.value as ApplicationStage }))}>{stages.map(stage => <option key={stage}>{stage}</option>)}</select></label>
             <label>Notes<textarea rows={3} value={form.notes} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} /></label>
-            <div className="resume-actions"><button className="button ghost" disabled={busy === "save"} onClick={saveApplication}>{busy === "save" ? "Saving..." : "Save application"}</button>{selected && <button className="button ghost delete" onClick={deleteApplication}>Delete application</button>}</div>
+            <div className="resume-actions"><button className="button ghost" disabled={busy === "save" || generating} onClick={saveApplication}>{busy === "save" ? "Saving..." : "Save application"}</button>{selected && <button className="button ghost delete" disabled={generating} onClick={deleteApplication}>Delete application</button>}</div>
           </div>
           <div className="resume-output">
             <label>Extra instructions<textarea rows={4} value={extraInstructions} onChange={event => setExtraInstructions(event.target.value)} placeholder="Optional truthful tailoring preferences..." /></label>
             {!aiAvailable && <p className="inline-error">Save AI settings before generating resumes.</p>}
             <p className="compiler-note">Generation compiles a locked Jake-style LaTeX template locally in your browser. The first run downloads the TeX engine assets.</p>
-            <button className="button primary" disabled={!aiAvailable || form.job_description.trim().length < 20 || busy === "generate"} onClick={generate}><Sparkles size={15} /> {busy === "generate" ? "Tailoring and compiling..." : "Generate new version"}</button>
+            <button className="button primary" disabled={!aiAvailable || form.job_description.trim().length < 20 || generating} onClick={generate}><Sparkles size={15} /> {generating ? "Tailoring and compiling..." : "Generate new version"}</button>
+            {task && <p role="status" className={task.status === "failed" ? "inline-error" : "compiler-note"}>{generating ? "Generating resume. You can leave this view and return; keep this browser tab open." : task.status === "completed" ? "Resume generation completed. Your new version has been saved." : `Generation failed: ${task.error}`}</p>}
             {error && <p className="inline-error">{error}</p>}
             <div className="resume-history"><span className="eyebrow">Resume versions</span>{versions.length ? versions.map(version => <article key={version.id}><div><strong>Version {version.version_number}</strong><span>{version.provider} · {version.model} · {new Date(version.created_at).toLocaleString()}</span></div><div><button onClick={() => preview(version)}><Eye size={13} /> Preview PDF</button><button onClick={() => download(version, "pdf")}><Download size={13} /> PDF</button><button onClick={() => download(version, "tex")}><FileCode2 size={13} /> .tex</button><button className="delete" onClick={() => deleteVersion(version)}><Trash2 size={13} /> Delete</button></div></article>) : <p>No resume versions for this application yet.</p>}</div>
           </div>
