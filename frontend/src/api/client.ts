@@ -456,7 +456,7 @@ async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<S
 // Archived bullet/highlight fields remain in storage, but only current raw notes go to AI.
 function profileSource(profileData: ResumeProfile) {
   const sourceEntry = (entry: ResumeProfile["workExperiences"][number] | ResumeProfile["researchExperiences"][number]) => ({
-    ...entry, subprojects: entry.subprojects.map(sub => ({ name: sub.omitTitle ? "" : sub.name, omitTitle: !!sub.omitTitle || !sub.name.trim(), details: profileDetails(sub) })),
+    ...entry, subprojects: entry.subprojects.map(sub => ({ name: sub.omitTitle ? "" : sub.name, omitTitle: !!sub.omitTitle, details: profileDetails(sub) })),
   });
   const { experience_text, research_text, projects_text, ...source } = profileData;
   return { ...source,
@@ -486,7 +486,7 @@ async function renderOnePageResume(settings: AiSettings, app: Application, initi
 
   for (let attempt = 1; attempt <= 2 && compilation.pageCount > 1; attempt += 1) {
     try {
-      const compacted = preserveSubprojectTitles(await callResumeAi(settings, compactionPrompt(structuredResume, app, compilation.pageCount, attempt)), profileData);
+      const compacted = preserveSubprojectTitles(await callResumeAi(settings, `${generationPrompt(profileData, app, extraInstructions)}\n\n${compactionPrompt(structuredResume, app, compilation.pageCount, attempt)}`), profileData);
       const compactedTex = renderResumeLatex(compacted);
       const compactedCompilation = await compileResumeLatex(compactedTex);
       if (compactedCompilation.pageCount <= compilation.pageCount) {
