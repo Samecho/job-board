@@ -1,3 +1,4 @@
+import type { ReasoningEffort } from "../lib/aiModels";
 export type CompanyStatus = "Not Applied" | "Applied";
 export type ApplicationStage = "Applied" | "OA" | "Interview" | "Rejected" | "Offer";
 export type AiProvider = "openai" | "gemini" | "glm";
@@ -117,6 +118,7 @@ export interface AiSettings {
   provider: AiProvider;
   api_key: string;
   model: string;
+  reasoning_effort?: ReasoningEffort;
   updated_at: string;
 }
 
@@ -174,17 +176,26 @@ export interface StructuredResume {
   };
 }
 
+export interface AiUsage {
+  input_tokens: number;
+  output_tokens: number;
+  reasoning_tokens: number;
+  estimated_usd: number;
+  price_checked: string;
+}
 export interface ResumeVersion {
   id: number;
   application_id: number;
   company_id: number;
   version_number: number;
   structured_resume: StructuredResume;
+  ai_usage?: AiUsage;
   tex_source: string;
   pdf_file: Blob;
   docx_file?: Blob;
   provider: string;
   model: string;
+  reasoning_effort?: ReasoningEffort;
   created_at: string;
 }
 
@@ -196,8 +207,10 @@ export interface ResumeVersionRead {
   job_title: string;
   version_number: number;
   structured_resume: StructuredResume;
+  ai_usage?: AiUsage;
   provider: string;
   model: string;
+  reasoning_effort?: ReasoningEffort;
   created_at: string;
 }
 

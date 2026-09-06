@@ -1,3 +1,5 @@
+import { OPENAI_MODELS, defaultEffort, modelInfo, priceLabel, scenarioCost, PRICE_CHECKED, PRICE_VALID_UNTIL } from "./lib/aiModels";
+import type { ReasoningEffort } from "./lib/aiModels";
 import { getGenerationTasks, subscribeGeneration, dismissGeneration } from "./lib/resumeGeneration";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
@@ -22,11 +24,7 @@ const providerOptions: Array<{ value: AiProvider; label: string; models: Array<{
   {
     value: "openai",
     label: "OpenAI",
-    models: [
-      { value: "gpt-5.6-sol", label: "GPT-5.6 Sol (Max)" },
-      { value: "gpt-5.6-terra", label: "GPT-5.6 Terra (Max)" },
-      { value: "gpt-5.6-luna", label: "GPT-5.6 Luna (Max)" },
-    ],
+    models: OPENAI_MODELS.map(model => ({ value: model.id, label: priceLabel(model) })),
   },
   { value: "gemini", label: "Gemini", models: [{ value: "gemini-3.8-flash", label: "Gemini 3.8 Flash" }] },
   { value: "glm", label: "GLM", models: [{ value: "glm-5.3-flash", label: "GLM-5.3-Flash" }] },
@@ -99,13 +97,13 @@ function AiSettingsPanel({ settings, onSave }: { settings: AiSettings; onSave: (
   const models = providerOptions.find(option => option.value === form.provider)?.models || providerOptions[0].models;
   const setProvider = (provider: AiProvider) => {
     const model = providerOptions.find(option => option.value === provider)?.models[0].value || "gpt-5.6-sol";
-    setForm(current => ({ ...current, provider, model }));
+    setForm(current => ({ ...current, provider, model, reasoning_effort: defaultEffort(model) }));
     setMessage("");
   };
-  const save = async () => { await api.saveAiSettings(form); setMessage("Saved"); await onSave(); };
+  const save = async () => { try { await api.saveAiSettings(form); setMessage("Saved"); await onSave(); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Save failed"); } };
   const remove = async () => { const next = await api.removeAiKey(); setForm(next); setMessage("Key removed"); await onSave(); };
   const test = async () => { setMessage("Testing..."); try { await api.testAiConnection(form); setMessage("Connection OK"); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Test failed"); } };
-  return <section className="content-panel ai-settings"><div className="toolbar"><div><span className="eyebrow">AI settings</span><h2>Resume generation provider</h2></div><div className="resume-actions"><button className="button ghost" onClick={test}>Test Connection</button><button className="button primary" onClick={save}>Save</button><button className="button ghost" onClick={remove}>Remove Key</button></div></div><div className="profile-grid"><label>Provider<select value={form.provider} onChange={event => setProvider(event.target.value as AiProvider)}>{providerOptions.map(provider => <option key={provider.value} value={provider.value}>{provider.label}</option>)}</select></label><label>Model<select value={form.model} onChange={event => setForm(current => ({ ...current, model: event.target.value }))}>{models.map(model => <option key={model.value} value={model.value}>{model.label}</option>)}</select></label><label className="ai-key-field">API Key<input type="password" value={form.api_key} onChange={event => setForm(current => ({ ...current, api_key: event.target.value }))} autoComplete="off" /></label>{message && <p className="inline-error ai-settings-message">{message}</p>}</div></section>;
+  return <section className="content-panel ai-settings"><div className="toolbar"><div><span className="eyebrow">AI settings</span><h2>Resume generation provider</h2></div><div className="resume-actions"><button className="button ghost" onClick={test}>Test Connection</button><button className="button primary" onClick={save}>Save</button><button className="button ghost" onClick={remove}>Remove Key</button></div></div><div className="profile-grid"><label>Provider<select value={form.provider} onChange={event => setProvider(event.target.value as AiProvider)}>{providerOptions.map(provider => <option key={provider.value} value={provider.value}>{provider.label}</option>)}</select></label><label>Model<select value={form.model} onChange={event => setForm(current => ({ ...current, model: event.target.value, reasoning_effort: defaultEffort(event.target.value) }))}>{!models.some(model => model.value === form.model) && <option value={form.model}>{form.model} (unsupported; choose a listed model)</option>}{models.map(model => <option key={model.value} value={model.value}>{form.provider === "openai" ? priceLabel(modelInfo(model.value)!, modelInfo(model.value)!.efforts.includes(form.reasoning_effort!) ? form.reasoning_effort : defaultEffort(model.value)) : model.label}</option>)}</select></label>{form.provider === "openai" && <label>Reasoning<select value={form.reasoning_effort ?? defaultEffort(form.model)} onChange={event => setForm(current => ({ ...current, reasoning_effort: event.target.value as ReasoningEffort }))}>{modelInfo(form.model)?.efforts.map(effort => <option key={effort} value={effort}>{effort} (est. ${scenarioCost(modelInfo(form.model)!, effort).toFixed(4)}{scenarioCost(modelInfo(form.model)!, effort) > 0.05 ? "; over $0.05 example" : ""})</option>)}</select></label>}<label className="ai-key-field">API Key<input type="password" value={form.api_key} onChange={event => setForm(current => ({ ...current, api_key: event.target.value }))} autoComplete="off" /></label><p className="helper-text ai-settings-message">US$0.05 API budget per click. One generation call; no automatic retries or AI expansion. Estimates use 6,000 input tokens plus a reasoning-specific output allowance (including thinking), not a guaranteed bill. Actual input is counted before generation; over-budget requests are blocked without switching your model. Higher reasoning can run out of budget before returning JSON.</p><p className="helper-text ai-settings-message">Prices checked {PRICE_CHECKED}, valid until {PRICE_VALID_UNTIL}; standard API rates, excluding tax and payment fees. Value picks are cost-based suggestions, not quality benchmarks. <a href="https://developers.openai.com/api/docs/pricing" target="_blank" rel="noreferrer">Official pricing</a>. Model access depends on your API account. Gemini/GLM settings remain saved, but generation is blocked until budget checks are supported.</p>{message && <p className="inline-error ai-settings-message">{message}</p>}</div></section>;
 }
 
 function ResumePage({ profile, settings, resumes, onProfileSave, onSettingsChanged, onDelete, onExport, onImport }: {

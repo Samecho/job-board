@@ -53,7 +53,7 @@ const profile = {
 describe("resume version persistence", () => {
   beforeEach(async () => {
     await deleteDatabase();
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ output_text: JSON.stringify(completeResume) }), {
+    vi.stubGlobal("fetch", vi.fn(async url => new Response(JSON.stringify(String(url).endsWith("/input_tokens") ? { object: "response.input_tokens", input_tokens: 3000 } : { status: "completed", output_text: JSON.stringify(completeResume), usage: { input_tokens: 3000, output_tokens: 2300, output_tokens_details: { reasoning_tokens: 200 } } }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     })));
@@ -65,7 +65,7 @@ describe("resume version persistence", () => {
   });
 
   it("creates immutable v1/v2 records, exports PDF plus TeX, and deletes only one version", async () => {
-    await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-sol", api_key: "browser-local-test-key" });
+    await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-luna", api_key: "browser-local-test-key" });
     await api.updateProfile(profile);
     const application = await api.createApplication({
       company_id: 1,
@@ -107,7 +107,7 @@ describe("resume version persistence", () => {
     migrated.workExperiences[0].subprojects[0].details = notes;
     await api.updateProfile(migrated);
     expect((await api.profile()).workExperiences[0].subprojects[0].details).toBe(notes);
-    await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-sol", api_key: "test-local" });
+    await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-luna", api_key: "test-local" });
     const app = await api.createApplication({ company_id: 1, job_title: "Backend Intern", job_description: "Go queues", notes: "" });
     await api.generateResumeVersion(app.id, "Prioritize reliability");
     const requestBodies = vi.mocked(fetch).mock.calls.map(call => String(call[1]?.body));
@@ -128,18 +128,45 @@ describe("resume version persistence", () => {
     expect(migrated.projects[0].details).toBe(legacy.projects_text);
     expect(await api.profile()).toEqual(migrated);
   });
-  it("keeps the verified one-page version when an AI expansion overflows", async () => {
+  it("fits overflow locally with only one generation request", async () => {
     await api.updateProfile(profile);
-    await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-sol", api_key: "test-local" });
+    await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-luna", reasoning_effort: "low", api_key: "test-local" });
     const app = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "Go", notes: "" });
-    const expanded = structuredClone(completeResume);
-    expanded.education[0].details.push("Additional source-grounded content");
-    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(completeResume) })))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(expanded) })));
     const onePage = { pdfFile: new Blob(["pdf"], { type: "application/pdf" }), pdfBytes: new Uint8Array(), pageCount: 1, log: "ok" };
-    vi.mocked(compileResumeLatex).mockResolvedValueOnce(onePage).mockResolvedValueOnce({ ...onePage, pageCount: 2 });
+    vi.mocked(compileResumeLatex).mockResolvedValueOnce({ ...onePage, pageCount: 2 }).mockResolvedValueOnce(onePage);
     await api.generateResumeVersion(app.id, "");
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(2);
+    const paid = vi.mocked(fetch).mock.calls.filter(call => String(call[0]).endsWith("/responses"));
+    expect(paid).toHaveLength(1);
+    const body = JSON.parse(String(paid[0][1]?.body));
+    expect(body.model).toBe("gpt-5.6-luna");
+    expect(body.reasoning.effort).toBe("low");
+    expect(body.max_output_tokens).toBe(4500);
+    expect(body.service_tier).toBe("default");
     const versions = await api.resumeVersions(app.id);
-    expect(versions).toHaveLength(1);
-    expect((await api.getResumeVersion(versions[0].id))?.tex_source).not.toContain("Additional source-grounded content");
-  });});
+    expect(versions[0].ai_usage?.output_tokens).toBe(2300);
+    expect(versions[0].reasoning_effort).toBe("low");
+  });
+
+  it("blocks an expensive selection without substituting a model or sending a request", async () => {
+    await api.saveAiSettings({ provider: "openai", model: "gpt-6-astra", reasoning_effort: "max", api_key: "test-local" });
+    const app = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "Go", notes: "" });
+    await expect(api.generateResumeVersion(app.id, "")).rejects.toThrow("$0.05");
+    expect(fetch).not.toHaveBeenCalled();
+    expect((await api.aiSettings()).model).toBe("gpt-6-astra");
+  });
+
+  it("fails closed if counting fails and never retries an incomplete paid response", async () => {
+    await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-luna", api_key: "test-local" });
+    const app = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "Go", notes: "" });
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("Unavailable", { status: 503 }));
+    await expect(api.generateResumeVersion(app.id, "")).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    vi.mocked(fetch).mockClear();
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ object: "response.input_tokens", input_tokens: 1000 })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, usage: { input_tokens: 1000, output_tokens: 4500 } })));
+    await expect(api.generateResumeVersion(app.id, "")).rejects.toThrow("No automatic retry");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(await api.resumeVersions(app.id)).toHaveLength(0);
+  });
+});

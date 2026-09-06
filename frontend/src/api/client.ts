@@ -1,10 +1,11 @@
+import { OPENAI_MODELS, budgetPlan, modelInfo, defaultEffort, PRICE_CHECKED } from "../lib/aiModels";
 import { masterSkills } from "../lib/technicalSkills";
 import { preserveSubprojectTitles } from "../lib/subprojectTitles";
 import { profileDetails } from "../lib/profileDetails";
 import { COMPANY_CATALOG } from "../data/catalog";
 import resumeSkill from "../skills/resume-generation.md?raw";
 import type {
-  AiSettings, Analytics, Application, ApplicationStage, Company, CompanyState,
+  AiSettings, AiUsage, Analytics, Application, ApplicationStage, Company, CompanyState,
   CompanyUpdate, FeatureStatus, GeneratedResume, ResumeProfile, ResumeProfileUpdate,
   ResumeVersion, ResumeVersionRead, StructuredResume,
 } from "../types";
@@ -27,13 +28,13 @@ const COMPANY_ID_ALIASES: Record<number, number> = {
 const stages: ApplicationStage[] = ["Applied", "OA", "Interview", "Rejected", "Offer"];
 const tierOrder = ["S+", "S", "A+", "A", "B+", "B", "C", "D"];
 const providerModels = {
-  openai: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"],
+  openai: OPENAI_MODELS.map(model => model.id),
   gemini: ["gemini-3.8-flash"],
   glm: ["glm-5.3-flash"],
 } as const;
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
-const GLM_CHAT_URL = "https://api.z.ai/api/paas/v4/chat/completions";
+
+
 
 function now() { return new Date().toISOString(); }
 function slug(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item"; }
@@ -248,7 +249,7 @@ function migrateProfileData(raw: Record<string, unknown>): ResumeProfile {
 }
 
 function defaultAiSettings(): AiSettings {
-  return { provider: "openai", api_key: "", model: "gpt-5.6-sol", updated_at: now() };
+  return { provider: "openai", api_key: "", model: "gpt-5.6-luna", reasoning_effort: "low", updated_at: now() };
 }
 
 function normalizeAiSettings(value?: Partial<AiSettings> & { provider?: string }): AiSettings {
@@ -256,10 +257,12 @@ function normalizeAiSettings(value?: Partial<AiSettings> & { provider?: string }
   const legacyProvider = value?.provider as string | undefined;
   const provider = legacyProvider === "gemini" ? "gemini" : legacyProvider === "glm" || legacyProvider === "glm-compatible" ? "glm" : "openai";
   const allowedModels = providerModels[provider] as readonly string[];
+  const selectedModel = typeof value?.model === "string" && value.model ? value.model : allowedModels[0];
   return {
     provider,
     api_key: typeof value?.api_key === "string" ? value.api_key : "",
-    model: typeof value?.model === "string" && allowedModels.includes(value.model) ? value.model : allowedModels[0],
+    model: selectedModel,
+    reasoning_effort: value?.reasoning_effort && modelInfo(selectedModel)?.efforts.includes(value.reasoning_effort) ? value.reasoning_effort : defaultEffort(selectedModel),
     updated_at: typeof value?.updated_at === "string" ? value.updated_at : fallback.updated_at,
   };
 }
@@ -267,7 +270,9 @@ function normalizeAiSettings(value?: Partial<AiSettings> & { provider?: string }
 function validatedAiSettings(value: Omit<AiSettings, "updated_at">): Omit<AiSettings, "updated_at"> {
   const allowedModels = providerModels[value.provider] as readonly string[];
   if (!allowedModels.includes(value.model)) throw new Error("Select a model from the provider list");
-  return { provider: value.provider, model: value.model, api_key: value.api_key };
+  const effort = value.reasoning_effort ?? defaultEffort(value.model);
+  if (value.provider === "openai" && !modelInfo(value.model)?.efforts.includes(effort)) throw new Error("Unsupported reasoning strength for this model");
+  return { provider: value.provider, model: value.model, api_key: value.api_key, reasoning_effort: effort };
 }
 async function profile() {
   const existing = await get<ResumeProfile>("resume_profile", 1);
@@ -385,76 +390,44 @@ async function responseError(response: Response) {
   throw new Error(`AI request failed (${response.status})${detail ? `: ${detail.slice(0, 240)}` : ""}`);
 }
 
-async function callOpenAi(settings: AiSettings, messages: Array<{ role: "system" | "user"; content: string }>, strictResume = false) {
+async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<{ resume: StructuredResume; usage?: AiUsage }> {
+  if (settings.provider !== "openai") throw new Error("The $0.05 guard currently supports verified OpenAI models only. Gemini/GLM generation is blocked until their pricing and token limits are verified. Your saved provider has not been changed.");
+  const effort = settings.reasoning_effort ?? defaultEffort(settings.model);
+  // Fail closed on unsupported settings or stale pricing before any network request.
+  budgetPlan(settings.model, effort, 0);
+  const payload = {
+    model: settings.model,
+    input: [{ role: "system", content: resumeSkill }, { role: "user", content: userPrompt }],
+    reasoning: { effort },
+    text: { format: { type: "json_schema", name: "structured_resume", strict: true, schema: RESUME_JSON_SCHEMA } },
+  };
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` };
+  const countResponse = await fetch(`${OPENAI_RESPONSES_URL}/input_tokens`, { method: "POST", headers, body: JSON.stringify(payload) });
+  if (!countResponse.ok) { await responseError(countResponse); throw new Error("Token counting failed; generation blocked"); }
+  const count = await countResponse.json();
+  if (count.object !== "response.input_tokens") throw new Error("Unable to verify input token count. No generation request was sent.");
+  const plan = budgetPlan(settings.model, effort, count.input_tokens);
   const response = await fetch(OPENAI_RESPONSES_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` },
-    body: JSON.stringify({
-      model: settings.model,
-      input: messages,
-      reasoning: { effort: "max" },
-      text: {
-        format: strictResume
-          ? { type: "json_schema", name: "structured_resume", strict: true, schema: RESUME_JSON_SCHEMA }
-          : { type: "json_object" },
-      },
-    }),
+    method: "POST", headers,
+    body: JSON.stringify({ ...payload, max_output_tokens: plan.maxOutputTokens, service_tier: "default", store: false }),
   });
-  if (!response.ok) return responseError(response);
+  if (!response.ok) { await responseError(response); throw new Error("AI request failed; no automatic retry was made"); }
   const body = await response.json();
-  if (typeof body.output_text === "string") return body.output_text;
-  return body.output?.flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || [])
-    .find((item: { type?: string }) => item.type === "output_text")?.text || "";
+  const rates = modelInfo(settings.model)!;
+  const reported = body.usage;
+  let usage: AiUsage | undefined;
+  if (Number.isSafeInteger(reported?.input_tokens) && reported.input_tokens >= 0 && Number.isSafeInteger(reported?.output_tokens) && reported.output_tokens >= 0) {
+    usage = { input_tokens: reported.input_tokens, output_tokens: reported.output_tokens,
+      reasoning_tokens: reported.output_tokens_details?.reasoning_tokens || 0,
+      estimated_usd: (reported.input_tokens * rates.input + reported.output_tokens * rates.output) / 1e6,
+      price_checked: PRICE_CHECKED };
+  }
+  const charge = usage ? ` Reported-token cost estimate: $${usage.estimated_usd.toFixed(4)}.` : " Usage unavailable; the request may still have been charged.";
+  if (body.status === "incomplete") throw new Error(`Stopped at the token budget before a complete resume was returned. No automatic retry was made.${charge} Choose lower reasoning effort or a cheaper model before retrying.`);
+  const raw = typeof body.output_text === "string" ? body.output_text : body.output?.flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).find((item: { type?: string }) => item.type === "output_text")?.text || "";
+  try { return { resume: parseStructuredResumeJson(raw), usage }; }
+  catch (error) { throw new Error(`${error instanceof Error ? error.message : "Invalid JSON"} No automatic retry was made.${charge}`); }
 }
-
-async function callGemini(settings: AiSettings, prompt: string, strictResume = false) {
-  const response = await fetch(`${GEMINI_API_BASE}/models/${encodeURIComponent(settings.model)}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": settings.api_key },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        thinkingConfig: { thinkingLevel: "high" },
-        ...(strictResume ? { responseJsonSchema: RESUME_JSON_SCHEMA } : {}),
-      },
-    }),
-  });
-  if (!response.ok) return responseError(response);
-  const body = await response.json();
-  return body.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("") || "";
-}
-
-async function callGlm(settings: AiSettings, messages: Array<{ role: "system" | "user"; content: string }>) {
-  const response = await fetch(GLM_CHAT_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` },
-    body: JSON.stringify({
-      model: settings.model,
-      messages,
-      stream: false,
-      thinking: { type: "enabled" },
-      response_format: { type: "json_object" },
-    }),
-  });
-  if (!response.ok) return responseError(response);
-  const body = await response.json();
-  return body.choices?.[0]?.message?.content || "";
-}
-
-async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<StructuredResume> {
-  const messages: Array<{ role: "system" | "user"; content: string }> = [
-    { role: "system", content: `${resumeSkill}\n\nOutput JSON Schema:\n${JSON.stringify(RESUME_JSON_SCHEMA)}` },
-    { role: "user", content: userPrompt },
-  ];
-  const raw = settings.provider === "gemini"
-    ? await callGemini(settings, `${messages[0].content}\n\n${userPrompt}`, true)
-    : settings.provider === "glm"
-      ? await callGlm(settings, messages)
-      : await callOpenAi(settings, messages, true);
-  return parseStructuredResumeJson(raw);
-}
-
 // Archived bullet/highlight fields remain in storage, but only current raw notes go to AI.
 function profileSource(profileData: ResumeProfile) {
   const sourceEntry = (entry: ResumeProfile["workExperiences"][number] | ResumeProfile["researchExperiences"][number]) => ({
@@ -471,42 +444,11 @@ function generationPrompt(profileData: ResumeProfile, app: Application, extraIns
   return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (factual basis for experience; skill inventory is non-exhaustive, and Technical Skills may be supplemented from the JD):\n${JSON.stringify(profileSource(profileData), null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
 }
 
-function compactionPrompt(resume: StructuredResume, app: Application, pageCount: number, attempt: number) {
-  return `The structured resume below compiled to ${pageCount} pages in the locked template. Return a complete schema-valid revision that will fit one page. Preserve truth and the strongest JD-relevant content. Shorten or remove content from the end of arrays in this order: redundant bullets, weaker bullets, weaker projects, secondary education details, then low-value skills. Keep at least one work entry and one research entry. Do not change the schema or add commentary. This is compaction attempt ${attempt}.\n\nTarget job description:\n${app.job_description}\n\nCurrent structured resume:\n${JSON.stringify(resume, null, 2)}`;
-}
-
-async function renderOnePageResume(settings: AiSettings, app: Application, initial: StructuredResume, profileData: ResumeProfile, extraInstructions: string) {
+async function renderOnePageResume(initial: StructuredResume, profileData: ResumeProfile) {
   let structuredResume = preserveSubprojectTitles(initial, profileData);
   let texSource = renderResumeLatex(structuredResume);
   let compilation = await compileResumeLatex(texSource);
-
-  if (compilation.pageCount === 1) {
-    const expanded = await tryExpandToFill(settings, structuredResume, profileData, app, extraInstructions);
-    if (expanded) return expanded;
-    return { structuredResume, texSource, pdfFile: compilation.pdfFile };
-  }
-
-  for (let attempt = 1; attempt <= 2 && compilation.pageCount > 1; attempt += 1) {
-    try {
-      const compacted = preserveSubprojectTitles(await callResumeAi(settings, `${generationPrompt(profileData, app, extraInstructions)}\n\n${compactionPrompt(structuredResume, app, compilation.pageCount, attempt)}`), profileData);
-      const compactedTex = renderResumeLatex(compacted);
-      const compactedCompilation = await compileResumeLatex(compactedTex);
-      if (compactedCompilation.pageCount <= compilation.pageCount) {
-        structuredResume = compacted;
-        texSource = compactedTex;
-        compilation = compactedCompilation;
-      }
-    } catch (error) {
-      console.warn("AI resume compaction failed; continuing with deterministic trimming", error);
-      break;
-    }
-    if (compilation.pageCount === 1) {
-      const expanded = await tryExpandToFill(settings, structuredResume, profileData, app, extraInstructions);
-      if (expanded) return expanded;
-      return { structuredResume, texSource, pdfFile: compilation.pdfFile };
-    }
-  }
-
+  // Page fitting is local only: no extra paid AI calls, including after a failure.
   for (let step = 0; step < 64 && compilation.pageCount > 1; step += 1) {
     const trimmed = trimLowestPriorityContent(structuredResume);
     if (!trimmed) break;
@@ -514,46 +456,8 @@ async function renderOnePageResume(settings: AiSettings, app: Application, initi
     texSource = renderResumeLatex(structuredResume);
     compilation = await compileResumeLatex(texSource);
   }
-
-  if (compilation.pageCount !== 1) throw new Error("Resume could not be reduced to exactly one page without changing the locked template");
-
-  // Probe for additional high-value content within the verified page limit.
-  {
-    const expanded = await tryExpandToFill(settings, structuredResume, profileData, app, extraInstructions);
-    if (expanded) return expanded;
-  }
+  if (compilation.pageCount !== 1) throw new Error("Local fitting could not produce one page. The AI request may have been charged; no automatic retry was made.");
   return { structuredResume, texSource, pdfFile: compilation.pdfFile };
-}
-
-async function tryExpandToFill(
-  settings: AiSettings,
-  current: StructuredResume,
-  profileData: ResumeProfile | undefined,
-  app: Application,
-  extraInstructions: string,
-): Promise<{ structuredResume: StructuredResume; texSource: string; pdfFile: Blob } | null> {
-  if (!profileData) return null;
-  let best = current;
-  let accepted: { structuredResume: StructuredResume; texSource: string; pdfFile: Blob } | null = null;
-  // Probe spare capacity with small, source-grounded additions; never save an overflowing probe.
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const expanded = preserveSubprojectTitles(await callResumeAi(settings, `${generationPrompt(profileData, app, extraInstructions)}
-The current resume fits one page. Check whether unused source material offers a genuinely stronger, JD-relevant contribution. If so, add only a small amount of high-value content (a concise bullet or a useful detail), keeping existing strong content and assigning it to the correct named subproject. Do not add filler, repeat claims, or pad skills. Return the current JSON unchanged if no worthwhile addition exists. There is no per-subproject bullet quota. This is capacity probe ${attempt + 1}.
-Current structured resume:
-${JSON.stringify(best)}`), profileData);
-      if (JSON.stringify(expanded) === JSON.stringify(best)) break;
-      const texSource = renderResumeLatex(expanded);
-      const compilation = await compileResumeLatex(texSource);
-      if (compilation.pageCount !== 1) break;
-      best = expanded;
-      accepted = { structuredResume: expanded, texSource, pdfFile: compilation.pdfFile };
-    } catch (error) {
-      console.warn("Optional resume expansion failed; keeping the verified one-page version", error);
-      break;
-    }
-  }
-  return accepted;
 }
 async function generateResumeVersion(applicationId: number, extraInstructions: string) {
   const app = await get<Application>("applications", applicationId);
@@ -561,8 +465,8 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   const settings = await aiSettings();
   if (!settings.api_key || !settings.model) throw new Error("Save AI settings before generating resumes");
   const profileData = await profile();
-  const initialResume = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions));
-  const rendered = await renderOnePageResume(settings, app, initialResume, profileData, extraInstructions);
+  const generated = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions));
+  const rendered = await renderOnePageResume(generated.resume, profileData);
   const existing = await versions(applicationId);
   const version_number = existing.length ? Math.max(...existing.map(item => item.version_number)) + 1 : 1;
   return add<Partial<ResumeVersion>>("resume_versions", {
@@ -570,6 +474,8 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
     company_id: app.company_id,
     version_number,
     structured_resume: rendered.structuredResume,
+    ai_usage: generated.usage,
+    reasoning_effort: settings.reasoning_effort ?? defaultEffort(settings.model),
     tex_source: rendered.texSource,
     pdf_file: rendered.pdfFile,
     provider: settings.provider,
@@ -586,6 +492,8 @@ function versionRead(version: ResumeVersion, app?: Application): ResumeVersionRe
     job_title: app?.job_title || "",
     version_number: version.version_number,
     structured_resume: version.structured_resume,
+    ai_usage: version.ai_usage,
+    reasoning_effort: version.reasoning_effort,
     provider: version.provider,
     model: version.model,
     created_at: version.created_at,
@@ -696,10 +604,9 @@ export const api = {
     if (!settings.api_key || !settings.model) throw new Error("API key and model are required");
     const checked = normalizeAiSettings(settings);
     validatedAiSettings(checked);
-    if (checked.provider === "gemini") await callGemini(checked, "Return JSON only: {\"ok\":true}");
-    else if (checked.provider === "glm") await callGlm(checked, [{ role: "user", content: "Return JSON only: {\"ok\":true}" }]);
-    else await callOpenAi(checked, [{ role: "user", content: "Return JSON only: {\"ok\":true}" }]);
-    return true;
+    if (checked.provider !== "openai") throw new Error("Budget-verified connection testing is currently available for OpenAI only.");
+    const response = await fetch(`https://api.openai.com/v1/models/${encodeURIComponent(checked.model)}`, { headers: { Authorization: `Bearer ${checked.api_key}` } });
+    if (!response.ok) await responseError(response);    return true;
   },
   applications,
   createApplication: (data: { company_id: number; job_title: string; job_description: string; notes: string }) => add<Omit<Application, "id">>("applications", { ...data, application_stage: "Applied", created_at: now(), updated_at: now() } as Application),

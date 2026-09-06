@@ -86,14 +86,18 @@ A company is considered Applied when it has at least one Application. Overview a
 
 ## AI Settings
 
-Open the **Resume** tab to configure a browser-local provider:
+Open **Resume** to choose your provider, model, reasoning effort, and browser-local API key.
 
-- **OpenAI**: GPT-5.6 Sol (Max), GPT-5.6 Terra (Max), or GPT-5.6 Luna (Max); all use maximum reasoning.
-- **Gemini**: Gemini 3.8 Flash with high thinking level.
-- **GLM**: GLM-5.3-Flash through Z.ai's general API endpoint.
-- **API key**: stored only in this browser's IndexedDB and excluded from backups.
+- OpenAI models: **GPT-5.6 Luna, Terra, Sol, and GPT-6 Astra** only. Each model lists its supported reasoning efforts. New settings default to Luna / low; existing model selections are preserved, never silently substituted.
+- Parenthesized USD estimates compare 6,000 input tokens plus the displayed effort's output allowance (including reasoning). These are illustrative estimates, not guaranteed bills or quality benchmarks.
+- Each Generate click permits **one paid generation request**. An input-token count request runs first; a conservative output cap reserves room below **US$0.05**, including reasoning tokens. Over-budget combinations are blocked, not switched to another model. There are no automatic paid retries, compaction, or expansion calls; PDF fitting is local.
+- High reasoning may exhaust the budget before valid JSON is returned. Failed/incomplete requests can still incur charges. Saved versions show reported token usage and a cost estimate when available.
+- Gemini and GLM settings are retained, but generation is blocked until equivalent verified budget controls are available.
+- API keys remain browser-local in IndexedDB and are excluded from backups. Test Connection uses OpenAI model access lookup, not paid inference.
 
-Model choices are fixed to verified provider IDs. Base URLs are internal adapter details and are not exposed in the UI.
+Rates are standard USD prices checked **2026-09-06**, excluding taxes/payment fees. Pricing verification expires **2026-10-06** and then blocks generation until the table in `frontend/src/lib/aiModels.ts` is reviewed and refreshed. The guard relies on published rates, not control over the provider's billing system. Model availability depends on your API account.
+
+References: [official pricing](https://developers.openai.com/api/docs/pricing), [token counting](https://developers.openai.com/api/docs/guides/token-counting), and [reasoning](https://developers.openai.com/api/docs/guides/reasoning). Base URLs remain internal implementation details.
 
 ## Catalog Audit
 

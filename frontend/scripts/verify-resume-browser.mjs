@@ -121,13 +121,19 @@ await page.route("https://api.openai.com/**", async route => {
     await route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" } });
     return;
   }
+  if (route.request().url().endsWith("/input_tokens")) {
+    await route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ object: "response.input_tokens", input_tokens: 4000 }) });
+    return;
+  }
+  const request = route.request().postDataJSON();
+  if (request.model !== "gpt-5.6-luna" || request.max_output_tokens !== 4500 || request.reasoning.effort !== "low") throw new Error("Selected model or budget controls changed");
   aiRequestCount += 1;
   if (aiRequestCount === 1) await generationGate;
   await route.fulfill({
     status: 200,
     contentType: "application/json",
     headers: { "Access-Control-Allow-Origin": "*" },
-    body: JSON.stringify({ output_text: JSON.stringify(aiRequestCount === 1 ? longResume : compactResume) }),
+    body: JSON.stringify({ status: "completed", output_text: JSON.stringify(compactResume), usage: { input_tokens: 4000, output_tokens: 2400, output_tokens_details: { reasoning_tokens: 200 } } }),
   });
 });
 
@@ -142,7 +148,7 @@ try {
     await new Promise((resolve, reject) => {
       const transaction = database.transaction(["resume_profile", "ai_settings"], "readwrite");
       transaction.objectStore("resume_profile").put({ id: 1, ...profile, updated_at: new Date().toISOString() });
-      transaction.objectStore("ai_settings").put({ id: 1, provider: "openai", model: "gpt-5.6-sol", api_key: "e2e-local-key", updated_at: new Date().toISOString() });
+      transaction.objectStore("ai_settings").put({ id: 1, provider: "openai", model: "gpt-5.6-luna", api_key: "e2e-local-key", updated_at: new Date().toISOString() });
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
     });
@@ -216,7 +222,7 @@ try {
     page.locator(".resume-output .inline-error").waitFor({ timeout: 180_000 }).then(async () => { throw new Error(await page.locator(".resume-output .inline-error").innerText()); }),
   ]);
 
-  if (aiRequestCount < 2) throw new Error(`Expected overflow compaction request, observed ${aiRequestCount} AI request(s)`);
+  if (aiRequestCount !== 1) throw new Error(`Expected exactly one generation request, got ${aiRequestCount}`);
 
   await page.getByRole("button", { name: "Preview PDF" }).click();
   await page.locator(".pdf-preview iframe").waitFor();
