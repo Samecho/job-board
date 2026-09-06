@@ -21,7 +21,7 @@ export function scenarioCost(model: OpenAiModel, effort: ReasoningEffort) {
 }
 export function priceLabel(model: OpenAiModel, effort = defaultEffort(model.id)) {
   const cost = scenarioCost(model, effort);
-  return `${model.label} / ${effort}${model.value ? " - value pick" : ""} (est. $${cost.toFixed(4)}${cost > RESUME_BUDGET_USD ? "; over $0.05 example" : ""})`;
+  return `${model.label} / ${effort} (est. $${cost.toFixed(4)})`;
 }
 export function budgetPlan(modelId: string, effort: ReasoningEffort, inputTokens: number, date = new Date()) {
   const model = modelInfo(modelId);
