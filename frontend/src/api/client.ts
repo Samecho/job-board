@@ -1,4 +1,4 @@
-import { OPENAI_MODELS, budgetPlan, modelInfo, defaultEffort, PRICE_CHECKED } from "../lib/aiModels";
+import { OPENAI_MODELS, estimateInputTokens, modelInfo, defaultEffort, PRICE_CHECKED } from "../lib/aiModels";
 import { masterSkills } from "../lib/technicalSkills";
 import { preserveSubprojectTitles } from "../lib/subprojectTitles";
 import { profileDetails } from "../lib/profileDetails";
@@ -390,11 +390,53 @@ async function responseError(response: Response) {
   throw new Error(`AI request failed (${response.status})${detail ? `: ${detail.slice(0, 240)}` : ""}`);
 }
 
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const GLM_CHAT_URL = "https://api.z.ai/api/paas/v4/chat/completions";
+async function callGemini(settings: AiSettings, prompt: string, strictResume = false) {
+  const response = await fetch(`${GEMINI_API_BASE}/models/${encodeURIComponent(settings.model)}:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": settings.api_key },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingLevel: "high" },
+        ...(strictResume ? { responseJsonSchema: RESUME_JSON_SCHEMA } : {}),
+      },
+    }),
+  });
+  if (!response.ok) return responseError(response);
+  const body = await response.json();
+  return body.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("") || "";
+}
+
+async function callGlm(settings: AiSettings, messages: Array<{ role: "system" | "user"; content: string }>) {
+  const response = await fetch(GLM_CHAT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` },
+    body: JSON.stringify({
+      model: settings.model,
+      messages,
+      stream: false,
+      thinking: { type: "enabled" },
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!response.ok) return responseError(response);
+  const body = await response.json();
+  return body.choices?.[0]?.message?.content || "";
+}
+
+
 async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<{ resume: StructuredResume; usage?: AiUsage }> {
-  if (settings.provider !== "openai") throw new Error("The $0.05 guard currently supports verified OpenAI models only. Gemini/GLM generation is blocked until their pricing and token limits are verified. Your saved provider has not been changed.");
+  if (settings.provider !== "openai") {
+    const raw = settings.provider === "gemini"
+      ? await callGemini(settings, `${resumeSkill}\n\n${userPrompt}`, true)
+      : await callGlm(settings, [{ role: "system", content: `${resumeSkill}\n\nOutput JSON Schema:\n${JSON.stringify(RESUME_JSON_SCHEMA)}` }, { role: "user", content: userPrompt }]);
+    return { resume: parseStructuredResumeJson(raw) };
+  }
   const effort = settings.reasoning_effort ?? defaultEffort(settings.model);
-  // Fail closed on unsupported settings or stale pricing before any network request.
-  budgetPlan(settings.model, effort, 0);
+  if (!modelInfo(settings.model)?.efforts.includes(effort)) throw new Error("Unsupported model or reasoning setting.");
   const payload = {
     model: settings.model,
     input: [{ role: "system", content: resumeSkill }, { role: "user", content: userPrompt }],
@@ -402,14 +444,9 @@ async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<{
     text: { format: { type: "json_schema", name: "structured_resume", strict: true, schema: RESUME_JSON_SCHEMA } },
   };
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` };
-  const countResponse = await fetch(`${OPENAI_RESPONSES_URL}/input_tokens`, { method: "POST", headers, body: JSON.stringify(payload) });
-  if (!countResponse.ok) { await responseError(countResponse); throw new Error("Token counting failed; generation blocked"); }
-  const count = await countResponse.json();
-  if (count.object !== "response.input_tokens") throw new Error("Unable to verify input token count. No generation request was sent.");
-  const plan = budgetPlan(settings.model, effort, count.input_tokens);
   const response = await fetch(OPENAI_RESPONSES_URL, {
     method: "POST", headers,
-    body: JSON.stringify({ ...payload, max_output_tokens: plan.maxOutputTokens, service_tier: "default", store: false }),
+    body: JSON.stringify({ ...payload, service_tier: "default", store: false }),
   });
   if (!response.ok) { await responseError(response); throw new Error("AI request failed; no automatic retry was made"); }
   const body = await response.json();
@@ -423,13 +460,13 @@ async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<{
       price_checked: PRICE_CHECKED };
   }
   const charge = usage ? ` Reported-token cost estimate: $${usage.estimated_usd.toFixed(4)}.` : " Usage unavailable; the request may still have been charged.";
-  if (body.status === "incomplete") throw new Error(`Stopped at the token budget before a complete resume was returned. No automatic retry was made.${charge} Choose lower reasoning effort or a cheaper model before retrying.`);
+  if (body.status === "incomplete") throw new Error(`The provider returned an incomplete response (${body.incomplete_details?.reason || "reason unavailable"}).${charge} No automatic retry was made.`);
   const raw = typeof body.output_text === "string" ? body.output_text : body.output?.flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).find((item: { type?: string }) => item.type === "output_text")?.text || "";
   try { return { resume: parseStructuredResumeJson(raw), usage }; }
   catch (error) { throw new Error(`${error instanceof Error ? error.message : "Invalid JSON"} No automatic retry was made.${charge}`); }
 }
 // Archived bullet/highlight fields remain in storage, but only current raw notes go to AI.
-function profileSource(profileData: ResumeProfile) {
+function profileSource(profileData: ResumeProfileUpdate) {
   const sourceEntry = (entry: ResumeProfile["workExperiences"][number] | ResumeProfile["researchExperiences"][number]) => ({
     ...entry, subprojects: entry.subprojects.map(sub => ({ name: sub.omitTitle ? "" : sub.name, omitTitle: !!sub.omitTitle, details: profileDetails(sub) })),
   });
@@ -440,6 +477,10 @@ function profileSource(profileData: ResumeProfile) {
     projects: profileData.projects.map(({ bullets, ...project }) => ({ ...project, details: profileDetails({ ...project, bullets }) })),
   };
 }
+export function estimateResumeInput(profileData: ResumeProfileUpdate) {
+  return estimateInputTokens(resumeSkill + JSON.stringify(RESUME_JSON_SCHEMA) + JSON.stringify(profileSource(profileData), null, 2));
+}
+
 function generationPrompt(profileData: ResumeProfile, app: Application, extraInstructions: string) {
   return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (factual basis for experience; skill inventory is non-exhaustive, and Technical Skills may be supplemented from the JD):\n${JSON.stringify(profileSource(profileData), null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
 }
@@ -466,7 +507,12 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   if (!settings.api_key || !settings.model) throw new Error("Save AI settings before generating resumes");
   const profileData = await profile();
   const generated = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions));
-  const rendered = await renderOnePageResume(generated.resume, profileData);
+  let rendered;
+  try { rendered = await renderOnePageResume(generated.resume, profileData); }
+  catch (error) {
+    const charge = generated.usage ? ` Estimated cost: US$${generated.usage.estimated_usd.toFixed(4)}.` : " Cost unavailable.";
+    throw new Error(`${error instanceof Error ? error.message : "PDF generation failed"}${charge}`);
+  }
   const existing = await versions(applicationId);
   const version_number = existing.length ? Math.max(...existing.map(item => item.version_number)) + 1 : 1;
   return add<Partial<ResumeVersion>>("resume_versions", {
@@ -604,7 +650,8 @@ export const api = {
     if (!settings.api_key || !settings.model) throw new Error("API key and model are required");
     const checked = normalizeAiSettings(settings);
     validatedAiSettings(checked);
-    if (checked.provider !== "openai") throw new Error("Budget-verified connection testing is currently available for OpenAI only.");
+    if (checked.provider === "gemini") { await callGemini(checked, 'Return JSON only: {"ok":true}'); return true; }
+    if (checked.provider === "glm") { await callGlm(checked, [{ role: "user", content: 'Return JSON only: {"ok":true}' }]); return true; }
     const response = await fetch(`https://api.openai.com/v1/models/${encodeURIComponent(checked.model)}`, { headers: { Authorization: `Bearer ${checked.api_key}` } });
     if (!response.ok) await responseError(response);    return true;
   },

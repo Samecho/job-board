@@ -121,12 +121,9 @@ await page.route("https://api.openai.com/**", async route => {
     await route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" } });
     return;
   }
-  if (route.request().url().endsWith("/input_tokens")) {
-    await route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ object: "response.input_tokens", input_tokens: 4000 }) });
-    return;
-  }
+  if (route.request().url().endsWith("/input_tokens")) throw new Error("Unexpected token-count request");
   const request = route.request().postDataJSON();
-  if (request.model !== "gpt-5.6-luna" || request.max_output_tokens !== 4500 || request.reasoning.effort !== "low") throw new Error("Selected model or budget controls changed");
+  if (request.model !== "gpt-5.6-luna" || "max_output_tokens" in request || request.reasoning.effort !== "low") throw new Error("Selected model changed or output was capped");
   aiRequestCount += 1;
   if (aiRequestCount === 1) await generationGate;
   await route.fulfill({
@@ -199,6 +196,21 @@ try {
   });
   await page.reload({ waitUntil: "networkidle" });
 
+  await page.locator("nav").getByRole("button", { name: "Resume", exact: true }).click();
+  const modelSelect = page.locator(".ai-settings select").nth(1);
+  const details = page.locator("textarea.profile-details").first();
+  await details.fill("a".repeat(500));
+  const shortPrice = await modelSelect.locator("option:checked").textContent();
+  await details.fill("a".repeat(10000));
+  const longPrice = await modelSelect.locator("option:checked").textContent();
+  if (shortPrice === longPrice) throw new Error("Estimate did not update with profile size");
+  await page.locator(".ai-settings select").nth(2).selectOption("max");
+  const maxPrice = await modelSelect.locator("option:checked").textContent();
+  if (maxPrice === longPrice) throw new Error("Estimate did not update with reasoning");
+  if (await page.getByText("US$0.05 API budget per click.", { exact: false }).count()) throw new Error("Removed budget notice remains");
+  await page.locator(".ai-settings select").nth(2).selectOption("low");
+  await page.locator("nav").getByRole("button", { name: "Overview", exact: true }).click();
+
   await page.getByPlaceholder("Search companies, categories, locations...").fill("Jane Street");
   const companyRow = page.locator(".overview-table tbody tr").first();
   await companyRow.getByRole("button", { name: /^Resume/ }).click();
@@ -223,6 +235,7 @@ try {
   ]);
 
   if (aiRequestCount !== 1) throw new Error(`Expected exactly one generation request, got ${aiRequestCount}`);
+  await page.getByRole("status").filter({ hasText: "Estimated cost: US$0.0037" }).waitFor();
 
   await page.getByRole("button", { name: "Preview PDF" }).click();
   await page.locator(".pdf-preview iframe").waitFor();

@@ -53,7 +53,7 @@ const profile = {
 describe("resume version persistence", () => {
   beforeEach(async () => {
     await deleteDatabase();
-    vi.stubGlobal("fetch", vi.fn(async url => new Response(JSON.stringify(String(url).endsWith("/input_tokens") ? { object: "response.input_tokens", input_tokens: 3000 } : { status: "completed", output_text: JSON.stringify(completeResume), usage: { input_tokens: 3000, output_tokens: 2300, output_tokens_details: { reasoning_tokens: 200 } } }), {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify( { status: "completed", output_text: JSON.stringify(completeResume), usage: { input_tokens: 3000, output_tokens: 2300, output_tokens_details: { reasoning_tokens: 200 } } }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     })));
@@ -135,38 +135,37 @@ describe("resume version persistence", () => {
     const onePage = { pdfFile: new Blob(["pdf"], { type: "application/pdf" }), pdfBytes: new Uint8Array(), pageCount: 1, log: "ok" };
     vi.mocked(compileResumeLatex).mockResolvedValueOnce({ ...onePage, pageCount: 2 }).mockResolvedValueOnce(onePage);
     await api.generateResumeVersion(app.id, "");
-    expect(vi.mocked(fetch).mock.calls).toHaveLength(2);
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(1);
     const paid = vi.mocked(fetch).mock.calls.filter(call => String(call[0]).endsWith("/responses"));
     expect(paid).toHaveLength(1);
     const body = JSON.parse(String(paid[0][1]?.body));
     expect(body.model).toBe("gpt-5.6-luna");
     expect(body.reasoning.effort).toBe("low");
-    expect(body.max_output_tokens).toBe(4500);
+    expect(body).not.toHaveProperty("max_output_tokens");
     expect(body.service_tier).toBe("default");
     const versions = await api.resumeVersions(app.id);
     expect(versions[0].ai_usage?.output_tokens).toBe(2300);
     expect(versions[0].reasoning_effort).toBe("low");
   });
 
-  it("blocks an expensive selection without substituting a model or sending a request", async () => {
+  it("generates with the selected expensive model and no budget or output cap", async () => {
     await api.saveAiSettings({ provider: "openai", model: "gpt-6-astra", reasoning_effort: "max", api_key: "test-local" });
     const app = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "Go", notes: "" });
-    await expect(api.generateResumeVersion(app.id, "")).rejects.toThrow("$0.05");
-    expect(fetch).not.toHaveBeenCalled();
-    expect((await api.aiSettings()).model).toBe("gpt-6-astra");
+    await api.generateResumeVersion(app.id, "");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));
+    expect(body.model).toBe("gpt-6-astra");
+    expect(body.reasoning.effort).toBe("max");
+    expect(body).not.toHaveProperty("max_output_tokens");
+    expect((await api.resumeVersions(app.id))[0].ai_usage?.estimated_usd).toBeGreaterThan(0.05);
   });
 
-  it("fails closed if counting fails and never retries an incomplete paid response", async () => {
+  it("reports the provider's incomplete reason and cost without retrying", async () => {
     await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-luna", api_key: "test-local" });
     const app = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "Go", notes: "" });
-    vi.mocked(fetch).mockResolvedValueOnce(new Response("Unavailable", { status: 503 }));
-    await expect(api.generateResumeVersion(app.id, "")).rejects.toThrow();
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ status: "incomplete", incomplete_details: { reason: "content_filter" }, usage: { input_tokens: 1000, output_tokens: 4500 } })));
+    await expect(api.generateResumeVersion(app.id, "")).rejects.toThrow("content_filter");
     expect(fetch).toHaveBeenCalledTimes(1);
-    vi.mocked(fetch).mockClear();
-    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ object: "response.input_tokens", input_tokens: 1000 })))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, usage: { input_tokens: 1000, output_tokens: 4500 } })));
-    await expect(api.generateResumeVersion(app.id, "")).rejects.toThrow("No automatic retry");
-    expect(fetch).toHaveBeenCalledTimes(2);
     expect(await api.resumeVersions(app.id)).toHaveLength(0);
   });
 });

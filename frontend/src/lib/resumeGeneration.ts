@@ -4,6 +4,7 @@ export type GenerationTask = {
   applicationId?: number;
   status: "running" | "completed" | "failed";
   error?: string;
+  estimatedCostUsd?: number;
 };
 
 let tasks: GenerationTask[] = [];
@@ -35,8 +36,10 @@ export async function runResumeGeneration(
     const applicationId = await prepare();
     task = { ...task, applicationId };
     publish(task);
-    await generate(applicationId);
-    publish({ ...task, status: "completed" });
+    const result = await generate(applicationId);
+    const usage = result && typeof result === "object" && "ai_usage" in result ? result.ai_usage : undefined;
+    const cost = usage && typeof usage === "object" && "estimated_usd" in usage ? usage.estimated_usd : undefined;
+    publish({ ...task, status: "completed", estimatedCostUsd: typeof cost === "number" ? cost : undefined });
   } catch (reason) {
     publish({ ...task, status: "failed", error: reason instanceof Error ? reason.message : "Generation failed" });
   }

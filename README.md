@@ -88,16 +88,14 @@ A company is considered Applied when it has at least one Application. Overview a
 
 Open **Resume** to choose your provider, model, reasoning effort, and browser-local API key.
 
-- OpenAI models: **GPT-5.6 Luna, Terra, Sol, and GPT-6 Astra** only. Each model lists its supported reasoning efforts. New settings default to Luna / low; existing model selections are preserved, never silently substituted.
-- Parenthesized USD estimates compare 6,000 input tokens plus the displayed effort's output allowance (including reasoning). These are illustrative estimates, not guaranteed bills or quality benchmarks.
-- Each Generate click permits **one paid generation request**. An input-token count request runs first; a conservative output cap reserves room below **US$0.05**, including reasoning tokens. Over-budget combinations are blocked, not switched to another model. There are no automatic paid retries, compaction, or expansion calls; PDF fitting is local.
-- High reasoning may exhaust the budget before valid JSON is returned. Failed/incomplete requests can still incur charges. Saved versions show reported token usage and a cost estimate when available.
-- Gemini and GLM settings are retained, but generation is blocked until equivalent verified budget controls are available.
-- API keys remain browser-local in IndexedDB and are excluded from backups. Test Connection uses OpenAI model access lookup, not paid inference.
+- OpenAI offers GPT-5.6 Luna, Terra, Sol, and GPT-6 Astra with supported reasoning levels. Your selected model is always used.
+- Dropdown estimates update locally with the current profile, prompt/schema overhead, and an assumed 700-word English JD. Output/reasoning usage is a scenario estimate, not a prediction or limit. No token-count API is called.
+- Generate sends one AI generation request, with no dollar budget checks, pricing-expiry blocks, or application-imposed output cap. Higher reasoning can take longer and cost more. There are no automatic paid retries or AI expansion calls; PDF fitting remains local.
+- Completion and version history show estimated USD cost from reported OpenAI usage. Missing usage or unsupported provider pricing is shown as unavailable, never zero. Provider billing, cache discounts, and taxes can differ.
+- Gemini and GLM generation are available again through their existing official adapters; cost estimates are currently available for OpenAI only.
+- API keys stay browser-local and are excluded from backups.
 
-Rates are standard USD prices checked **2026-09-06**, excluding taxes/payment fees. Pricing verification expires **2026-10-06** and then blocks generation until the table in `frontend/src/lib/aiModels.ts` is reviewed and refreshed. The guard relies on published rates, not control over the provider's billing system. Model availability depends on your API account.
-
-References: [official pricing](https://developers.openai.com/api/docs/pricing), [token counting](https://developers.openai.com/api/docs/guides/token-counting), and [reasoning](https://developers.openai.com/api/docs/guides/reasoning). Base URLs remain internal implementation details.
+Rates in `frontend/src/lib/aiModels.ts` were checked 2026-09-06 and should be maintained against [official pricing](https://developers.openai.com/api/docs/pricing).
 
 ## Catalog Audit
 
