@@ -1,6 +1,6 @@
 import { OPENAI_MODELS, estimateInputTokens, modelInfo, defaultEffort, PRICE_CHECKED } from "../lib/aiModels";
 import { masterSkills } from "../lib/technicalSkills";
-import { assembleResume, resumeContentSource, RESUME_CONTENT_SCHEMA } from "../lib/resumeContent";
+import { assembleResume, resumeContentSource, resumeContentSchema } from "../lib/resumeContent";
 import { profileDetails } from "../lib/profileDetails";
 import { COMPANY_CATALOG } from "../data/catalog";
 import resumeSkill from "../skills/resume-generation.md?raw";
@@ -392,7 +392,7 @@ async function responseError(response: Response) {
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GLM_CHAT_URL = "https://api.z.ai/api/paas/v4/chat/completions";
-async function callGemini(settings: AiSettings, prompt: string, strictResume = false) {
+async function callGemini(settings: AiSettings, prompt: string, schema?: ReturnType<typeof resumeContentSchema>) {
   const response = await fetch(`${GEMINI_API_BASE}/models/${encodeURIComponent(settings.model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": settings.api_key },
@@ -401,7 +401,7 @@ async function callGemini(settings: AiSettings, prompt: string, strictResume = f
       generationConfig: {
         responseMimeType: "application/json",
         thinkingConfig: { thinkingLevel: "high" },
-        ...(strictResume ? { responseJsonSchema: RESUME_CONTENT_SCHEMA } : {}),
+        ...(schema ? { responseJsonSchema: schema } : {}),
       },
     }),
   });
@@ -429,10 +429,11 @@ async function callGlm(settings: AiSettings, messages: Array<{ role: "system" | 
 
 
 async function callResumeAi(settings: AiSettings, userPrompt: string, profileData: ResumeProfileUpdate): Promise<{ resume: StructuredResume; usage?: AiUsage }> {
+  const schema = resumeContentSchema(profileData);
   if (settings.provider !== "openai") {
     const raw = settings.provider === "gemini"
-      ? await callGemini(settings, `${resumeSkill}\n\n${userPrompt}`, true)
-      : await callGlm(settings, [{ role: "system", content: `${resumeSkill}\n\nOutput JSON Schema:\n${JSON.stringify(RESUME_CONTENT_SCHEMA)}` }, { role: "user", content: userPrompt }]);
+      ? await callGemini(settings, `${resumeSkill}\n\n${userPrompt}`, schema)
+      : await callGlm(settings, [{ role: "system", content: `${resumeSkill}\n\nOutput JSON Schema:\n${JSON.stringify(schema)}` }, { role: "user", content: userPrompt }]);
     return { resume: assembleResume(raw, profileData) };
   }
   const effort = settings.reasoning_effort ?? defaultEffort(settings.model);
@@ -441,7 +442,7 @@ async function callResumeAi(settings: AiSettings, userPrompt: string, profileDat
     model: settings.model,
     input: [{ role: "system", content: resumeSkill }, { role: "user", content: userPrompt }],
     reasoning: { effort },
-    text: { format: { type: "json_schema", name: "structured_resume", strict: true, schema: RESUME_CONTENT_SCHEMA } },
+    text: { format: { type: "json_schema", name: "structured_resume", strict: true, schema } },
   };
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` };
   const response = await fetch(OPENAI_RESPONSES_URL, {
@@ -466,7 +467,7 @@ async function callResumeAi(settings: AiSettings, userPrompt: string, profileDat
   catch (error) { throw new Error(`${error instanceof Error ? error.message : "Invalid JSON"} No automatic retry was made.${charge}`); }
 }
 export function estimateResumeInput(profileData: ResumeProfileUpdate) {
-  return estimateInputTokens(resumeSkill + JSON.stringify(RESUME_CONTENT_SCHEMA) + JSON.stringify(resumeContentSource(profileData), null, 2));
+  return estimateInputTokens(resumeSkill + JSON.stringify(resumeContentSchema(profileData)) + JSON.stringify(resumeContentSource(profileData), null, 2));
 }
 
 function generationPrompt(profileData: ResumeProfile, app: Application, extraInstructions: string) {

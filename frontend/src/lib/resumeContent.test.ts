@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import type { ResumeProfileUpdate } from "../types";
-import { assembleResume, formatProfileDates, resumeContentSource, RESUME_CONTENT_SCHEMA } from "./resumeContent";
+import { assembleResume, formatProfileDates, resumeContentSource, resumeContentSchema, RESUME_CONTENT_SCHEMA } from "./resumeContent";
 import { renderResumeLatex } from "./resumeLatex";
 
 const profile: ResumeProfileUpdate = {
@@ -15,6 +15,18 @@ const profile: ResumeProfileUpdate = {
   skills: { languages: [], frameworks: [], developerTools: [], libraries: [] }, skillInventory: "Python, Rust",
 };
 const bullet = { text: "Built a Python service.", highlights: ["Python"] };
+it("constrains generated IDs to their profile role and forbids nonexistent projects", () => {
+  const schema = JSON.parse(JSON.stringify(resumeContentSchema(profile)));
+  const branches = schema.properties.experience.items.anyOf;
+  expect(branches.map((branch: { properties: { sourceId: { enum: string[] } } }) => branch.properties.sourceId.enum)).toEqual([["work:0"], ["research:0"]]);
+  const workSubs = branches[0].properties.subprojects.items.anyOf;
+  expect(workSubs.map((branch: { properties: { sourceId: { enum: string[] } } }) => branch.properties.sourceId.enum)).toEqual([["work:0/sub:0"], ["work:0/sub:1"]]);
+  expect(workSubs[1].properties.name.enum).toEqual([""]);
+  expect(branches[1].properties.subprojects.items.properties.sourceId.enum).toEqual(["research:0/sub:0"]);
+  const empty = JSON.parse(JSON.stringify(resumeContentSchema({ ...profile, projects: [] })));
+  expect(empty.properties.projects.maxItems).toBe(0);
+  expect(JSON.stringify(empty)).not.toContain("project:0");
+});
 const content = {
   experience: [
     { sourceId: "research:0", subprojects: [{ sourceId: "research:0/sub:0", name: "Should be hidden", bullets: [bullet] }] },
@@ -51,6 +63,13 @@ it("rejects invented, duplicated, and cross-role references and identity fields"
   crossed.experience[1].subprojects[0].sourceId = "research:0/sub:0";
   expect(() => assembleResume(JSON.stringify(crossed), profile)).toThrow();
   expect(() => assembleResume(JSON.stringify({ ...content, header: {} }), profile)).toThrow();
+});
+it("normalizes whitespace only and reports unknown IDs without guessing a match", () => {
+  const spaced = structuredClone(content);
+  spaced.experience[0].sourceId = " research:0 ";
+  expect(assembleResume(JSON.stringify(spaced), profile).experience[0].organization).toBe("Example University");
+  spaced.experience[0].sourceId = "research:99";
+  expect(() => assembleResume(JSON.stringify(spaced), profile)).toThrow("Unknown resume source reference: research:99. Expected one of: work:0, research:0");
 });
 it("formats partial dates without inventing values and excludes contact/date fields from AI input", () => {
   expect(formatProfileDates("", "")).toBe("");

@@ -16,6 +16,30 @@ export const RESUME_CONTENT_SCHEMA = object({
   technicalSkills: RESUME_JSON_SCHEMA.properties.technicalSkills,
 });
 
+// Bind each response reference to the exact profile snapshot used by this request.
+export function resumeContentSchema(profile: ResumeProfileUpdate) {
+  const choices = (variants: unknown[], fallback: unknown) => variants.length
+    ? list(variants.length === 1 ? variants[0] : { anyOf: variants })
+    : { ...list(fallback), maxItems: 0 };
+  const id = (sourceId: string) => ({ type: "string", enum: [sourceId] });
+  const experience = roles(profile).filter(role => role.subprojects.length).map(role => object({
+    sourceId: id(role.sourceId),
+    subprojects: choices(role.subprojects.map((entry, index) => object({
+      ...sub.properties,
+      sourceId: id(`${role.sourceId}/sub:${index}`),
+      name: entry.omitTitle ? { type: "string", enum: [""] } : sub.properties.name,
+    })), sub),
+  }));
+  const projects = profile.projects.map((entry, index) => object({
+    sourceId: id(`project:${index}`), technologies: project.technologies, bullets: project.bullets,
+  }));
+  return object({
+    experience: choices(experience, object({ sourceId: reference, subprojects: list(sub) })),
+    projects: choices(projects, object({ sourceId: reference, technologies: project.technologies, bullets: project.bullets })),
+    technicalSkills: RESUME_JSON_SCHEMA.properties.technicalSkills,
+  });
+}
+
 export function formatProfileDates(start: string, end: string, current = false): string {
   return [start.trim(), current ? "Present" : end.trim()].filter(Boolean).join(" -- ");
 }
@@ -56,10 +80,12 @@ function array(value: unknown): unknown[] {
   return value;
 }
 function lookup<T extends { sourceId: string }>(value: unknown, available: T[], seen: Set<string>): T {
-  if (typeof value !== "string" || seen.has(value)) throw new Error("Invalid or duplicate resume source reference");
-  const entry = available.find(item => item.sourceId === value);
-  if (!entry) throw new Error("Unknown resume source reference");
-  seen.add(value);
+  if (typeof value !== "string") throw new Error("Resume source reference must be a string");
+  const key = value.trim();
+  if (seen.has(key)) throw new Error(`Duplicate resume source reference: ${key}`);
+  const entry = available.find(item => item.sourceId === key);
+  if (!entry) throw new Error(`Unknown resume source reference: ${key.slice(0, 100)}. Expected one of: ${available.map(item => item.sourceId).join(", ") || "(none)"}`);
+  seen.add(key);
   return entry;
 }
 

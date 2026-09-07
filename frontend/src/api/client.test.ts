@@ -154,6 +154,9 @@ describe("resume version persistence", () => {
     expect(body.reasoning.effort).toBe("low");
     expect(body).not.toHaveProperty("max_output_tokens");
     expect(body.service_tier).toBe("default");
+    const roleSchemas = body.text.format.schema.properties.experience.items.anyOf;
+    expect(roleSchemas.map((role: { properties: { sourceId: { enum: string[] } } }) => role.properties.sourceId.enum)).toEqual([["work:0"], ["research:0"]]);
+    expect(roleSchemas[0].properties.subprojects.items.properties.sourceId.enum).toEqual(["work:0/sub:0"]);
     const versions = await api.resumeVersions(app.id);
     expect(versions[0].ai_usage?.output_tokens).toBe(2300);
     expect(versions[0].reasoning_effort).toBe("low");
