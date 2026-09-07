@@ -26,6 +26,14 @@ function deleteDatabase(): Promise<void> {
   });
 }
 
+const generatedContent = {
+  experience: completeResume.experience.map((role, index) => ({
+    sourceId: index === 0 ? "work:0" : "research:0",
+    subprojects: role.subprojects!.slice(0, 1).map(sub => ({ ...sub, sourceId: index === 0 ? "work:0/sub:0" : "research:0/sub:0" })),
+  })),
+  projects: completeResume.projects.map(project => ({ sourceId: "project:0", technologies: project.technologies, bullets: project.bullets })),
+  technicalSkills: completeResume.technicalSkills,
+};
 const profile = {
   firstName: "Ada",
   lastName: "Lovelace",
@@ -53,7 +61,7 @@ const profile = {
 describe("resume version persistence", () => {
   beforeEach(async () => {
     await deleteDatabase();
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify( { status: "completed", output_text: JSON.stringify(completeResume), usage: { input_tokens: 3000, output_tokens: 2300, output_tokens_details: { reasoning_tokens: 200 } } }), {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify( { status: "completed", output_text: JSON.stringify(generatedContent), usage: { input_tokens: 3000, output_tokens: 2300, output_tokens_details: { reasoning_tokens: 200 } } }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     })));
@@ -81,6 +89,9 @@ describe("resume version persistence", () => {
     expect(versions.map(version => version.version_number)).toEqual([2, 1]);
     const newest = await api.getResumeVersion(versions[0].id);
     expect(newest?.tex_source).toContain("\\documentclass[letterpaper,11pt]{article}");
+    expect(newest?.structured_resume.header.phone).toBe(profile.phone);
+    expect(newest?.structured_resume.education[0].institution).toBe(profile.education[0].institution);
+    expect(newest?.structured_resume.experience[0].organization).toBe(profile.workExperiences[0].company);
     expect(newest?.pdf_file.type).toBe("application/pdf");
     expect(newest && "docx_file" in newest).toBe(false);
 
@@ -149,6 +160,7 @@ describe("resume version persistence", () => {
   });
 
   it("generates with the selected expensive model and no budget or output cap", async () => {
+    await api.updateProfile(profile);
     await api.saveAiSettings({ provider: "openai", model: "gpt-6-astra", reasoning_effort: "max", api_key: "test-local" });
     const app = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "Go", notes: "" });
     await api.generateResumeVersion(app.id, "");

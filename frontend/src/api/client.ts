@@ -1,6 +1,6 @@
 import { OPENAI_MODELS, estimateInputTokens, modelInfo, defaultEffort, PRICE_CHECKED } from "../lib/aiModels";
 import { masterSkills } from "../lib/technicalSkills";
-import { preserveSubprojectTitles } from "../lib/subprojectTitles";
+import { assembleResume, resumeContentSource, RESUME_CONTENT_SCHEMA } from "../lib/resumeContent";
 import { profileDetails } from "../lib/profileDetails";
 import { COMPANY_CATALOG } from "../data/catalog";
 import resumeSkill from "../skills/resume-generation.md?raw";
@@ -11,7 +11,7 @@ import type {
 } from "../types";
 import { makeZip, readStoreZip } from "../lib/resumeFiles";
 import { compileResumeLatex, renderResumeLatex } from "../lib/resumeLatex";
-import { normalizeStoredStructuredResume, parseStructuredResumeJson, RESUME_JSON_SCHEMA, trimLowestPriorityContent } from "../lib/resumeSchema";
+import { normalizeStoredStructuredResume, trimLowestPriorityContent } from "../lib/resumeSchema";
 
 const DB_NAME = "internradar-browser";
 const DB_VERSION = 3;
@@ -401,7 +401,7 @@ async function callGemini(settings: AiSettings, prompt: string, strictResume = f
       generationConfig: {
         responseMimeType: "application/json",
         thinkingConfig: { thinkingLevel: "high" },
-        ...(strictResume ? { responseJsonSchema: RESUME_JSON_SCHEMA } : {}),
+        ...(strictResume ? { responseJsonSchema: RESUME_CONTENT_SCHEMA } : {}),
       },
     }),
   });
@@ -428,12 +428,12 @@ async function callGlm(settings: AiSettings, messages: Array<{ role: "system" | 
 }
 
 
-async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<{ resume: StructuredResume; usage?: AiUsage }> {
+async function callResumeAi(settings: AiSettings, userPrompt: string, profileData: ResumeProfileUpdate): Promise<{ resume: StructuredResume; usage?: AiUsage }> {
   if (settings.provider !== "openai") {
     const raw = settings.provider === "gemini"
       ? await callGemini(settings, `${resumeSkill}\n\n${userPrompt}`, true)
-      : await callGlm(settings, [{ role: "system", content: `${resumeSkill}\n\nOutput JSON Schema:\n${JSON.stringify(RESUME_JSON_SCHEMA)}` }, { role: "user", content: userPrompt }]);
-    return { resume: parseStructuredResumeJson(raw) };
+      : await callGlm(settings, [{ role: "system", content: `${resumeSkill}\n\nOutput JSON Schema:\n${JSON.stringify(RESUME_CONTENT_SCHEMA)}` }, { role: "user", content: userPrompt }]);
+    return { resume: assembleResume(raw, profileData) };
   }
   const effort = settings.reasoning_effort ?? defaultEffort(settings.model);
   if (!modelInfo(settings.model)?.efforts.includes(effort)) throw new Error("Unsupported model or reasoning setting.");
@@ -441,7 +441,7 @@ async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<{
     model: settings.model,
     input: [{ role: "system", content: resumeSkill }, { role: "user", content: userPrompt }],
     reasoning: { effort },
-    text: { format: { type: "json_schema", name: "structured_resume", strict: true, schema: RESUME_JSON_SCHEMA } },
+    text: { format: { type: "json_schema", name: "structured_resume", strict: true, schema: RESUME_CONTENT_SCHEMA } },
   };
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${settings.api_key}` };
   const response = await fetch(OPENAI_RESPONSES_URL, {
@@ -462,31 +462,19 @@ async function callResumeAi(settings: AiSettings, userPrompt: string): Promise<{
   const charge = usage ? ` Reported-token cost estimate: $${usage.estimated_usd.toFixed(4)}.` : " Usage unavailable; the request may still have been charged.";
   if (body.status === "incomplete") throw new Error(`The provider returned an incomplete response (${body.incomplete_details?.reason || "reason unavailable"}).${charge} No automatic retry was made.`);
   const raw = typeof body.output_text === "string" ? body.output_text : body.output?.flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).find((item: { type?: string }) => item.type === "output_text")?.text || "";
-  try { return { resume: parseStructuredResumeJson(raw), usage }; }
+  try { return { resume: assembleResume(raw, profileData), usage }; }
   catch (error) { throw new Error(`${error instanceof Error ? error.message : "Invalid JSON"} No automatic retry was made.${charge}`); }
 }
-// Archived bullet/highlight fields remain in storage, but only current raw notes go to AI.
-function profileSource(profileData: ResumeProfileUpdate) {
-  const sourceEntry = (entry: ResumeProfile["workExperiences"][number] | ResumeProfile["researchExperiences"][number]) => ({
-    ...entry, subprojects: entry.subprojects.map(sub => ({ name: sub.omitTitle ? "" : sub.name, omitTitle: !!sub.omitTitle, details: profileDetails(sub) })),
-  });
-  const { experience_text, research_text, projects_text, skills, skills_text, ...source } = profileData;
-  return { ...source, skillInventory: masterSkills(profileData),
-    workExperiences: profileData.workExperiences.map(sourceEntry),
-    researchExperiences: profileData.researchExperiences.map(sourceEntry),
-    projects: profileData.projects.map(({ bullets, ...project }) => ({ ...project, details: profileDetails({ ...project, bullets }) })),
-  };
-}
 export function estimateResumeInput(profileData: ResumeProfileUpdate) {
-  return estimateInputTokens(resumeSkill + JSON.stringify(RESUME_JSON_SCHEMA) + JSON.stringify(profileSource(profileData), null, 2));
+  return estimateInputTokens(resumeSkill + JSON.stringify(RESUME_CONTENT_SCHEMA) + JSON.stringify(resumeContentSource(profileData), null, 2));
 }
 
 function generationPrompt(profileData: ResumeProfile, app: Application, extraInstructions: string) {
-  return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (factual basis for experience; skill inventory is non-exhaustive, and Technical Skills may be supplemented from the JD):\n${JSON.stringify(profileSource(profileData), null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
+  return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (factual basis for experience; skill inventory is non-exhaustive, and Technical Skills may be supplemented from the JD):\n${JSON.stringify(resumeContentSource(profileData), null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
 }
 
-async function renderOnePageResume(initial: StructuredResume, profileData: ResumeProfile) {
-  let structuredResume = preserveSubprojectTitles(initial, profileData);
+async function renderOnePageResume(initial: StructuredResume) {
+  let structuredResume = initial;
   let texSource = renderResumeLatex(structuredResume);
   let compilation = await compileResumeLatex(texSource);
   // Page fitting is local only: no extra paid AI calls, including after a failure.
@@ -506,9 +494,9 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   const settings = await aiSettings();
   if (!settings.api_key || !settings.model) throw new Error("Save AI settings before generating resumes");
   const profileData = await profile();
-  const generated = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions));
+  const generated = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions), profileData);
   let rendered;
-  try { rendered = await renderOnePageResume(generated.resume, profileData); }
+  try { rendered = await renderOnePageResume(generated.resume); }
   catch (error) {
     const charge = generated.usage ? ` Estimated cost: US$${generated.usage.estimated_usd.toFixed(4)}.` : " Cost unavailable.";
     throw new Error(`${error instanceof Error ? error.message : "PDF generation failed"}${charge}`);

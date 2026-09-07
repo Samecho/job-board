@@ -285,14 +285,14 @@ function validateResume(value: unknown, requireBothExperienceTypes: boolean): St
   return { header, education, experience, projects, technicalSkills };
 }
 
-export function parseStructuredResumeJson(raw: string): StructuredResume {
+export function parseStructuredResumeJson(raw: string, requireBothExperienceTypes = true): StructuredResume {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw.trim());
   } catch {
     throw new Error("AI response was not strict JSON");
   }
-  return validateResume(parsed, true);
+  return validateResume(parsed, requireBothExperienceTypes);
 }
 
 function legacyString(record: UnknownRecord, key: string): string {

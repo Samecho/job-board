@@ -17,7 +17,9 @@ Technical Skills
 - Organize skills into 3-5 concise, nonempty categories chosen for this role. Category names are dynamic, not prescribed.
 
 Output contract
-- Return only a JSON object matching the supplied schema. No explanations, Markdown, LaTeX, warnings, scores, or internal analysis in the output.
+- Return only a JSON object matching the supplied content schema. Return sourceId references for each selected role, subproject, and independent project, copied exactly from the input. Never invent or duplicate references or move subprojects between roles.
+- The script fills contact information, all education entries, actual role titles, employers, locations, dates, work/research type, and independent project names directly from the saved profile. Do not output or reconstruct those fields. Organization, role title, education, and project names in the input are context only.
+- Return only the selected experience/subproject content, project technologies and bullets, and technicalSkills. No explanations, Markdown, LaTeX, warnings, scores, or internal analysis in the output.
 - The renderer owns layout: Header, Education, Experience (work and research together), optional Projects, then Technical Skills. Do not create extra sections or alter styling.
 - Use an empty subproject name when no heading is needed. Each included subproject has generated bullets, with optional highlights containing up to two exact phrases from that bullet. Do not highlight entire sentences.
 - Order material by importance so low-value content can be removed first. Use one-page space efficiently, adding meaningful relevant content when space permits and removing weaker or redundant material when it overflows. Never manufacture content to fill space.

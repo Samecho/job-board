@@ -86,6 +86,8 @@ A company is considered Applied when it has at least one Application. Overview a
 
 ## AI Settings
 
+Resume generation uses a content-only AI response: selected role/subproject IDs, generated bullets/highlights, project technologies, and technical skills. Browser scripts assemble name/contact links, education, employer/organization, actual job title, location, dates, and standalone project names directly from the profile snapshot. Current roles use Present; other dates retain the entered text. Unknown, duplicate, and cross-role references are rejected. Explicitly omitted subproject headings are enforced locally. Existing saved versions retain their original snapshots.
+
 Open **Resume** to choose your provider, model, reasoning effort, and browser-local API key.
 
 - OpenAI offers GPT-5.6 Luna, Terra, Sol, and GPT-6 Astra with supported reasoning levels. Your selected model is always used.

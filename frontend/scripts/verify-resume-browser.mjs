@@ -130,7 +130,7 @@ await page.route("https://api.openai.com/**", async route => {
     status: 200,
     contentType: "application/json",
     headers: { "Access-Control-Allow-Origin": "*" },
-    body: JSON.stringify({ status: "completed", output_text: JSON.stringify(compactResume), usage: { input_tokens: 4000, output_tokens: 2400, output_tokens_details: { reasoning_tokens: 200 } } }),
+    body: JSON.stringify({ status: "completed", output_text: JSON.stringify({ experience: compactResume.experience.map((role, index) => ({ sourceId: index === 0 ? "work:0" : "research:0", subprojects: role.subprojects.map((sub, subIndex) => ({ ...sub, sourceId: `${index === 0 ? "work:0" : "research:0"}/sub:${subIndex}` })) })), projects: [], technicalSkills: compactResume.technicalSkills }), usage: { input_tokens: 4000, output_tokens: 2400, output_tokens_details: { reasoning_tokens: 200 } } }),
   });
 });
 
