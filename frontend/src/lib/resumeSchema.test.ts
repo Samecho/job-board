@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { completeResume } from "../test/resumeFixtures";
 import { normalizeStoredStructuredResume, parseStructuredResumeJson, trimLowestPriorityContent } from "./resumeSchema";
 describe("structured resume schema", () => {
+  it("drops oversized optional highlights without losing experience or project text", () => {
+    const source = structuredClone(completeResume);
+    const research = source.experience[1].subprojects![0].bullets[1];
+    const project = source.projects[0].bullets[0];
+    if (typeof project === "string") throw new Error("Expected structured project fixture");
+    research.highlights = ["x".repeat(81), "R&D_50%", "costs", "R&D"];
+    project.highlights = ["y".repeat(200)];
+    const result = parseStructuredResumeJson(JSON.stringify(source));
+    expect(result.experience[1].subprojects![0].bullets[1]).toEqual({ text: research.text, highlights: ["R&D_50%", "costs"] });
+    expect(result.projects[0].bullets[0]).toEqual({ text: project.text, highlights: [] });
+  });
   it("accepts the exact content-only schema with work and research", () => {
     expect(parseStructuredResumeJson(JSON.stringify(completeResume))).toEqual(completeResume);
   });

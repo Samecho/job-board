@@ -154,10 +154,10 @@ function bulletObject(value: unknown, path: string): { text: string; highlights:
   const obj = exactRecord(value as unknown, path, ["text", "highlights"]);
   const txt = text(obj.text, `${path}.text`, true);
   if (!Array.isArray(obj.highlights)) throw new Error(`${path}.highlights must be an array`);
-  const highlights = (obj.highlights as unknown[]).map((h, i) => text(h, `${path}.highlights[${i}]`, true)).filter(Boolean);
-  if (highlights.length > 2) throw new Error(`${path}.highlights must contain at most 2 items`);
+  // Optional emphasis must not invalidate otherwise usable resume content.
+  const highlights = (obj.highlights as unknown[]).map((h, i) => text(h, `${path}.highlights[${i}]`, true))
+    .filter(h => h.length <= 80).slice(0, 2);
   for (const h of highlights) {
-    if (h.length > 80) throw new Error(`${path}.highlights item too long`);
     if (/\\|{|}|\$|%|&|#|_|\^|~/.test(h) && /\\textbf|\\emph/.test(h)) throw new Error(`${path}.highlights must not contain LaTeX`);
   }
   return { text: txt, highlights };
