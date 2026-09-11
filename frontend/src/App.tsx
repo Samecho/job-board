@@ -37,7 +37,17 @@ function InternBadge() {
 function MultiFilter({ label, options, selected, onChange }: {
   label: string; options: string[]; selected: string[]; onChange: (values: string[]) => void;
 }) {
-  return <details className="multi-filter" onKeyDown={event => {
+  const menu = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      if (menu.current && event.target instanceof Node && !menu.current.contains(event.target)) menu.current.open = false;
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, []);
+  return <details ref={menu} className="multi-filter" onBlur={event => {
+    if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+  }} onKeyDown={event => {
     if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); }
   }}>
     <summary title={selected.join(", ")}>{selected.length ? label + " (" + selected.length + ")" : "All " + label.toLowerCase()}</summary>
@@ -101,7 +111,7 @@ function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters
     else { setSort(next); setDescending(false); }
   };
   const statusControl = (company: Company) => <label className="applied-toggle"><input type="checkbox" checked={company.application_count > 0} onChange={() => onQuickApply(company)} /><span>{company.application_count ? `Applied (${company.application_count})` : "Not Applied"}</span></label>;
-  return <section className="content-panel">
+  return <section className="content-panel company-overview-panel">
     {favouriteError && <p className="inline-error" role="alert">{favouriteError}</p>}
     <label className="overview-star-filter"><input type="checkbox" checked={favouritesOnly} onChange={event => setFavouritesOnly(event.target.checked)} />Favourites only</label>
     <div className="toolbar"><div><span className="eyebrow">{sorted.length} companies</span><h2>Company tracker</h2></div><div className="view-toggle"><button className={view === "table" ? "active" : ""} onClick={() => setView("table")}><List size={17} /> Table</button><button className={view === "cards" ? "active" : ""} onClick={() => setView("cards")}><Grid2X2 size={17} /> Cards</button></div></div>
