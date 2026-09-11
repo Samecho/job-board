@@ -51,11 +51,20 @@ function roles(profile: ResumeProfileUpdate) {
   ];
 }
 
+function guidance(entry: { aiGuidance?: { onlyIfStronglyRelevant?: boolean; instruction?: string } }) {
+  const instruction = entry.aiGuidance?.instruction?.trim();
+  return entry.aiGuidance?.onlyIfStronglyRelevant || instruction
+    ? { onlyIfStronglyRelevant: !!entry.aiGuidance?.onlyIfStronglyRelevant, ...(instruction ? { instruction } : {}) }
+    : undefined;
+}
+
 export function resumeContentSource(profile: ResumeProfileUpdate) {
   return {
+    ...(roles(profile).some(role => guidance(role)) ? { experienceGuidancePolicy: "Follow each entry's optional aiGuidance when selecting and presenting that experience. onlyIfStronglyRelevant means omit that entry unless it strongly matches the target JD. Follow its instruction, including bullet limits across the whole entry, emphasis, or role-specific inclusion. Guidance is user preference, not factual resume content: never print it. Preserve factual grounding, schema and one-page constraints. Entries without guidance retain the normal selection behavior." } : {}),
     educationContext: profile.education.map(({ institution, degree }) => ({ institution, degree })),
     experience: roles(profile).map(role => ({
       sourceId: role.sourceId, organization: role.organization, title: role.title, type: role.type,
+      ...(guidance(role) ? { aiGuidance: guidance(role) } : {}),
       subprojects: role.subprojects.map((entry, index) => ({
         sourceId: `${role.sourceId}/sub:${index}`, name: entry.omitTitle ? "" : entry.name,
         omitTitle: !!entry.omitTitle, details: profileDetails(entry),
@@ -126,5 +135,14 @@ export function assembleResume(raw: string, profile: ResumeProfileUpdate): Struc
     })),
     experience, projects, technicalSkills: content.technicalSkills,
   };
-  return parseStructuredResumeJson(JSON.stringify(resume), profile.workExperiences.length > 0 && profile.researchExperiences.length > 0);
+  const requireBoth = profile.workExperiences.length > 0 && profile.researchExperiences.length > 0;
+  // Explicit guidance can omit a type only when all its entries carry guidance.
+  if (requireBoth) {
+    for (const type of ["work", "research"] as const) {
+      if (!experience.some(entry => entry.type === type) && !roles(profile).filter(role => role.type === type).every(role => guidance(role))) {
+        return parseStructuredResumeJson(JSON.stringify(resume), true);
+      }
+    }
+  }
+  return parseStructuredResumeJson(JSON.stringify(resume), requireBoth && !roles(profile).some(role => guidance(role)));
 }

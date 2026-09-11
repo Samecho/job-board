@@ -73,6 +73,13 @@ function ExperienceCard({ value, index, research, onChange, onRemove }: {
       <label className="profile-current"><input type="checkbox" checked={value.isCurrent} onChange={event => onChange({ isCurrent: event.target.checked, ...(event.target.checked ? { endDate: "Present" } : {}) })} /><span>Current</span></label>
     </div>
     <SubprojectsEditor subprojects={value.subprojects} onChange={subprojects => onChange({ subprojects })} />
+    <details className="profile-ai-guidance">
+      <summary>AI guidance</summary>
+      <div>
+        <label className="profile-guidance-toggle"><input type="checkbox" checked={!!value.aiGuidance?.onlyIfStronglyRelevant} onChange={event => onChange({ aiGuidance: { ...value.aiGuidance, onlyIfStronglyRelevant: event.target.checked } })} /><span>Only include if strongly relevant</span></label>
+        <label className="profile-field"><span>Optional instruction</span><input value={value.aiGuidance?.instruction || ""} maxLength={300} placeholder="e.g. Use at most 2 bullets; emphasize infrastructure" onChange={event => onChange({ aiGuidance: { ...value.aiGuidance, instruction: event.target.value } })} /></label>
+      </div>
+    </details>
   </article>;
 }
 

@@ -59,6 +59,7 @@ export interface ResumeProfile {
     endDate: string;
   }>;
   workExperiences: Array<{
+    aiGuidance?: { onlyIfStronglyRelevant?: boolean; instruction?: string };
     company: string;
     title: string;
     location: string;
@@ -73,6 +74,7 @@ export interface ResumeProfile {
     }>;
   }>;
   researchExperiences: Array<{
+    aiGuidance?: { onlyIfStronglyRelevant?: boolean; instruction?: string };
     organization: string;
     title: string;
     location: string;
