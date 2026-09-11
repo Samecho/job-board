@@ -48,6 +48,7 @@ function mergeCompanyStates(current: CompanyState | undefined, incoming: Company
   const notes = [...new Set([current?.notes, incoming.notes].filter((value): value is string => Boolean(value)))].join("\n\n");
   return {
     company_id: companyId,
+    is_favourite: Boolean(current?.is_favourite || incoming.is_favourite),
     notes,
     link: current?.link || incoming.link || "",
     main_locations: current?.main_locations || incoming.main_locations || "",
@@ -344,7 +345,7 @@ async function companies(): Promise<Company[]> {
       link: state?.link ?? company.link,
       status: application_count > 0 ? "Applied" as const : "Not Applied" as const,
       application_count,
-      starred_application_count: apps.filter(app => app.company_id === company.id && app.is_starred).length,
+      is_favourite: Boolean(state?.is_favourite),
       resume_count: resumeCounts.get(company.id) || 0,
     };
   }).sort((a, b) => (tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier)) || a.name.localeCompare(b.name));
@@ -360,6 +361,7 @@ async function updateCompany(id: number, data: CompanyUpdate) {
   const current = await company(id);
   await put<CompanyState>("company_states", {
     company_id: id,
+    is_favourite: data.is_favourite ?? current.is_favourite ?? false,
     notes: data.notes ?? current.notes,
     link: data.link ?? current.link,
     main_locations: data.main_locations ?? current.main_locations,

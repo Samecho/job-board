@@ -124,13 +124,17 @@ main{grid-column:2;padding:32px 38px 70px;max-width:1800px;width:100%;margin:aut
 .company-resume-modal .resume-check { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; letter-spacing:0; text-transform:none; }
 .company-resume-modal input[type=checkbox] { width:16px; height:16px; padding:0; margin:0; flex:none; accent-color:#1a73e8; }
 .company-application-rows { display:grid; gap:7px; max-height:290px; overflow-y:auto; overflow-x:hidden; }
-.company-application-row { display:grid; grid-template-columns:16px minmax(0,1fr) 30px; align-items:center; gap:8px; border:1px solid var(--line); border-radius:9px; padding:8px; }
+.company-application-row { display:grid; grid-template-columns:16px minmax(0,1fr); align-items:center; gap:8px; border:1px solid var(--line); border-radius:9px; padding:8px; }
 .company-application-row.active { border-color:#87b3ef; background:#f1f6fd; }
 .application-detail-button { display:grid; gap:4px; border:0; background:transparent; padding:2px; text-align:left; color:#34445b; }
 .application-detail-button strong { font-size:12px; }
 .application-detail-button small,.application-detail-button span { font-size:11px; color:var(--muted); }
-.application-star { display:grid; place-items:center; padding:6px; background:transparent; border:0; color:#8b97a8; border-radius:6px; }
-.application-star.starred { color:#b98509; }
+.company-title-with-favourite { display:flex; align-items:center; gap:6px; min-width:0; }
+.company-title-with-favourite strong,.company-title-with-favourite h3 { min-width:0; overflow-wrap:anywhere; }
+.company-favourite { display:inline-flex; align-items:center; justify-content:center; flex:none; padding:5px; border:0; border-radius:6px; background:transparent; color:#8b97a8; cursor:pointer; }
+.company-favourite.active { color:#b98509; }
+.company-favourite:disabled { opacity:.5; cursor:wait; }
+.company-favourite:focus-visible { outline:2px solid #1a73e8; outline-offset:2px; }
 .application-editor summary { cursor:pointer; font-size:13px; font-weight:700; }
 .application-editor-fields { display:grid; gap:12px; margin-top:14px; }
 .company-resume-modal .application-editor select { border:1px solid var(--line); border-radius:8px; padding:10px; background:#f9fbfc; }

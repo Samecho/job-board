@@ -18,7 +18,7 @@ export interface CompanyCatalogItem {
 }
 
 export interface Company extends CompanyCatalogItem {
-  starred_application_count?: number;
+  is_favourite?: boolean;
   status: CompanyStatus;
   notes: string;
   resume_count: number;
@@ -26,12 +26,14 @@ export interface Company extends CompanyCatalogItem {
 }
 
 export interface CompanyUpdate {
+  is_favourite?: boolean;
   notes?: string;
   link?: string;
   main_locations?: string;
 }
 
 export interface CompanyState {
+  is_favourite?: boolean;
   company_id: number;
   notes: string;
   link: string;

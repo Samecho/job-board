@@ -34,8 +34,9 @@ Application rows show the resume name and version currently assigned to them.
 Saved resumes are grouped by an editable name and show which applications use each version.
 Select one or more applications, then use a version's Use for selected button to assign it to all of them.
 Use Unassign resume in the application editor to remove its assignment.
-Star applications using the star button on each row. Starred only filters the application list;
-Overview also offers a Starred applications only filter. Stars are saved in IndexedDB and backups.
+Favourite companies using the star beside their name in Overview's table or cards.
+The Favourites only filter shows favourite companies, independently of their applications.
+Company favourites are saved in IndexedDB and backups; positions do not have favourite controls.
 In version history, Edit / AI refine opens the structured JSON editor. Save manual edit recompiles locally without AI.
 Alternatively, enter a refinement instruction and use AI refine for one request with the existing content.
 Both save a new version and assign it to the current application only; other applications keep their assignments.

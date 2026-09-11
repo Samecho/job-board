@@ -1,6 +1,6 @@
 import { getGenerationTasks, subscribeGeneration, runResumeGeneration } from "../lib/resumeGeneration";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Download, Eye, FileCode2, Sparkles, Star, Trash2, X } from "lucide-react";
+import { Download, Eye, FileCode2, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "../api/client";
 import { downloadBlob } from "../lib/resumeFiles";
 import type { Application, ApplicationStage, Company, FeatureStatus, ResumeVersionRead } from "../types";
@@ -20,9 +20,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
   const [savedVersions, setSavedVersions] = useState<ResumeVersionRead[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [targetIds, setTargetIds] = useState<number[]>([]);
-  const [starredOnly, setStarredOnly] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [draftStarred, setDraftStarred] = useState(false);
   const [resumeName, setResumeName] = useState("");
   const [extraInstructions, setExtraInstructions] = useState("");
   const [busy, setBusy] = useState("");
@@ -41,7 +39,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
   // Scope even during company switches, before the next load completes.
   const apps = records.filter(app => app.company_id === company.id);
   const versions = savedVersions.filter(version => version.company_id === company.id);
-  const visibleApps = apps.filter(app => !starredOnly || app.is_starred);
+  const visibleApps = apps;
   const targets = targetIds.filter(id => visibleApps.some(app => app.id === id));
   const selected = apps.find(app => app.id === selectedId) || null;
   const tasks = useSyncExternalStore(subscribeGeneration, getGenerationTasks);
@@ -77,10 +75,9 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
   useEffect(() => {
     setEditing(null);
     setForm(selected ? { job_title: selected.job_title, job_description: selected.job_description, notes: selected.notes, application_stage: selected.application_stage } : emptyForm());
-    setDraftStarred(Boolean(selected?.is_starred));
   }, [selectedId, company.id]);
   useEffect(() => {
-    setTargetIds([]); setStarredOnly(false); setResumeName(""); setEditing(null);
+    setTargetIds([]); setResumeName(""); setEditing(null);
     setRenaming(null); setPreviewUrl(""); setError("");
   }, [company.id]);
 
@@ -95,18 +92,14 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
     try {
       const saved = selected ? await api.updateApplication(selected.id, form)
         : await api.createApplication({ company_id: company.id, job_title: form.job_title, job_description: form.job_description, notes: form.notes });
-      if (!selected) await api.updateApplication(saved.id, { application_stage: form.application_stage, is_starred: draftStarred });
+      if (!selected) await api.updateApplication(saved.id, { application_stage: form.application_stage });
       await load(saved.id); await onSaved();
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Save failed"); }
     finally { setBusy(""); }
   };
   const newApplication = () => {
-    setSelectedId(null); setTargetIds([]); setEditing(null); setForm(emptyForm()); setDraftStarred(false);
+    setSelectedId(null); setTargetIds([]); setEditing(null); setForm(emptyForm());
   };
-  const toggleStar = (app: Application) => mutate(async () => {
-    await api.updateApplication(app.id, { is_starred: !app.is_starred });
-    if (starredOnly && app.is_starred) setTargetIds(current => current.filter(id => id !== app.id));
-  });
   const generate = async () => {
     setError("");
     await runResumeGeneration(company, async () => {
@@ -115,7 +108,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
         return targets[0];
       }
       const app = await api.createApplication({ company_id: company.id, job_title: form.job_title, job_description: form.job_description, notes: form.notes });
-      await api.updateApplication(app.id, { application_stage: form.application_stage, is_starred: draftStarred });
+      await api.updateApplication(app.id, { application_stage: form.application_stage });
       return app.id;
     }, id => api.generateResumeVersion(id, extraInstructions, targets.length ? targets : [id], resumeName));
     await onSaved();
@@ -166,10 +159,6 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
           <div className="resume-inputs">
             <section className="company-application-list">
               <div className="resume-section-heading"><h3>Applications</h3><button className="button ghost compact-button" disabled={locked} onClick={newApplication}>+ New</button></div>
-              <label className="resume-check"><input type="checkbox" checked={starredOnly} onChange={event => {
-                setStarredOnly(event.target.checked);
-                if (event.target.checked) setTargetIds(current => current.filter(id => apps.some(app => app.id === id && app.is_starred)));
-              }} />Starred only</label>
               <div className="company-application-rows">
                 {visibleApps.map(app => {
                   const assigned = versions.find(version => version.id === app.assigned_resume_version_id);
@@ -179,10 +168,9 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
                       <strong>{app.job_title || "Untitled role"}</strong><small>{app.application_stage}</small>
                       <span>{assigned ? versionLabel(assigned) : app.assigned_resume_version_id ? "Previously assigned resume" : "No resume assigned"}</span>
                     </button>
-                    <button className={"application-star" + (app.is_starred ? " starred" : "")} aria-label={(app.is_starred ? "Unstar " : "Star ") + (app.job_title || "application")} aria-pressed={!!app.is_starred} disabled={locked} onClick={() => toggleStar(app)}><Star size={17} fill={app.is_starred ? "currentColor" : "none"} /></button>
                   </article>;
                 })}
-                {!visibleApps.length && <p className="empty-copy">{starredOnly ? "No starred applications." : "No applications yet."}</p>}
+                {!visibleApps.length && <p className="empty-copy">No applications yet.</p>}
               </div>
               <small>{targets.length} selected for generation or assignment</small>
             </section>
@@ -191,7 +179,6 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
               <div className="application-editor-fields">
                 <label>Job title<input value={form.job_title} disabled={locked} onChange={event => setForm(current => ({ ...current, job_title: event.target.value }))} placeholder="Software Engineering Intern" /></label>
                 <label>Stage<select value={form.application_stage} disabled={locked} onChange={event => setForm(current => ({ ...current, application_stage: event.target.value as ApplicationStage }))}>{stages.map(stage => <option key={stage}>{stage}</option>)}</select></label>
-                {!selected && <label className="resume-check"><input type="checkbox" checked={draftStarred} disabled={locked} onChange={event => setDraftStarred(event.target.checked)} /><Star size={14} /> Star application</label>}
                 <label>Job description<textarea rows={6} value={form.job_description} disabled={locked} onChange={event => setForm(current => ({ ...current, job_description: event.target.value }))} placeholder="Paste the JD..." /></label>
                 <label>Notes<textarea rows={2} value={form.notes} disabled={locked} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} /></label>
                 <div className="resume-actions"><button className="button ghost" disabled={locked} onClick={saveApplication}>Save application</button>{selected && <button className="button ghost delete" disabled={locked} onClick={deleteApplication}>Delete</button>}{!!selected?.assigned_resume_version_id && <button className="button ghost" disabled={locked} onClick={() => mutate(() => api.assignResume(selected!.id, null))}>Unassign resume</button>}</div>
