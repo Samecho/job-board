@@ -123,6 +123,7 @@ export interface AiSettings {
 }
 
 export interface Application {
+  assigned_resume_version_id?: number | null;
   id: number;
   company_id: number;
   job_title: string;
@@ -184,6 +185,8 @@ export interface AiUsage {
   price_checked: string;
 }
 export interface ResumeVersion {
+  application_ids?: number[];
+  parent_version_id?: number;
   id: number;
   application_id: number;
   company_id: number;
@@ -200,6 +203,8 @@ export interface ResumeVersion {
 }
 
 export interface ResumeVersionRead {
+  application_ids?: number[];
+  parent_version_id?: number;
   id: number;
   application_id: number;
   company_id: number;

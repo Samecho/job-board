@@ -126,6 +126,12 @@ await page.route("https://api.openai.com/**", async route => {
   if (request.model !== "gpt-5.6-luna" || "max_output_tokens" in request || request.reasoning.effort !== "low") throw new Error("Selected model changed or output was capped");
   aiRequestCount += 1;
   if (aiRequestCount === 1) await generationGate;
+  if (request.text.format.schema.properties.header) {
+    const supplied = JSON.parse(request.input[1].content).existingResume;
+    supplied.header.location = "Remote";
+    await route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ status: "completed", output_text: JSON.stringify(supplied) }) });
+    return;
+  }
   await route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -285,10 +291,54 @@ try {
   if (!texSource.includes("\\documentclass[letterpaper,11pt]{article}") || !texSource.includes("\\begin{document}") || !texSource.includes("\\end{document}")) throw new Error("Downloaded .tex is not standalone");
   if (/USER CONFIRMATION NEEDED|confirmation_needed|```/i.test(texSource)) throw new Error("Downloaded .tex contains forbidden AI output");
 
+  await page.getByRole("button", { name: "Edit / AI refine", exact: true }).click();
+  const editor = page.getByLabel("Structured resume content (JSON)");
+  const edited = JSON.parse(await editor.inputValue());
+  edited.header.location = "Vancouver, BC";
+  await editor.fill(JSON.stringify(edited, null, 2));
+  await page.getByRole("button", { name: "Save manual edit as new version", exact: true }).click();
+  await page.getByText("Version 2", { exact: true }).waitFor({ timeout: 180_000 });
+  if (aiRequestCount !== 1) throw new Error("Manual refinement made an AI request");
+  const assigned = page.getByLabel("Assigned resume", { exact: true });
+  const v2 = await assigned.inputValue();
+  const options = await assigned.locator("option").evaluateAll(items => items.map(item => ({ value: item.value, text: item.textContent })));
+  const v1 = options.find(item => item.text.includes("/ v1"));
+  await assigned.selectOption(v1.value);
+  await page.waitForFunction(value => document.querySelector('[aria-label="Assigned resume"]')?.value === value, v1.value);
+  await assigned.selectOption(v2);
+  await page.waitForFunction(value => document.querySelector('[aria-label="Assigned resume"]')?.value === value, v2);
+  page.once("dialog", dialog => dialog.accept());
+  await page.locator(".resume-history article").filter({ has: page.getByText("Version 2", { exact: true }) }).getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByText("Version 2", { exact: true }).waitFor({ state: "detached" });
+  if (await assigned.inputValue() !== "") throw new Error("Deleted version assignment was not cleared");
+
+  await page.getByRole("button", { name: "Edit / AI refine", exact: true }).click();
+  await page.getByLabel("AI refinement instruction", { exact: true }).fill("Change location to Remote only.");
+  await page.getByRole("button", { name: "AI refine as new version", exact: true }).click();
+  await page.getByText("Version 2", { exact: true }).waitFor({ timeout: 180_000 });
+  if (aiRequestCount !== 2) throw new Error("AI refinement did not use exactly one request");
+  page.once("dialog", dialog => dialog.accept());
+  await page.locator(".resume-history article").filter({ has: page.getByText("Version 2", { exact: true }) }).getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByText("Version 2", { exact: true }).waitFor({ state: "detached" });
+
   page.once("dialog", dialog => dialog.accept());
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await page.getByText("No resume versions for this application yet.").waitFor();
   await page.locator(".app-picker button.active").filter({ hasText: "Software Engineer Intern" }).waitFor();
+
+  await page.getByRole("button", { name: "+ New application", exact: true }).click();
+  await page.getByLabel("Job title", { exact: true }).fill("Infrastructure Intern");
+  await page.getByLabel("Job description", { exact: true }).fill("Build Kubernetes infrastructure and distributed services using Go.");
+  await page.getByRole("button", { name: "Save application", exact: true }).click();
+  await page.locator(".app-picker button.active").filter({ hasText: "Infrastructure Intern" }).waitFor();
+  await page.locator(".resume-targets label").filter({ hasText: "Software Engineer Intern" }).getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Generate new version", exact: true }).click();
+  await page.getByText("Version 1", { exact: true }).waitFor({ timeout: 180_000 });
+  if (aiRequestCount !== 3) throw new Error("Shared generation did not use one request");
+  const sharedId = await assigned.inputValue();
+  await page.locator(".app-picker button").filter({ hasText: "Software Engineer Intern" }).click();
+  await page.waitForFunction(value => document.querySelector('[aria-label="Assigned resume"]')?.value === value, sharedId);
+  await page.getByText("Version 1", { exact: true }).waitFor();
 
   console.log(JSON.stringify({
     aiRequestCount,

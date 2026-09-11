@@ -22,6 +22,21 @@ There is no login, Jobs tab, Sources tab, crawler, match score, priority/pin sys
 - Deterministic browser rendering for PDF and DOCX from structured resume JSON
 - Export Everything / Import Backup ZIP workflow
 
+## Shared Resumes and Refinement
+
+Open a company's Resume dialog to manage its separate applications.
+Select applications in the checkbox list (including other companies), then Generate new version.
+One AI request considers all selected JDs and saves one PDF/TeX version shared by those applications.
+Each application keeps its own stage, JD, and notes; application counts do not count versions.
+
+Use Assigned resume to choose any saved version, or None, for the current application.
+In version history, Edit / AI refine opens the structured JSON editor. Save manual edit recompiles locally without AI.
+Alternatively, enter a refinement instruction and use AI refine for one request with the existing content.
+Both save a new version and assign it to the current application only; other applications keep their assignments.
+Overlong refinements are rejected instead of silently pruning unrelated content. The original remains available.
+Deleting a shared version clears all its assignments, not applications. Deleting an application retains saved versions.
+Backup ZIPs preserve sharing, assignments, and refinement lineage. Existing single-application versions remain compatible.
+
 ## Run Locally
 
 ```powershell

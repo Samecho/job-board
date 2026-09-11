@@ -11,7 +11,7 @@ import type {
 } from "../types";
 import { makeZip, readStoreZip } from "../lib/resumeFiles";
 import { compileResumeLatex, renderResumeLatex } from "../lib/resumeLatex";
-import { normalizeStoredStructuredResume, trimLowestPriorityContent } from "../lib/resumeSchema";
+import { normalizeStoredStructuredResume, trimLowestPriorityContent, parseStructuredResumeJson, RESUME_JSON_SCHEMA } from "../lib/resumeSchema";
 
 const DB_NAME = "internradar-browser";
 const DB_VERSION = 3;
@@ -108,7 +108,9 @@ async function tx<T>(stores: string[], mode: IDBTransactionMode, run: (db: IDBDa
   const db = await openDb();
   try {
     const transaction = db.transaction(stores, mode);
-    const result = await run(db, transaction);
+    let result: T;
+    try { result = await run(db, transaction); }
+    catch (error) { try { transaction.abort(); } catch { /* Already aborted. */ } throw error; }
     await new Promise<void>((resolve, reject) => {
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
@@ -313,7 +315,7 @@ function hydrateResumeVersion(version: StoredResumeVersion): ResumeVersion {
 
 async function versions(applicationId?: number) {
   const items = (await all<StoredResumeVersion>("resume_versions")).map(hydrateResumeVersion);
-  return items.filter(item => !applicationId || item.application_id === applicationId).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return items.filter(item => !applicationId || (item.application_ids ?? [item.application_id]).includes(applicationId)).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 function companyName(companyId: number) {
@@ -328,7 +330,10 @@ async function companies(): Promise<Company[]> {
   const appCounts = new Map<number, number>();
   const resumeCounts = new Map<number, number>();
   apps.forEach(app => appCounts.set(app.company_id, (appCounts.get(app.company_id) || 0) + 1));
-  resumeVersions.forEach(version => resumeCounts.set(version.company_id, (resumeCounts.get(version.company_id) || 0) + 1));
+  resumeVersions.forEach(version => {
+    const related = apps.filter(app => (version.application_ids ?? [version.application_id]).includes(app.id));
+    for (const companyId of new Set([version.company_id, ...related.map(app => app.company_id)])) resumeCounts.set(companyId, (resumeCounts.get(companyId) || 0) + 1);
+  });
   return COMPANY_CATALOG.map(company => {
     const state = stateMap.get(company.id);
     const application_count = appCounts.get(company.id) || 0;
@@ -368,7 +373,7 @@ async function analytics(): Promise<Analytics> {
   apps.forEach(app => { stageCounts[app.application_stage] += 1; });
   const tier_counts: Record<string, number> = {};
   tierOrder.forEach(tier => { tier_counts[tier] = items.filter(company => company.tier === tier).length; });
-  const companiesWithResume = new Set(resumeVersions.map(version => version.company_id));
+  const companiesWithResume = new Set(items.filter(item => item.resume_count > 0).map(item => item.id));
   return {
     total_companies: items.length,
     applied_count: items.filter(company => company.application_count > 0).length,
@@ -392,7 +397,7 @@ async function responseError(response: Response) {
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GLM_CHAT_URL = "https://api.z.ai/api/paas/v4/chat/completions";
-async function callGemini(settings: AiSettings, prompt: string, schema?: ReturnType<typeof resumeContentSchema>) {
+async function callGemini(settings: AiSettings, prompt: string, schema?: object) {
   const response = await fetch(`${GEMINI_API_BASE}/models/${encodeURIComponent(settings.model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": settings.api_key },
@@ -428,19 +433,21 @@ async function callGlm(settings: AiSettings, messages: Array<{ role: "system" | 
 }
 
 
-async function callResumeAi(settings: AiSettings, userPrompt: string, profileData: ResumeProfileUpdate): Promise<{ resume: StructuredResume; usage?: AiUsage }> {
-  const schema = resumeContentSchema(profileData);
+async function callResumeAi(settings: AiSettings, userPrompt: string, profileData: ResumeProfileUpdate, refine = false): Promise<{ resume: StructuredResume; usage?: AiUsage }> {
+  const schema = refine ? RESUME_JSON_SCHEMA : resumeContentSchema(profileData);
+  const instructions = refine ? "Refine the supplied existing resume only according to the user instruction. Preserve unrelated content and factual details verbatim as much as possible. Do not regenerate from the master profile. Do not invent metrics, employers, dates, responsibilities or outcomes. Keep one page and the JSON schema. Highlights must be short exact phrases from the bullet, at most two per bullet. Return only the complete final structured JSON; reason internally in this single call." : resumeSkill;
+  const parse = (raw: string) => refine ? parseStructuredResumeJson(raw, false) : assembleResume(raw, profileData);
   if (settings.provider !== "openai") {
     const raw = settings.provider === "gemini"
-      ? await callGemini(settings, `${resumeSkill}\n\n${userPrompt}`, schema)
-      : await callGlm(settings, [{ role: "system", content: `${resumeSkill}\n\nOutput JSON Schema:\n${JSON.stringify(schema)}` }, { role: "user", content: userPrompt }]);
-    return { resume: assembleResume(raw, profileData) };
+      ? await callGemini(settings, `${instructions}\n\n${userPrompt}`, schema)
+      : await callGlm(settings, [{ role: "system", content: `${instructions}\n\nOutput JSON Schema:\n${JSON.stringify(schema)}` }, { role: "user", content: userPrompt }]);
+    return { resume: parse(raw) };
   }
   const effort = settings.reasoning_effort ?? defaultEffort(settings.model);
   if (!modelInfo(settings.model)?.efforts.includes(effort)) throw new Error("Unsupported model or reasoning setting.");
   const payload = {
     model: settings.model,
-    input: [{ role: "system", content: resumeSkill }, { role: "user", content: userPrompt }],
+    input: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }],
     reasoning: { effort },
     text: { format: { type: "json_schema", name: "structured_resume", strict: true, schema } },
   };
@@ -463,7 +470,7 @@ async function callResumeAi(settings: AiSettings, userPrompt: string, profileDat
   const charge = usage ? ` Reported-token cost estimate: $${usage.estimated_usd.toFixed(4)}.` : " Usage unavailable; the request may still have been charged.";
   if (body.status === "incomplete") throw new Error(`The provider returned an incomplete response (${body.incomplete_details?.reason || "reason unavailable"}).${charge} No automatic retry was made.`);
   const raw = typeof body.output_text === "string" ? body.output_text : body.output?.flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || []).find((item: { type?: string }) => item.type === "output_text")?.text || "";
-  try { return { resume: assembleResume(raw, profileData), usage }; }
+  try { return { resume: parse(raw), usage }; }
   catch (error) { throw new Error(`${error instanceof Error ? error.message : "Invalid JSON"} No automatic retry was made.${charge}`); }
 }
 export function estimateResumeInput(profileData: ResumeProfileUpdate) {
@@ -489,25 +496,98 @@ async function renderOnePageResume(initial: StructuredResume) {
   if (compilation.pageCount !== 1) throw new Error("Local fitting could not produce one page. The AI request may have been charged; no automatic retry was made.");
   return { structuredResume, texSource, pdfFile: compilation.pdfFile };
 }
-async function generateResumeVersion(applicationId: number, extraInstructions: string) {
+async function saveAssignedVersion(value: Omit<ResumeVersion, "id">) {
+  return tx(["applications", "resume_versions"], "readwrite", async (_, transaction) => {
+    const appStore = transaction.objectStore("applications");
+    const store = transaction.objectStore("resume_versions");
+    const ids = [...new Set(value.application_ids ?? [value.application_id])];
+    const targets: Application[] = [];
+    for (const id of ids) {
+      const app = await req<Application | undefined>(appStore.get(id));
+      if (!app) throw new Error("A selected application was deleted. No version was saved.");
+      targets.push(app);
+    }
+    if (!targets.length) throw new Error("Select at least one application.");
+    const existing = await req<ResumeVersion[]>(store.getAll());
+    const version_number = Math.max(0, ...existing.filter(item => (item.application_ids ?? [item.application_id]).includes(value.application_id)).map(item => item.version_number)) + 1;
+    const record = { ...value, application_ids: ids, version_number };
+    const id = Number(await req(store.add(record)));
+    for (const app of targets) await req(appStore.put({ ...app, assigned_resume_version_id: id, updated_at: now() }));
+    return { ...record, id };
+  });
+}
+
+async function assignResume(applicationId: number, versionId: number | null) {
+  return tx(["applications", "resume_versions"], "readwrite", async (_, transaction) => {
+    const apps = transaction.objectStore("applications");
+    const store = transaction.objectStore("resume_versions");
+    const app = await req<Application | undefined>(apps.get(applicationId));
+    if (!app) throw new Error("Application not found");
+    if (versionId !== null) {
+      const version = await req<ResumeVersion | undefined>(store.get(versionId));
+      if (!version) throw new Error("Resume version not found");
+      await req(store.put({ ...version, application_ids: [...new Set([...(version.application_ids ?? [version.application_id]), applicationId])] }));
+    }
+    await req(apps.put({ ...app, assigned_resume_version_id: versionId, updated_at: now() }));
+  });
+}
+
+async function deleteResumeVersion(id: number) {
+  await tx(["applications", "resume_versions"], "readwrite", async (_, transaction) => {
+    const store = transaction.objectStore("applications");
+    for (const app of await req<Application[]>(store.getAll())) {
+      if (app.assigned_resume_version_id === id) await req(store.put({ ...app, assigned_resume_version_id: null, updated_at: now() }));
+    }
+    await req(transaction.objectStore("resume_versions").delete(id));
+  });
+}
+
+async function refineResumeVersion(id: number, applicationId: number, content: string, instruction = "") {
+  const stored = await get<StoredResumeVersion>("resume_versions", id);
+  if (!stored) throw new Error("Resume version not found");
+  const original = hydrateResumeVersion(stored);
+  const app = await get<Application>("applications", applicationId);
+  if (!app) throw new Error("Application not found");
+  let resume = parseStructuredResumeJson(content, false);
+  let usage: AiUsage | undefined;
+  let settings: AiSettings | undefined;
+  if (instruction.trim()) {
+    settings = await aiSettings();
+    if (!settings.api_key) throw new Error("Save AI settings before refining resumes");
+    const result = await callResumeAi(settings, JSON.stringify({ existingResume: resume, instruction, targetJD: app.job_description }), await profile(), true);
+    resume = result.resume;
+    usage = result.usage;
+  }
+  // Refinements must not silently prune unrelated content to fit the page.
+  const tex = renderResumeLatex(resume);
+  const compiled = await compileResumeLatex(tex);
+  if (compiled.pageCount !== 1) throw new Error("Refinement does not fit one page. Shorten the edited content and try again; the original version is unchanged." + (usage ? ` Estimated cost: $${usage.estimated_usd.toFixed(4)}.` : ""));
+  return saveAssignedVersion({ application_id: applicationId, application_ids: [applicationId], company_id: app.company_id,
+    parent_version_id: original.id, version_number: 0, structured_resume: resume, tex_source: tex, pdf_file: compiled.pdfFile,
+    provider: settings?.provider ?? "manual", model: settings?.model ?? "Manual edit", reasoning_effort: settings?.reasoning_effort,
+    ai_usage: usage, created_at: now() });
+}
+
+async function generateResumeVersion(applicationId: number, extraInstructions: string, applicationIds: number[] = [applicationId]) {
   const app = await get<Application>("applications", applicationId);
   if (!app) throw new Error("Application not found");
   const settings = await aiSettings();
   if (!settings.api_key || !settings.model) throw new Error("Save AI settings before generating resumes");
   const profileData = await profile();
-  const generated = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions), profileData);
+  const targets = await Promise.all([...new Set([applicationId, ...applicationIds])].map(id => get<Application>("applications", id)));
+  if (targets.some(target => !target || !target.job_description.trim())) throw new Error("Every selected application needs a job description.");
+  const generated = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions) + "\nGenerate ONE coherent resume suitable for ALL these targets:\n" + JSON.stringify(targets.map(target => ({ company: companyName(target!.company_id), title: target!.job_title, jd: target!.job_description }))), profileData);
   let rendered;
   try { rendered = await renderOnePageResume(generated.resume); }
   catch (error) {
     const charge = generated.usage ? ` Estimated cost: US$${generated.usage.estimated_usd.toFixed(4)}.` : " Cost unavailable.";
     throw new Error(`${error instanceof Error ? error.message : "PDF generation failed"}${charge}`);
   }
-  const existing = await versions(applicationId);
-  const version_number = existing.length ? Math.max(...existing.map(item => item.version_number)) + 1 : 1;
-  return add<Partial<ResumeVersion>>("resume_versions", {
+  return saveAssignedVersion({
+    application_ids: targets.map(target => target!.id),
     application_id: applicationId,
     company_id: app.company_id,
-    version_number,
+    version_number: 0,
     structured_resume: rendered.structuredResume,
     ai_usage: generated.usage,
     reasoning_effort: settings.reasoning_effort ?? defaultEffort(settings.model),
@@ -520,6 +600,8 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
 }
 function versionRead(version: ResumeVersion, app?: Application): ResumeVersionRead {
   return {
+    application_ids: version.application_ids ?? [version.application_id],
+    parent_version_id: version.parent_version_id,
     id: version.id,
     application_id: version.application_id,
     company_id: version.company_id,
@@ -652,20 +734,21 @@ export const api = {
     return put("applications", { ...current, ...data, id, updated_at: now() });
   },
   deleteApplication: async (id: number) => {
-    const children = await versions(id);
-    await Promise.all(children.map(child => del("resume_versions", child.id)));
+    // Keep immutable versions, including versions shared by other applications.
     await del("applications", id);
   },
+  assignResume,
+  refineResumeVersion,
   generateResumeVersion,
   resumeVersions: async (applicationId: number) => {
     const [app, items] = await Promise.all([get<Application>("applications", applicationId), versions(applicationId)]);
     return items.map(item => versionRead(item, app));
   },
   getResumeVersion: async (id: number) => { const item = await get<StoredResumeVersion>("resume_versions", id); return item ? hydrateResumeVersion(item) : undefined; },
-  deleteResumeVersion: (id: number) => del("resume_versions", id),
+  deleteResumeVersion,
   resumes: resumeReads,
   companyResumes: async (companyId: number) => (await resumeReads()).filter(item => item.company_id === companyId),
-  deleteResume: (id: number) => del("resume_versions", id),
+  deleteResume: deleteResumeVersion,
   exportBackup,
   importBackup,
 };
