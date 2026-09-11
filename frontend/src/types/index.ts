@@ -18,6 +18,7 @@ export interface CompanyCatalogItem {
 }
 
 export interface Company extends CompanyCatalogItem {
+  starred_application_count?: number;
   status: CompanyStatus;
   notes: string;
   resume_count: number;
@@ -123,6 +124,7 @@ export interface AiSettings {
 }
 
 export interface Application {
+  is_starred?: boolean;
   assigned_resume_version_id?: number | null;
   id: number;
   company_id: number;
@@ -185,6 +187,8 @@ export interface AiUsage {
   price_checked: string;
 }
 export interface ResumeVersion {
+  resume_group_id?: string;
+  resume_title?: string;
   application_ids?: number[];
   parent_version_id?: number;
   id: number;
@@ -203,6 +207,8 @@ export interface ResumeVersion {
 }
 
 export interface ResumeVersionRead {
+  resume_group_id?: string;
+  resume_title?: string;
   application_ids?: number[];
   parent_version_id?: number;
   id: number;

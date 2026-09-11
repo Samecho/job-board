@@ -103,3 +103,47 @@ main{grid-column:2;padding:32px 38px 70px;max-width:1800px;width:100%;margin:aut
 .resume-refinement h3,.resume-refinement p { margin: 0; }
 .resume-refinement p { font-size: 13px; color: #64748b; }
 .resume-refinement textarea[spellcheck] { font-family: monospace; font-size: 12px; line-height: 1.6; }
+
+/* Company-scoped application selection and named resume groups. */
+.company-resume-modal { overflow-x:hidden; overflow-y:auto; box-sizing:border-box; }
+.company-resume-modal * { box-sizing:border-box; min-width:0; }
+.company-resume-modal .modal-head { gap:12px; }
+.company-resume-modal .modal-head h2 { overflow-wrap:anywhere; }
+.company-resume-modal .resume-workspace { grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); padding:20px; gap:20px; }
+.company-resume-modal input:not([type=checkbox]),.company-resume-modal textarea,.company-resume-modal select { width:100%; max-width:100%; }
+.company-resume-modal textarea { resize:vertical; white-space:pre-wrap; overflow-wrap:anywhere; }
+.company-resume-modal button { max-width:100%; white-space:normal; overflow-wrap:anywhere; cursor:pointer; }
+.company-resume-modal button:disabled { opacity:.5; cursor:default; }
+.company-resume-modal h3,.company-resume-modal h4 { margin:0; overflow-wrap:anywhere; }
+.company-resume-modal h3 { font-size:15px; }
+.company-resume-modal h4 { font-size:14px; }
+.company-resume-modal p,.company-resume-modal small,.company-resume-modal span { overflow-wrap:anywhere; }
+.company-application-list,.resume-generation-panel,.named-resume,.application-editor { border:1px solid var(--line); border-radius:12px; padding:14px; background:#fff; }
+.company-application-list,.resume-generation-panel,.company-resume-groups { display:grid; gap:12px; }
+.resume-section-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.company-resume-modal .resume-check { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; letter-spacing:0; text-transform:none; }
+.company-resume-modal input[type=checkbox] { width:16px; height:16px; padding:0; margin:0; flex:none; accent-color:#1a73e8; }
+.company-application-rows { display:grid; gap:7px; max-height:290px; overflow-y:auto; overflow-x:hidden; }
+.company-application-row { display:grid; grid-template-columns:16px minmax(0,1fr) 30px; align-items:center; gap:8px; border:1px solid var(--line); border-radius:9px; padding:8px; }
+.company-application-row.active { border-color:#87b3ef; background:#f1f6fd; }
+.application-detail-button { display:grid; gap:4px; border:0; background:transparent; padding:2px; text-align:left; color:#34445b; }
+.application-detail-button strong { font-size:12px; }
+.application-detail-button small,.application-detail-button span { font-size:11px; color:var(--muted); }
+.application-star { display:grid; place-items:center; padding:6px; background:transparent; border:0; color:#8b97a8; border-radius:6px; }
+.application-star.starred { color:#b98509; }
+.application-editor summary { cursor:pointer; font-size:13px; font-weight:700; }
+.application-editor-fields { display:grid; gap:12px; margin-top:14px; }
+.company-resume-modal .application-editor select { border:1px solid var(--line); border-radius:8px; padding:10px; background:#f9fbfc; }
+.company-resume-version { padding:12px 0; border-top:1px solid var(--line); display:grid; gap:8px; }
+.company-resume-version>div:first-child { display:grid; gap:5px; }
+.company-resume-version strong { font-size:12px; }
+.company-resume-version small { font-size:10px; color:var(--muted); }
+.resume-usage { font-size:11px; color:var(--muted); line-height:1.5; margin:8px 0; }
+.resume-version-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.resume-version-actions button { display:inline-flex; align-items:center; gap:4px; border:1px solid var(--line); border-radius:7px; padding:6px 8px; background:#fff; font-size:11px; }
+.resume-rename { display:flex; flex-wrap:wrap; gap:6px; width:100%; }
+.resume-rename input { flex:1 1 160px; }
+.company-resume-modal .resume-actions .button { font-size:11px; padding:8px 10px; }
+.overview-star-filter { display:flex; align-items:center; gap:8px; padding:18px 24px 0; font-size:12px; color:var(--muted); }
+.overview-star-filter input { width:16px; height:16px; accent-color:#1a73e8; }
+@media(max-width:850px) { .company-resume-modal .resume-workspace { grid-template-columns:minmax(0,1fr); padding:14px; gap:16px; } }

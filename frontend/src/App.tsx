@@ -41,9 +41,10 @@ function useOverviewFilters() {
   const [tier, setTier] = useState("");
   const [category, setCategory] = useState("");
   const [internHiring, setInternHiring] = useState("");
+  const [starredOnly, setStarredOnly] = useState(false);
   const [sort, setSort] = useState<"tier" | "company">("tier");
   const [descending, setDescending] = useState(false);
-  return { view, setView, search, setSearch, status, setStatus, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending };
+  return { view, setView, search, setSearch, status, setStatus, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending, starredOnly, setStarredOnly };
 }
 
 function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters }: {
@@ -56,8 +57,10 @@ function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters
 }) {
   const { view, setView, search, setSearch, status, setStatus, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending } = filters;
   const tiers = useMemo(() => tierOrder.filter(value => companies.some(company => company.tier === value)), [companies]);
+  const { starredOnly, setStarredOnly } = filters;
   const categories = useMemo(() => [...new Set(companies.map(company => company.category))].sort(), [companies]);
   const filtered = companies.filter(company =>
+    (!starredOnly || (company.starred_application_count ?? 0) > 0) &&
     (!search || `${company.name} ${company.category} ${company.main_locations}`.toLowerCase().includes(search.toLowerCase())) &&
     (!status || company.status === status) && (!tier || company.tier === tier) &&
     (!category || company.category === category) &&
@@ -77,6 +80,7 @@ function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters
   };
   const statusControl = (company: Company) => <label className="applied-toggle"><input type="checkbox" checked={company.application_count > 0} onChange={() => onQuickApply(company)} /><span>{company.application_count ? `Applied (${company.application_count})` : "Not Applied"}</span></label>;
   return <section className="content-panel">
+    <label className="overview-star-filter"><input type="checkbox" checked={starredOnly} onChange={event => setStarredOnly(event.target.checked)} />Starred applications only</label>
     <div className="toolbar"><div><span className="eyebrow">{sorted.length} companies</span><h2>Company tracker</h2></div><div className="view-toggle"><button className={view === "table" ? "active" : ""} onClick={() => setView("table")}><List size={17} /> Table</button><button className={view === "cards" ? "active" : ""} onClick={() => setView("cards")}><Grid2X2 size={17} /> Cards</button></div></div>
     <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, categories, locations..." /></label><select value={tier} onChange={event => setTier(event.target.value)}><option value="">All tiers</option>{tiers.map(value => <option key={value}>{value}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select><select value={category} onChange={event => setCategory(event.target.value)}><option value="">All categories</option>{categories.map(value => <option key={value}>{value}</option>)}</select><select value={internHiring} onChange={event => setInternHiring(event.target.value)}><option value="">All intern hiring</option><option value="yes">Regular intern hiring</option><option value="no">Limited or uncommon</option></select></div>
     {view === "table" ? <div className="table-wrap overview-table"><table><colgroup><col className="col-tier" /><col className="col-company" /><col className="col-location" /><col className="col-status" /><col className="col-link" /><col className="col-resume" /><col className="col-notes" /></colgroup><thead><tr><th><button className={sort === "tier" ? "active" : ""} onClick={() => changeSort("tier")}>Tier {sort === "tier" ? (descending ? "↓" : "↑") : ""}</button></th><th><button className={sort === "company" ? "active" : ""} onClick={() => changeSort("company")}>Company {sort === "company" ? (descending ? "↓" : "↑") : ""}</button></th><th>Location</th><th>Status</th><th>Link</th><th>Resume</th><th>Notes</th></tr></thead><tbody>{sorted.map(company => <tr key={company.id} onDoubleClick={() => onEdit(company)}><td><span className={`tier tier-${company.tier}`}>{company.tier}</span></td><td><div className="company-cell"><Logo name={company.name} domain={company.domain} url={company.logo_url} /><div><strong>{company.name}</strong><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div></td><td><span className="location-cell"><MapPin size={14} />{company.main_locations || "Not listed"}</span></td><td>{statusControl(company)}</td><td>{company.link ? <a className="button ghost compact-button" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost compact-button" onClick={() => onEdit(company)}>Add link</button>}</td><td><button className="button primary compact-button" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></td><td><button className="table-note edit-note" title={company.notes} onClick={() => onEdit(company)}>{company.notes || "Add notes"}</button></td></tr>)}</tbody></table></div>

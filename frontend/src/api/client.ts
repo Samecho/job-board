@@ -344,6 +344,7 @@ async function companies(): Promise<Company[]> {
       link: state?.link ?? company.link,
       status: application_count > 0 ? "Applied" as const : "Not Applied" as const,
       application_count,
+      starred_application_count: apps.filter(app => app.company_id === company.id && app.is_starred).length,
       resume_count: resumeCounts.get(company.id) || 0,
     };
   }).sort((a, b) => (tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier)) || a.name.localeCompare(b.name));
@@ -508,9 +509,15 @@ async function saveAssignedVersion(value: Omit<ResumeVersion, "id">) {
       targets.push(app);
     }
     if (!targets.length) throw new Error("Select at least one application.");
+    if (targets.some(app => app.company_id !== value.company_id)) throw new Error("Select applications from this company only.");
     const existing = await req<ResumeVersion[]>(store.getAll());
-    const version_number = Math.max(0, ...existing.filter(item => (item.application_ids ?? [item.application_id]).includes(value.application_id)).map(item => item.version_number)) + 1;
-    const record = { ...value, application_ids: ids, version_number };
+    const groupId = value.resume_group_id ?? `company:${value.company_id}/application:${value.application_id}`;
+    const groupVersions = existing.filter(item => item.company_id === value.company_id && (item.resume_group_id ?? `company:${item.company_id}/application:${item.application_id}`) === groupId);
+    const title = value.resume_title?.trim() || groupVersions.find(item => item.resume_title)?.resume_title || targets[0].job_title || "Resume";
+    const version_number = Math.max(0, ...groupVersions.map(item => item.version_number)) + 1;
+    for (const version of groupVersions) await req(store.put({ ...version, resume_group_id: groupId, resume_title: title }));
+    const record = { ...value, application_ids: ids, version_number,
+      resume_group_id: groupId, resume_title: title };
     const id = Number(await req(store.add(record)));
     for (const app of targets) await req(appStore.put({ ...app, assigned_resume_version_id: id, updated_at: now() }));
     return { ...record, id };
@@ -526,6 +533,7 @@ async function assignResume(applicationId: number, versionId: number | null) {
     if (versionId !== null) {
       const version = await req<ResumeVersion | undefined>(store.get(versionId));
       if (!version) throw new Error("Resume version not found");
+      if (version.company_id !== app.company_id) throw new Error("Select a resume from this company only.");
       await req(store.put({ ...version, application_ids: [...new Set([...(version.application_ids ?? [version.application_id]), applicationId])] }));
     }
     await req(apps.put({ ...app, assigned_resume_version_id: versionId, updated_at: now() }));
@@ -549,6 +557,7 @@ async function refineResumeVersion(id: number, applicationId: number, content: s
   const app = await get<Application>("applications", applicationId);
   if (!app) throw new Error("Application not found");
   let resume = parseStructuredResumeJson(content, false);
+  if (original.company_id !== app.company_id) throw new Error("Select a resume from this company only.");
   let usage: AiUsage | undefined;
   let settings: AiSettings | undefined;
   if (instruction.trim()) {
@@ -563,12 +572,14 @@ async function refineResumeVersion(id: number, applicationId: number, content: s
   const compiled = await compileResumeLatex(tex);
   if (compiled.pageCount !== 1) throw new Error("Refinement does not fit one page. Shorten the edited content and try again; the original version is unchanged." + (usage ? ` Estimated cost: $${usage.estimated_usd.toFixed(4)}.` : ""));
   return saveAssignedVersion({ application_id: applicationId, application_ids: [applicationId], company_id: app.company_id,
+    resume_group_id: original.resume_group_id ?? `company:${original.company_id}/application:${original.application_id}`,
+    resume_title: original.resume_title || app.job_title || "Resume",
     parent_version_id: original.id, version_number: 0, structured_resume: resume, tex_source: tex, pdf_file: compiled.pdfFile,
     provider: settings?.provider ?? "manual", model: settings?.model ?? "Manual edit", reasoning_effort: settings?.reasoning_effort,
     ai_usage: usage, created_at: now() });
 }
 
-async function generateResumeVersion(applicationId: number, extraInstructions: string, applicationIds: number[] = [applicationId]) {
+async function generateResumeVersion(applicationId: number, extraInstructions: string, applicationIds: number[] = [applicationId], resumeTitle = "") {
   const app = await get<Application>("applications", applicationId);
   if (!app) throw new Error("Application not found");
   const settings = await aiSettings();
@@ -576,6 +587,7 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   const profileData = await profile();
   const targets = await Promise.all([...new Set([applicationId, ...applicationIds])].map(id => get<Application>("applications", id)));
   if (targets.some(target => !target || !target.job_description.trim())) throw new Error("Every selected application needs a job description.");
+  if (targets.some(target => target!.company_id !== app.company_id)) throw new Error("Select applications from this company only.");
   const generated = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions) + "\nGenerate ONE coherent resume suitable for ALL these targets:\n" + JSON.stringify(targets.map(target => ({ company: companyName(target!.company_id), title: target!.job_title, jd: target!.job_description }))), profileData);
   let rendered;
   try { rendered = await renderOnePageResume(generated.resume); }
@@ -585,6 +597,7 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   }
   return saveAssignedVersion({
     application_ids: targets.map(target => target!.id),
+    resume_title: resumeTitle.trim(),
     application_id: applicationId,
     company_id: app.company_id,
     version_number: 0,
@@ -600,6 +613,8 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
 }
 function versionRead(version: ResumeVersion, app?: Application): ResumeVersionRead {
   return {
+    resume_group_id: version.resume_group_id ?? `company:${version.company_id}/application:${version.application_id}`,
+    resume_title: version.resume_title || app?.job_title || "Resume",
     application_ids: version.application_ids ?? [version.application_id],
     parent_version_id: version.parent_version_id,
     id: version.id,
@@ -738,6 +753,33 @@ export const api = {
     await del("applications", id);
   },
   assignResume,
+  assignResumeApplications: async (companyId: number, versionId: number, applicationIds: number[]) => {
+    const ids = [...new Set(applicationIds)];
+    if (!ids.length) throw new Error("Select at least one application.");
+    await tx(["applications", "resume_versions"], "readwrite", async (_, transaction) => {
+      const appStore = transaction.objectStore("applications");
+      const store = transaction.objectStore("resume_versions");
+      const version = await req<ResumeVersion | undefined>(store.get(versionId));
+      if (!version || version.company_id !== companyId) throw new Error("Select a resume from this company only.");
+      for (const id of ids) {
+        const app = await req<Application | undefined>(appStore.get(id));
+        if (!app || app.company_id !== companyId) throw new Error("Select applications from this company only.");
+        await req(appStore.put({ ...app, assigned_resume_version_id: versionId, updated_at: now() }));
+      }
+      await req(store.put({ ...version, application_ids: [...new Set([...(version.application_ids ?? [version.application_id]), ...ids])] }));
+    });
+  },
+  renameResumeGroup: async (companyId: number, groupId: string, title: string) => {
+    if (!title.trim()) throw new Error("Enter a resume name.");
+    await tx(["resume_versions"], "readwrite", async (_, transaction) => {
+      const store = transaction.objectStore("resume_versions");
+      for (const version of await req<ResumeVersion[]>(store.getAll())) {
+        if (version.company_id === companyId && (version.resume_group_id ?? `company:${version.company_id}/application:${version.application_id}`) === groupId) {
+          await req(store.put({ ...version, resume_title: title.trim() }));
+        }
+      }
+    });
+  },
   refineResumeVersion,
   generateResumeVersion,
   resumeVersions: async (applicationId: number) => {
