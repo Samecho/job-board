@@ -34,12 +34,26 @@ function InternBadge() {
   return <span className="intern-badge" title="Recurring internship or co-op hiring">Intern</span>;
 }
 
+function MultiFilter({ label, options, selected, onChange }: {
+  label: string; options: string[]; selected: string[]; onChange: (values: string[]) => void;
+}) {
+  return <details className="multi-filter" onKeyDown={event => {
+    if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); }
+  }}>
+    <summary title={selected.join(", ")}>{selected.length ? label + " (" + selected.length + ")" : "All " + label.toLowerCase()}</summary>
+    <div className="multi-filter-options" role="group" aria-label={label}>
+      <button type="button" onClick={() => onChange([])}>All {label.toLowerCase()}</button>
+      {options.map(option => <label key={option}><input type="checkbox" checked={selected.includes(option)} onChange={event => onChange(event.target.checked ? options.filter(value => value === option || selected.includes(value)) : selected.filter(value => value !== option))} /><span>{option}</span></label>)}
+    </div>
+  </details>;
+}
+
 function useOverviewFilters() {
   const [view, setView] = useState<"table" | "cards">("table");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [tier, setTier] = useState("");
-  const [category, setCategory] = useState("");
+  const [tier, setTier] = useState<string[]>([]);
+  const [category, setCategory] = useState<string[]>([]);
   const [internHiring, setInternHiring] = useState("");
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [sort, setSort] = useState<"tier" | "company">("tier");
@@ -70,8 +84,8 @@ function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters
   const filtered = companies.filter(company =>
     (!favouritesOnly || company.is_favourite) &&
     (!search || `${company.name} ${company.category} ${company.main_locations}`.toLowerCase().includes(search.toLowerCase())) &&
-    (!status || company.status === status) && (!tier || company.tier === tier) &&
-    (!category || company.category === category) &&
+    (!status || company.status === status) && (!tier.length || tier.includes(company.tier)) &&
+    (!category.length || category.includes(company.category)) &&
     (!internHiring || company.intern_friendly === (internHiring === "yes"))
   );
   const sorted = [...filtered].sort((left, right) => {
@@ -91,7 +105,7 @@ function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters
     {favouriteError && <p className="inline-error" role="alert">{favouriteError}</p>}
     <label className="overview-star-filter"><input type="checkbox" checked={favouritesOnly} onChange={event => setFavouritesOnly(event.target.checked)} />Favourites only</label>
     <div className="toolbar"><div><span className="eyebrow">{sorted.length} companies</span><h2>Company tracker</h2></div><div className="view-toggle"><button className={view === "table" ? "active" : ""} onClick={() => setView("table")}><List size={17} /> Table</button><button className={view === "cards" ? "active" : ""} onClick={() => setView("cards")}><Grid2X2 size={17} /> Cards</button></div></div>
-    <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, categories, locations..." /></label><select value={tier} onChange={event => setTier(event.target.value)}><option value="">All tiers</option>{tiers.map(value => <option key={value}>{value}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select><select value={category} onChange={event => setCategory(event.target.value)}><option value="">All categories</option>{categories.map(value => <option key={value}>{value}</option>)}</select><select value={internHiring} onChange={event => setInternHiring(event.target.value)}><option value="">All intern hiring</option><option value="yes">Regular intern hiring</option><option value="no">Limited or uncommon</option></select></div>
+    <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, categories, locations..." /></label><MultiFilter label="Tiers" options={tiers} selected={tier} onChange={setTier} /><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select><MultiFilter label="Categories" options={categories} selected={category} onChange={setCategory} /><select value={internHiring} onChange={event => setInternHiring(event.target.value)}><option value="">All intern hiring</option><option value="yes">Regular intern hiring</option><option value="no">Limited or uncommon</option></select></div>
     {view === "table" ? <div className="table-wrap overview-table"><table><colgroup><col className="col-tier" /><col className="col-company" /><col className="col-location" /><col className="col-status" /><col className="col-link" /><col className="col-resume" /><col className="col-notes" /></colgroup><thead><tr><th><button className={sort === "tier" ? "active" : ""} onClick={() => changeSort("tier")}>Tier {sort === "tier" ? (descending ? "↓" : "↑") : ""}</button></th><th><button className={sort === "company" ? "active" : ""} onClick={() => changeSort("company")}>Company {sort === "company" ? (descending ? "↓" : "↑") : ""}</button></th><th>Location</th><th>Status</th><th>Link</th><th>Resume</th><th>Notes</th></tr></thead><tbody>{sorted.map(company => <tr key={company.id} onDoubleClick={() => onEdit(company)}><td><span className={`tier tier-${company.tier}`}>{company.tier}</span></td><td><div className="company-cell"><Logo name={company.name} domain={company.domain} url={company.logo_url} /><div><div className="company-title-with-favourite"><strong>{company.name}</strong>{favouriteControl(company)}</div><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div></td><td><span className="location-cell"><MapPin size={14} />{company.main_locations || "Not listed"}</span></td><td>{statusControl(company)}</td><td>{company.link ? <a className="button ghost compact-button" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost compact-button" onClick={() => onEdit(company)}>Add link</button>}</td><td><button className="button primary compact-button" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></td><td><button className="table-note edit-note" title={company.notes} onClick={() => onEdit(company)}>{company.notes || "Add notes"}</button></td></tr>)}</tbody></table></div>
       : <div className="company-grid">{sorted.map(company => <article className="company-card simple-card" key={company.id}><div className="card-top"><Logo name={company.name} domain={company.domain} url={company.logo_url} size={48} /><span className={`tier tier-${company.tier}`}>{company.tier}</span></div><div className="card-title"><div><div className="company-title-with-favourite"><h3>{company.name}</h3>{favouriteControl(company)}</div><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div><div className="card-facts"><div><span>Location</span><strong>{company.main_locations || "Not listed"}</strong></div></div><div className="card-applied">{statusControl(company)}</div><button className="notes-preview edit-note" onClick={() => onEdit(company)}>{company.notes || "Add notes for this company."}</button><div className="card-actions"><button className="button ghost" onClick={() => onEdit(company)}>Edit</button>{company.link ? <a className="button ghost" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost" onClick={() => onEdit(company)}>Add link</button>}<button className="button primary" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></div></article>)}</div>}
   </section>;
