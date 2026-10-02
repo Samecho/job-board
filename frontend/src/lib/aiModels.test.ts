@@ -12,6 +12,6 @@ it("updates estimates with source length and includes a 700-word JD allowance", 
 });
 
 it("offers only the requested models and permits estimates above five cents", () => {
-  expect(OPENAI_MODELS.map(model => model.id)).toEqual(["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-6-astra"]);
-  expect(scenarioCost(OPENAI_MODELS[3], "max", 6000)).toBeGreaterThan(0.05);
+  expect(OPENAI_MODELS.map(model => model.id)).toEqual(["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-astra"]);
+  expect(scenarioCost(OPENAI_MODELS.find(model => model.id === "gpt-6-astra")!, "max", 6000)).toBeGreaterThan(0.05);
 });
