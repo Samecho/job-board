@@ -2,12 +2,15 @@ export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "
 export type OpenAiModel = { id: string; label: string; input: number; output: number; efforts: ReasoningEffort[]; value?: boolean };
 const modern: ReasoningEffort[] = ["none", "low", "medium", "high", "xhigh"];
 const latest: ReasoningEffort[] = [...modern, "max"];
-// USD / 1M tokens, standard processing. Official model pages, checked 2026-09-06.
-export const PRICE_CHECKED = "2026-09-06";
+// USD / 1M tokens, standard processing. Official model pages, checked 2026-10-02.
+export const PRICE_CHECKED = "2026-10-02";
 export const OPENAI_MODELS: OpenAiModel[] = [
   { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", input: 0.2, output: 1.2, efforts: latest, value: true },
   { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", input: 2, output: 12, efforts: latest },
   { id: "gpt-5.6-sol", label: "GPT-5.6 Sol", input: 4, output: 20, efforts: latest },
+  { id: "gpt-6-luna", label: "GPT-6 Luna", input: 0.1, output: 0.5, efforts: latest },
+  { id: "gpt-6-sol", label: "GPT-6 Sol", input: 2, output: 10, efforts: latest },
+  { id: "gpt-6.1-sol", label: "GPT-6.1 Sol", input: 2, output: 10, efforts: ["low", "medium", "high", "xhigh", "max"] },
   { id: "gpt-6-astra", label: "GPT-6 Astra", input: 10, output: 50, efforts: ["low", "medium", "high", "xhigh", "max"] },
 ];
 export const EFFORT_OUTPUT: Record<ReasoningEffort, number> = { none: 3000, minimal: 3500, low: 4500, medium: 6500, high: 10000, xhigh: 16000, max: 24000 };
