@@ -188,7 +188,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
           <div className="resume-output">
             <section className="resume-generation-panel">
               <h3>Generate shared resume</h3>
-              <label>Resume name<input value={resumeName} disabled={locked} onChange={event => setResumeName(event.target.value)} placeholder={selected?.job_title || "e.g. Backend engineering"} /></label>
+              <label>Resume name<input value={resumeName} disabled={locked} onChange={event => setResumeName(event.target.value)} placeholder={company.name + " Resume"} /></label>
               <label>Extra instructions<textarea rows={2} value={extraInstructions} disabled={locked} onChange={event => setExtraInstructions(event.target.value)} placeholder="Optional tailoring preferences" /></label>
               {!aiAvailable && <p className="inline-error">Save AI settings before generating resumes.</p>}
               <button className="button primary" disabled={!aiAvailable || locked || (selected ? !targets.length : !targets.length && form.job_description.trim().length < 20)} onClick={generate}><Sparkles size={15} />{generating ? "Tailoring and compiling..." : targets.length ? "Generate for " + targets.length + " selected" : "Generate resume"}</button>

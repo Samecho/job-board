@@ -179,8 +179,8 @@ function certificationsSection(resume: StructuredResume): string {
   const entries = resume.certifications.map(entry => {
     const url = certificationUrl(entry.url);
     const name = url ? href(url, entry.name) : escapeLatex(entry.name);
-    const description = entry.description.trim() ? `: ${escapeLatex(entry.description)}` : "";
-    return `  \\item\\small{\\textbf{${name}}${description}}`;
+    const description = entry.description.trim() ? `\n    ${escapeLatex(entry.description)}\\par` : "";
+    return `  \\item\\small{\\textbf{${name}}\\par${description}}`;
   });
   return ["\\section{Certifications}", "\\resumeSubHeadingListStart", ...entries, "\\resumeSubHeadingListEnd"].join("\n");
 }

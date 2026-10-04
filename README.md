@@ -96,13 +96,13 @@ API keys are not stored in GitHub, Vite environment variables, or normal backups
 
 1. Open **Overview**.
 2. Choose **Resume** for a company.
-3. Create or open an Application.
-4. Add job title, full job description, stage, and notes.
-5. Save the application.
-6. Configure AI Settings in the **Resume** tab.
-7. Choose **Generate new version**.
-8. Every generation creates a new resume version automatically.
-9. Preview PDF, download PDF, download DOCX, or delete individual versions.
+3. Review the company's official openings and shortlist relevant technical internships before generating.
+4. Save each suitable role as its own Application, with its job title, full JD, stage, and notes. Keep unrelated roles such as product management out of the shared-resume selection.
+5. Configure AI Settings in the **Resume** tab.
+6. Check all shortlisted applications in this company's modal and choose **Generate for N selected**.
+7. One AI call creates one focused company resume from the selected JDs and assigns the same version to every selected application. The prompt prioritizes their shared technical direction rather than combining every keyword.
+8. Every generation creates a new resume version automatically. Use **Use for selected** to assign an existing version to additional suitable applications without regenerating.
+9. Preview the actual PDF, download PDF or `.tex`, or delete individual versions. Use the same company PDF when applying to the selected roles.
 
 A company is considered Applied when it has at least one Application. Overview application counts count Applications, not resume versions.
 
@@ -117,12 +117,14 @@ Changes autosave with the rest of the profile and are included in browser-local 
 Generation selects JD-relevant certificates and writes only a short description for each.
 The script preserves the entered credential name and verification link; AI cannot invent credentials or links.
 In PDF and TeX exports, the name is a clickable hyperlink, not a displayed raw URL.
+Each certificate's title is on its own line, followed by its brief description on the next line. An empty description adds no blank description line.
 Use a complete `https://` or `http://` verification link; without a link, the name appears as plain text.
 The optional Certifications section follows Projects and precedes Technical Skills, and is omitted when empty.
 AI budgets the whole page together, compressing weaker material before sacrificing strong engineering evidence.
 Local overflow handling can shorten descriptions or omit lower-value certificates to preserve the one-page format.
 Fonts, margins, the browser LaTeX compiler, and the rest of the template remain unchanged.
 Existing profiles and saved resume versions without certifications remain compatible; old PDFs are not rewritten.
+Previously generated inline certificate layouts remain in their saved PDFs; a manual edit/recompile or new generation uses the updated two-line layout.
 
 ### Provider Settings
 

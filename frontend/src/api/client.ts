@@ -486,8 +486,9 @@ export function estimateResumeInput(profileData: ResumeProfileUpdate) {
   return estimateInputTokens(resumeSkill + JSON.stringify(resumeContentSchema(profileData)) + JSON.stringify(resumeContentSource(profileData), null, 2));
 }
 
-function generationPrompt(profileData: ResumeProfile, app: Application, extraInstructions: string) {
-  return `Create the one-page structured resume content for this application. The fixed renderer owns all layout.\n\nCompany: ${companyName(app.company_id)}\n\nMaster resume profile (factual basis for experience; skill inventory is non-exhaustive, and Technical Skills may be supplemented from the JD):\n${JSON.stringify(resumeContentSource(profileData), null, 2)}\n\nTarget application and job description:\n${JSON.stringify(app, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
+function generationPrompt(profileData: ResumeProfile, apps: Application[], extraInstructions: string) {
+  const targets = apps.map(app => ({ title: app.job_title, jd: app.job_description }));
+  return `Create ONE focused, one-page company resume suitable for ALL the selected technical applications below. Find their shared engineering direction and prioritize the candidate's strongest relevant evidence; do not concatenate role-specific resumes or cover every incidental keyword. The first listed application has no special priority. The fixed renderer owns all layout.\n\nCompany: ${companyName(apps[0].company_id)}\n\nMaster resume profile (factual basis for experience; skill inventory is non-exhaustive, and Technical Skills may be supplemented from the JDs):\n${JSON.stringify(resumeContentSource(profileData), null, 2)}\n\nSelected applications and job descriptions:\n${JSON.stringify(targets, null, 2)}\n\nExtra user instructions:\n${extraInstructions || "None"}`;
 }
 
 async function renderOnePageResume(initial: StructuredResume) {
@@ -596,7 +597,7 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   const targets = await Promise.all([...new Set([applicationId, ...applicationIds])].map(id => get<Application>("applications", id)));
   if (targets.some(target => !target || !target.job_description.trim())) throw new Error("Every selected application needs a job description.");
   if (targets.some(target => target!.company_id !== app.company_id)) throw new Error("Select applications from this company only.");
-  const generated = await callResumeAi(settings, generationPrompt(profileData, app, extraInstructions) + "\nGenerate ONE coherent resume suitable for ALL these targets:\n" + JSON.stringify(targets.map(target => ({ company: companyName(target!.company_id), title: target!.job_title, jd: target!.job_description }))), profileData);
+  const generated = await callResumeAi(settings, generationPrompt(profileData, targets.map(target => target!), extraInstructions), profileData);
   let rendered;
   try { rendered = await renderOnePageResume(generated.resume); }
   catch (error) {
@@ -605,7 +606,7 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
   }
   return saveAssignedVersion({
     application_ids: targets.map(target => target!.id),
-    resume_title: resumeTitle.trim(),
+    resume_title: resumeTitle.trim() || `${companyName(app.company_id)} Resume`,
     application_id: applicationId,
     company_id: app.company_id,
     version_number: 0,
