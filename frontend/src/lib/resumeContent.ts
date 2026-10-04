@@ -8,11 +8,13 @@ const list = (items: unknown) => ({ type: "array", items });
 const reference = { type: "string" };
 const sub = RESUME_JSON_SCHEMA.properties.experience.items.properties.subprojects.items;
 const project = RESUME_JSON_SCHEMA.properties.projects.items.properties;
+const certification = RESUME_JSON_SCHEMA.properties.certifications.items.properties;
 
 // Only editable content crosses the generation boundary; identity fields are assembled locally.
 export const RESUME_CONTENT_SCHEMA = object({
   experience: list(object({ sourceId: reference, subprojects: list(object({ sourceId: reference, ...sub.properties })) })),
   projects: list(object({ sourceId: reference, technologies: project.technologies, bullets: project.bullets })),
+  certifications: list(object({ sourceId: reference, description: certification.description })),
   technicalSkills: RESUME_JSON_SCHEMA.properties.technicalSkills,
 });
 
@@ -33,9 +35,13 @@ export function resumeContentSchema(profile: ResumeProfileUpdate) {
   const projects = profile.projects.map((entry, index) => object({
     sourceId: id(`project:${index}`), technologies: project.technologies, bullets: project.bullets,
   }));
+  const certificates = certifications(profile).map(entry => object({
+    sourceId: id(entry.sourceId), description: certification.description,
+  }));
   return object({
     experience: choices(experience, object({ sourceId: reference, subprojects: list(sub) })),
     projects: choices(projects, object({ sourceId: reference, technologies: project.technologies, bullets: project.bullets })),
+    certifications: choices(certificates, object({ sourceId: reference, description: certification.description })),
     technicalSkills: RESUME_JSON_SCHEMA.properties.technicalSkills,
   });
 }
@@ -49,6 +55,11 @@ function roles(profile: ResumeProfileUpdate) {
     ...profile.workExperiences.map((entry, index) => ({ ...entry, sourceId: `work:${index}`, organization: entry.company, type: "work" as const })),
     ...profile.researchExperiences.map((entry, index) => ({ ...entry, sourceId: `research:${index}`, type: "research" as const })),
   ];
+}
+
+function certifications(profile: ResumeProfileUpdate) {
+  return (profile.certifications || []).map((entry, index) => ({ ...entry, sourceId: `certification:${index}` }))
+    .filter(entry => entry.name.trim());
 }
 
 function guidance(entry: { aiGuidance?: { onlyIfStronglyRelevant?: boolean; instruction?: string } }) {
@@ -73,6 +84,7 @@ export function resumeContentSource(profile: ResumeProfileUpdate) {
     projects: profile.projects.map((entry, index) => ({
       sourceId: `project:${index}`, name: entry.name, technologies: entry.technologies, details: profileDetails(entry),
     })),
+    certifications: certifications(profile),
     skillInventory: masterSkills(profile),
     awards: profile.awards_text || "", other: profile.other_text || "",
   };
@@ -99,7 +111,7 @@ function lookup<T extends { sourceId: string }>(value: unknown, available: T[], 
 }
 
 export function assembleResume(raw: string, profile: ResumeProfileUpdate): StructuredResume {
-  const content = record(JSON.parse(raw), ["experience", "projects", "technicalSkills"]);
+  const content = record(JSON.parse(raw), ["experience", "projects", "certifications", "technicalSkills"]);
   const seenRoles = new Set<string>();
   const experience = array(content.experience).map(value => {
     const item = record(value, ["sourceId", "subprojects"]);
@@ -123,6 +135,12 @@ export function assembleResume(raw: string, profile: ResumeProfileUpdate): Struc
     const source = lookup(item.sourceId, profile.projects.map((entry, index) => ({ ...entry, sourceId: `project:${index}` })), seenProjects);
     return { name: source.name, dates: source.dates, technologies: item.technologies, bullets: item.bullets };
   });
+  const seenCertifications = new Set<string>();
+  const selectedCertifications = array(content.certifications).map(value => {
+    const item = record(value, ["sourceId", "description"]);
+    const source = lookup(item.sourceId, certifications(profile), seenCertifications);
+    return { name: source.name, url: source.url, description: item.description };
+  });
   const resume = {
     header: {
       name: [profile.firstName.trim(), profile.lastName.trim()].filter(Boolean).join(" "),
@@ -133,7 +151,7 @@ export function assembleResume(raw: string, profile: ResumeProfileUpdate): Struc
       institution: entry.institution, degree: entry.degree, location: entry.location,
       dates: formatProfileDates(entry.startDate, entry.endDate), details: [],
     })),
-    experience, projects, technicalSkills: content.technicalSkills,
+    experience, projects, certifications: selectedCertifications, technicalSkills: content.technicalSkills,
   };
   const requireBoth = profile.workExperiences.length > 0 && profile.researchExperiences.length > 0;
   // Explicit guidance can omit a type only when all its entries carry guidance.

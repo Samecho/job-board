@@ -1,10 +1,11 @@
 import { skillCategories } from "./technicalSkills";
+import { certificationUrl } from "./certifications";
 import type { StructuredResume } from "../types";
 
 export const RESUME_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["header", "education", "experience", "projects", "technicalSkills"],
+  required: ["header", "education", "experience", "projects", "certifications", "technicalSkills"],
   properties: {
     header: {
       type: "object",
@@ -89,6 +90,17 @@ export const RESUME_JSON_SCHEMA = {
               },
             },
           },
+        },
+      },
+    },
+    certifications: {
+      type: "array",
+      items: {
+        type: "object", additionalProperties: false, required: ["name", "url", "description"],
+        properties: {
+          name: { type: "string" },
+          url: { type: "string" },
+          description: { type: "string", maxLength: 160 },
         },
       },
     },
@@ -180,7 +192,9 @@ function subprojectArray(value: unknown, path: string): Array<{ name: string; bu
 }
 
 function validateResume(value: unknown, requireBothExperienceTypes: boolean): StructuredResume {
-  const root = exactRecord(value, "resume", ["header", "education", "experience", "projects", "technicalSkills"]);
+  // Older saved versions predate certifications; preserve their content without a DB reset.
+  const stored = asRecord(value, "resume");
+  const root = exactRecord({ certifications: [], ...stored }, "resume", ["header", "education", "experience", "projects", "certifications", "technicalSkills"]);
   const headerValue = exactRecord(root.header, "header", ["name", "email", "phone", "location", "linkedin", "github", "website"]);
   const header = {
     name: text(headerValue.name, "header.name", true),
@@ -254,6 +268,17 @@ function validateResume(value: unknown, requireBothExperienceTypes: boolean): St
     };
   });
 
+  if (!Array.isArray(root.certifications)) throw new Error("certifications must be an array");
+  const certifications = root.certifications.map((value, index) => {
+    const path = `certifications[${index}]`;
+    const item = exactRecord(value, path, ["name", "url", "description"]);
+    return {
+      name: text(item.name, `${path}.name`, true),
+      url: certificationUrl(text(item.url, `${path}.url`)),
+      description: text(item.description, `${path}.description`),
+    };
+  });
+
   let technicalSkills: StructuredResume["technicalSkills"];
   if ("categories" in asRecord(root.technicalSkills, "technicalSkills")) {
     const value = exactRecord(root.technicalSkills, "technicalSkills", ["categories"]);
@@ -282,7 +307,7 @@ function validateResume(value: unknown, requireBothExperienceTypes: boolean): St
     };
     if (!skillCategories(technicalSkills).some(group => group.skills.length)) throw new Error("technicalSkills must contain at least one skill");
   }
-  return { header, education, experience, projects, technicalSkills };
+  return { header, education, experience, projects, certifications, technicalSkills };
 }
 
 export function parseStructuredResumeJson(raw: string, requireBothExperienceTypes = true): StructuredResume {
@@ -380,6 +405,24 @@ function getAllBullets(experience: StructuredResume["experience"][number]): Arra
 
 export function trimLowestPriorityContent(resume: StructuredResume): StructuredResume | null {
   const next = cloneResume(resume);
+  if (next.certifications?.length) {
+    // Reserve the leading experience's strongest evidence before sacrificing it for credentials.
+    for (const exp of [...next.experience.slice(1)].reverse()) {
+      for (const sub of [...(exp.subprojects || [])].reverse()) {
+        if (sub.bullets.length > 1) { sub.bullets.pop(); return next; }
+      }
+      if (exp.bullets && exp.bullets.length > 1) { exp.bullets.pop(); return next; }
+    }
+    const project = [...next.projects].reverse().find(item => item.bullets.length > 1);
+    if (project) { project.bullets.pop(); return next; }
+    if (next.projects.length) { next.projects.pop(); return next; }
+    const education = [...next.education].reverse().find(item => item.details.length);
+    if (education) { education.details.pop(); return next; }
+    const certification = [...next.certifications].reverse().find(item => item.description);
+    if (certification) { certification.description = ""; return next; }
+    next.certifications.pop();
+    return next;
+  }
   // Remove lower-ranked redundant bullets first without reserving a fixed quota.
   for (const exp of [...next.experience].reverse()) {
     const subs = exp.subprojects || [];

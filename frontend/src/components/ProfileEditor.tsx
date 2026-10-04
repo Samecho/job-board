@@ -134,6 +134,17 @@ export function ProfileEditor({ value, onChange }: { value: ResumeProfileUpdate;
       </article>)}
       {!value.projects.length && <p className="profile-empty">No standalone projects added.</p>}
     </Section>
+    <Section title="Certifications" description="AI selects relevant certificates and keeps their descriptions brief, before Technical Skills." action={<AddButton onClick={() => update("certifications", [...(value.certifications || []), { name: "", url: "", description: "" }])}>Add certification</AddButton>}>
+      {(value.certifications || []).map((certification, index) => <article className="profile-entry-card" key={index} aria-label={`Certification entry ${index + 1}`}>
+        <div className="profile-entry-heading"><span>Certification {index + 1}</span><RemoveButton label="Remove certification" onClick={() => update("certifications", (value.certifications || []).filter((_, i) => i !== index))} /></div>
+        <div className="profile-fields profile-fields-two">
+          <label className="profile-field"><span>Certification name</span><input value={certification.name} placeholder="Certificate or credential name" onChange={event => edit(draft => { draft.certifications![index].name = event.target.value; })} /></label>
+          <label className="profile-field"><span>Verification link</span><input type="url" value={certification.url} placeholder="https://..." onChange={event => edit(draft => { draft.certifications![index].url = event.target.value; })} /></label>
+        </div>
+        <label className="profile-field"><span>Brief description (optional)</span><input value={certification.description} maxLength={300} placeholder="A short phrase about the credential's technical focus" onChange={event => edit(draft => { draft.certifications![index].description = event.target.value; })} /></label>
+      </article>)}
+      {!value.certifications?.length && <p className="profile-empty">No certifications added.</p>}
+    </Section>
     <Section title="Technical Skills" description="Your master inventory is a starting pool, not a whitelist. AI selects relevant skills and may supplement them from the JD; review the result before applying.">
       <label className="profile-field"><span>Master skill inventory</span><textarea className="profile-details" rows={8} value={masterSkills(value)} placeholder="Languages, frameworks, tools, platforms, and engineering concepts you know. Use commas or new lines." onChange={event => update("skillInventory", event.target.value)} /></label>
     </Section>

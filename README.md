@@ -108,6 +108,24 @@ A company is considered Applied when it has at least one Application. Overview a
 
 ## AI Settings
 
+### Certifications
+
+In **Resume -> Resume Profile**, use **Add certification** before Technical Skills.
+Each entry has a certificate name, an optional verification URL, and an optional brief description.
+Changes autosave with the rest of the profile and are included in browser-local backups.
+
+Generation selects JD-relevant certificates and writes only a short description for each.
+The script preserves the entered credential name and verification link; AI cannot invent credentials or links.
+In PDF and TeX exports, the name is a clickable hyperlink, not a displayed raw URL.
+Use a complete `https://` or `http://` verification link; without a link, the name appears as plain text.
+The optional Certifications section follows Projects and precedes Technical Skills, and is omitted when empty.
+AI budgets the whole page together, compressing weaker material before sacrificing strong engineering evidence.
+Local overflow handling can shorten descriptions or omit lower-value certificates to preserve the one-page format.
+Fonts, margins, the browser LaTeX compiler, and the rest of the template remain unchanged.
+Existing profiles and saved resume versions without certifications remain compatible; old PDFs are not rewritten.
+
+### Provider Settings
+
 Resume generation uses a content-only AI response: selected role/subproject IDs, generated bullets/highlights, project technologies, and technical skills. Browser scripts assemble name/contact links, education, employer/organization, actual job title, location, dates, and standalone project names directly from the profile snapshot. Current roles use Present; other dates retain the entered text. Unknown, duplicate, and cross-role references are rejected. Explicitly omitted subproject headings are enforced locally. Existing saved versions retain their original snapshots.
 
 Open **Resume** to choose your provider, model, reasoning effort, and browser-local API key.

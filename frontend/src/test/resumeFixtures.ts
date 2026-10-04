@@ -67,6 +67,7 @@ export const completeResume: StructuredResume = {
       { text: "Benchmarked recall and latency against FAISS.", highlights: ["FAISS"] },
     ],
   }],
+  certifications: [],
   technicalSkills: {
     languages: ["Go", "Rust", "Python", "C++"],
     frameworks: ["React", "FastAPI"],

@@ -166,6 +166,7 @@ function defaultProfile(): ResumeProfile {
     workExperiences: [],
     researchExperiences: [],
     projects: [],
+    certifications: [],
     skills: { languages: [], frameworks: [], developerTools: [], libraries: [] },
     // legacy flat fields for migration
     name: "",
@@ -247,6 +248,11 @@ function migrateProfileData(raw: Record<string, unknown>): ResumeProfile {
   merged.workExperiences = merged.workExperiences.map(entry => ({ ...entry, subprojects: entry.subprojects.map(sub => ({ ...sub, details: profileDetails(sub) })) }));
   merged.researchExperiences = merged.researchExperiences.map(entry => ({ ...entry, subprojects: entry.subprojects.map(sub => ({ ...sub, details: profileDetails(sub) })) }));
   merged.projects = merged.projects.map(project => ({ ...project, details: profileDetails(project) }));
+  merged.certifications = Array.isArray(merged.certifications) ? merged.certifications.map(entry => ({
+    name: typeof entry?.name === "string" ? entry.name : "",
+    url: typeof entry?.url === "string" ? entry.url : "",
+    description: typeof entry?.description === "string" ? entry.description : "",
+  })) : [];
   merged.skillInventory = masterSkills(merged);
   return merged;
 }
@@ -438,7 +444,7 @@ async function callGlm(settings: AiSettings, messages: Array<{ role: "system" | 
 
 async function callResumeAi(settings: AiSettings, userPrompt: string, profileData: ResumeProfileUpdate, refine = false): Promise<{ resume: StructuredResume; usage?: AiUsage }> {
   const schema = refine ? RESUME_JSON_SCHEMA : resumeContentSchema(profileData);
-  const instructions = refine ? "Refine the supplied existing resume only according to the user instruction. Preserve unrelated content and factual details verbatim as much as possible. Do not regenerate from the master profile. Do not invent metrics, employers, dates, responsibilities or outcomes. Keep one page and the JSON schema. Highlights must be short exact phrases from the bullet, at most two per bullet. Return only the complete final structured JSON; reason internally in this single call." : resumeSkill;
+  const instructions = refine ? "Refine the supplied existing resume only according to the user instruction. Preserve unrelated content and factual details verbatim as much as possible. Do not regenerate from the master profile. Do not invent metrics, employers, dates, responsibilities or outcomes. Preserve certification names and verification links; do not add or alter credentials unless the user provides specific certification information in the instruction. Keep certificate descriptions very brief. Keep one page and the JSON schema. Highlights must be short exact phrases from the bullet, at most two per bullet. Return only the complete final structured JSON; reason internally in this single call." : resumeSkill;
   const parse = (raw: string) => refine ? parseStructuredResumeJson(raw, false) : assembleResume(raw, profileData);
   if (settings.provider !== "openai") {
     const raw = settings.provider === "gemini"

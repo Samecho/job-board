@@ -1,4 +1,5 @@
 import { skillCategories } from "./technicalSkills";
+import { certificationUrl } from "./certifications";
 import { PdfLatex } from "@typeward/texlive-wasm";
 import type { StructuredResume } from "../types";
 
@@ -173,9 +174,21 @@ function technicalSkillsSection(resume: StructuredResume): string {
   ].join("\n");
 }
 
+function certificationsSection(resume: StructuredResume): string {
+  if (!resume.certifications?.length) return "";
+  const entries = resume.certifications.map(entry => {
+    const url = certificationUrl(entry.url);
+    const name = url ? href(url, entry.name) : escapeLatex(entry.name);
+    const description = entry.description.trim() ? `: ${escapeLatex(entry.description)}` : "";
+    return `  \\item\\small{\\textbf{${name}}${description}}`;
+  });
+  return ["\\section{Certifications}", "\\resumeSubHeadingListStart", ...entries, "\\resumeSubHeadingListEnd"].join("\n");
+}
+
 export function renderResumeLatex(resume: StructuredResume): string {
   const contact = headerItems(resume.header).join(" $|$ ");
   const projects = projectsSection(resume);
+  const certifications = certificationsSection(resume);
   return String.raw`% Jake's Resume-style fixed renderer
 % Layout based on https://github.com/jakegut/resume (MIT License)
 \pdfobjcompresslevel=0
@@ -234,6 +247,7 @@ ${educationSection(resume)}
 
 ${experienceSection(resume)}
 ${projects ? `\n${projects}\n` : ""}
+${certifications ? `\n${certifications}\n` : ""}
 ${technicalSkillsSection(resume)}
 
 \end{document}

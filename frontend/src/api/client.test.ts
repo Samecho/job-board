@@ -32,6 +32,7 @@ const generatedContent = {
     subprojects: role.subprojects!.slice(0, 1).map(sub => ({ ...sub, sourceId: index === 0 ? "work:0/sub:0" : "research:0/sub:0" })),
   })),
   projects: completeResume.projects.map(project => ({ sourceId: "project:0", technologies: project.technologies, bullets: project.bullets })),
+  certifications: [],
   technicalSkills: completeResume.technicalSkills,
 };
 const profile = {

@@ -36,6 +36,7 @@ const content = {
     ] },
   ],
   projects: [{ sourceId: "project:0", technologies: ["Rust"], bullets: [bullet] }],
+  certifications: [],
   technicalSkills: { categories: [{ name: "Languages", skills: ["Python"] }, { name: "Tools", skills: ["Git"] }, { name: "Systems", skills: ["Linux"] }] },
 };
 it("assembles fixed facts locally despite reordered roles and subprojects", () => {
