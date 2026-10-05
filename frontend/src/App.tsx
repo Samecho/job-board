@@ -1,4 +1,4 @@
-import { OPENAI_MODELS, defaultEffort, modelInfo, priceLabel, scenarioCost } from "./lib/aiModels";
+import { OPENAI_MODELS, defaultEffort, modelInfo, priceLabel as basePriceLabel, scenarioCost as baseScenarioCost } from "./lib/aiModels";
 import type { ReasoningEffort } from "./lib/aiModels";
 import { getGenerationTasks, subscribeGeneration, dismissGeneration } from "./lib/resumeGeneration";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -25,7 +25,7 @@ const providerOptions: Array<{ value: AiProvider; label: string; models: Array<{
   {
     value: "openai",
     label: "OpenAI",
-    models: OPENAI_MODELS.map(model => ({ value: model.id, label: priceLabel(model) })),
+    models: OPENAI_MODELS.map(model => ({ value: model.id, label: basePriceLabel(model) })),
   },
   { value: "gemini", label: "Gemini", models: [{ value: "gemini-3.8-flash", label: "Gemini 3.8 Flash" }] },
   { value: "glm", label: "GLM", models: [{ value: "glm-5.3-flash", label: "GLM-5.3-Flash" }] },
@@ -130,6 +130,14 @@ function AnalyticsPage({ analytics }: { analytics: Analytics }) {
 
 function AiSettingsPanel({ settings, profile, onSave }: { settings: AiSettings; profile: ResumeProfileUpdate; onSave: () => Promise<void> }) {
   const estimatedInput = useMemo(() => estimateResumeInput(profile), [profile]);
+  const [usageSamples, setUsageSamples] = useState<GeneratedResume[]>([]);
+  useEffect(() => {
+    let active = true;
+    void api.resumes().then(items => { if (active) setUsageSamples(items); }).catch(() => { /* Use the default estimate if local history cannot be read. */ });
+    return () => { active = false; };
+  }, [settings.updated_at]);
+  const priceLabel: typeof basePriceLabel = (model, effort, inputTokens) => basePriceLabel(model, effort, inputTokens, usageSamples);
+  const scenarioCost: typeof baseScenarioCost = (model, effort, inputTokens) => baseScenarioCost(model, effort, inputTokens, usageSamples);
   const [form, setForm] = useState(settings);
   const [message, setMessage] = useState("");
   useEffect(() => setForm(settings), [settings.updated_at]);

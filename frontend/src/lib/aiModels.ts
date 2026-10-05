@@ -15,15 +15,23 @@ export const OPENAI_MODELS: OpenAiModel[] = [
 ];
 export const EFFORT_OUTPUT: Record<ReasoningEffort, number> = { none: 3000, minimal: 3500, low: 4500, medium: 6500, high: 10000, xhigh: 16000, max: 24000 };
 export const modelInfo = (id: string) => OPENAI_MODELS.find(model => model.id === id);
+type UsageSample = { model: string; reasoning_effort?: ReasoningEffort; parent_version_id?: number; ai_usage?: { output_tokens: number } };
+export function historicalOutput(model: string, effort: ReasoningEffort, samples: UsageSample[]) {
+  const outputs = samples.filter(sample => sample.model === model && sample.reasoning_effort === effort && !sample.parent_version_id && Number.isFinite(sample.ai_usage?.output_tokens) && sample.ai_usage!.output_tokens > 0).slice(0, 20).map(sample => sample.ai_usage!.output_tokens);
+  if (outputs.length < 3) return EFFORT_OUTPUT[effort];
+  outputs.sort((a, b) => a - b);
+  const middle = Math.floor(outputs.length / 2);
+  return outputs.length % 2 ? outputs[middle] : (outputs[middle - 1] + outputs[middle]) / 2;
+}
 export function defaultEffort(id: string): ReasoningEffort { return modelInfo(id)?.efforts.includes("low") ? "low" : "minimal"; }
 // Local estimate only. The default JD is 700 English words, roughly 4,200 characters.
 export function estimateInputTokens(text: string) {
   return Math.ceil(Array.from(text).reduce((total, character) => total + (character.codePointAt(0)! > 127 ? 1 : 0.25), 0)) + 1050;
 }
-export function scenarioCost(model: OpenAiModel, effort: ReasoningEffort, inputTokens: number) {
-  return (inputTokens * model.input + EFFORT_OUTPUT[effort] * model.output) / 1e6;
+export function scenarioCost(model: OpenAiModel, effort: ReasoningEffort, inputTokens: number, samples: UsageSample[] = []) {
+  return (inputTokens * model.input + historicalOutput(model.id, effort, samples) * model.output) / 1e6;
 }
-export function priceLabel(model: OpenAiModel, effort = defaultEffort(model.id), inputTokens = 0) {
-  const cost = scenarioCost(model, effort, inputTokens);
+export function priceLabel(model: OpenAiModel, effort = defaultEffort(model.id), inputTokens = 0, samples: UsageSample[] = []) {
+  const cost = scenarioCost(model, effort, inputTokens, samples);
   return `${model.label} / ${effort} (est. $${cost.toFixed(4)})`;
 }
