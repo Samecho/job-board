@@ -252,6 +252,7 @@ export interface Analytics {
   applications_by_stage: Record<ApplicationStage, number>;
   status_counts: Record<string, number>;
   tier_counts: Record<string, number>;
+  applied_tier_counts: Record<string, number>;
   saved_resume_count: number;
   companies_with_resumes: number;
   recent_resumes: Array<{

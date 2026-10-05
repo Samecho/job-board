@@ -381,7 +381,9 @@ async function analytics(): Promise<Analytics> {
   const stageCounts = Object.fromEntries(stages.map(stage => [stage, 0])) as Record<ApplicationStage, number>;
   apps.forEach(app => { stageCounts[app.application_stage] += 1; });
   const tier_counts: Record<string, number> = {};
+  const applied_tier_counts: Record<string, number> = {};
   tierOrder.forEach(tier => { tier_counts[tier] = items.filter(company => company.tier === tier).length; });
+  tierOrder.forEach(tier => { applied_tier_counts[tier] = items.filter(company => company.tier === tier && company.application_count > 0).length; });
   const companiesWithResume = new Set(items.filter(item => item.resume_count > 0).map(item => item.id));
   return {
     total_companies: items.length,
@@ -390,6 +392,7 @@ async function analytics(): Promise<Analytics> {
     applications_by_stage: stageCounts,
     status_counts: { Applied: items.filter(company => company.application_count > 0).length, "Not Applied": items.filter(company => company.application_count === 0).length },
     tier_counts,
+    applied_tier_counts,
     saved_resume_count: resumeVersions.length,
     companies_with_resumes: companiesWithResume.size,
     recent_resumes: resumeVersions.slice(0, 6).map(version => ({
