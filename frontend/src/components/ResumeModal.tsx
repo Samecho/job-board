@@ -159,7 +159,6 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
           <div className="resume-inputs">
             <section className="company-application-list">
               <div className="resume-section-heading"><h3>Applications</h3><button className="button ghost compact-button" disabled={locked} onClick={newApplication}>+ New</button></div>
-              <p>Checkboxes select applications for resume generation or assignment, not submission status.</p>
               <div className="company-application-rows">
                 {visibleApps.map(app => {
                   const assigned = versions.find(version => version.id === app.assigned_resume_version_id);
