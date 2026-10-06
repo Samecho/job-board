@@ -14,12 +14,13 @@ import { ProfileEditor } from "./components/ProfileEditor";
 import { ResumeModal } from "./components/ResumeModal";
 import { downloadBlob } from "./lib/resumeFiles";
 import type {
-  AiProvider, AiSettings, Analytics, Company, CompanyStatus, CompanyUpdate,
+  AiProvider, AiSettings, Analytics, Application, Company, CompanyStatus, CompanyUpdate,
   FeatureStatus, GeneratedResume, ResumeProfile, ResumeProfileUpdate,
 } from "./types";
 
 type Page = "overview" | "analytics" | "resume";
 const statuses: CompanyStatus[] = ["Not Applied", "Applied"];
+const hiringStages = ["Applied", "OA", "Interview", "Rejected", "Offer"];
 const tierOrder = ["S+", "S", "A+", "A", "B+", "B", "C", "D"];
 const providerOptions: Array<{ value: AiProvider; label: string; models: Array<{ value: string; label: string }> }> = [
   {
@@ -63,18 +64,20 @@ function useOverviewFilters() {
   const [view, setView] = useState<"table" | "cards">("table");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [hiringProcess, setHiringProcess] = useState<string[]>([]);
   const [tier, setTier] = useState<string[]>([]);
   const [category, setCategory] = useState<string[]>([]);
   const [internHiring, setInternHiring] = useState("");
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [sort, setSort] = useState<"tier" | "company">("tier");
   const [descending, setDescending] = useState(false);
-  return { view, setView, search, setSearch, status, setStatus, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending, favouritesOnly, setFavouritesOnly };
+  return { view, setView, search, setSearch, status, setStatus, hiringProcess, setHiringProcess, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending, favouritesOnly, setFavouritesOnly };
 }
 
-function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters }: {
+function Overview({ companies, applications, onUpdate, onEdit, onResume, onQuickApply, filters }: {
   filters: ReturnType<typeof useOverviewFilters>;
   companies: Company[];
+  applications: Application[];
   onUpdate: (company: Company, data: CompanyUpdate) => Promise<void>;
   onEdit: (company: Company) => void;
   onResume: (company: Company) => void;
@@ -83,6 +86,10 @@ function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters
   const { view, setView, search, setSearch, status, setStatus, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending } = filters;
   const tiers = useMemo(() => tierOrder.filter(value => companies.some(company => company.tier === value)), [companies]);
   const { favouritesOnly, setFavouritesOnly } = filters;
+  const { hiringProcess, setHiringProcess } = filters;
+  const matchingCompanyIds = useMemo(() => new Set(applications
+    .filter(application => hiringProcess.includes(application.application_stage))
+    .map(application => application.company_id)), [applications, hiringProcess]);
   const [favouriteBusy, setFavouriteBusy] = useState(false);
   const [favouriteError, setFavouriteError] = useState("");
   const favouriteControl = (company: Company) => <button type="button" className={"company-favourite" + (company.is_favourite ? " active" : "")} aria-label={(company.is_favourite ? "Unfavourite " : "Favourite ") + company.name} title={company.is_favourite ? "Remove from favourites" : "Add to favourites"} aria-pressed={!!company.is_favourite} disabled={favouriteBusy} onDoubleClick={event => event.stopPropagation()} onClick={async event => {
@@ -96,6 +103,7 @@ function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters
     (!favouritesOnly || company.is_favourite) &&
     (!search || `${company.name} ${company.category} ${company.main_locations}`.toLowerCase().includes(search.toLowerCase())) &&
     (!status || company.status === status) && (!tier.length || tier.includes(company.tier)) &&
+    (!hiringProcess.length || matchingCompanyIds.has(company.id)) &&
     (!category.length || category.includes(company.category)) &&
     (!internHiring || company.intern_friendly === (internHiring === "yes"))
   );
@@ -116,7 +124,7 @@ function Overview({ companies, onUpdate, onEdit, onResume, onQuickApply, filters
     {favouriteError && <p className="inline-error" role="alert">{favouriteError}</p>}
     <label className="overview-star-filter"><input type="checkbox" checked={favouritesOnly} onChange={event => setFavouritesOnly(event.target.checked)} />Favourites only</label>
     <div className="toolbar"><div><span className="eyebrow">{sorted.length} companies</span><h2>Company tracker</h2></div><div className="view-toggle"><button className={view === "table" ? "active" : ""} onClick={() => setView("table")}><List size={17} /> Table</button><button className={view === "cards" ? "active" : ""} onClick={() => setView("cards")}><Grid2X2 size={17} /> Cards</button></div></div>
-    <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, categories, locations..." /></label><MultiFilter label="Tiers" options={tiers} selected={tier} onChange={setTier} /><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select><MultiFilter label="Categories" options={categories} selected={category} onChange={setCategory} /><select value={internHiring} onChange={event => setInternHiring(event.target.value)}><option value="">All intern hiring</option><option value="yes">Regular intern hiring</option><option value="no">Limited or uncommon</option></select></div>
+    <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, categories, locations..." /></label><MultiFilter label="Tiers" options={tiers} selected={tier} onChange={setTier} /><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select><MultiFilter label="Hiring process" options={hiringStages} selected={hiringProcess} onChange={setHiringProcess} /><MultiFilter label="Categories" options={categories} selected={category} onChange={setCategory} /><select value={internHiring} onChange={event => setInternHiring(event.target.value)}><option value="">All intern hiring</option><option value="yes">Regular intern hiring</option><option value="no">Limited or uncommon</option></select></div>
     {view === "table" ? <div className="table-wrap overview-table"><table><colgroup><col className="col-tier" /><col className="col-company" /><col className="col-location" /><col className="col-status" /><col className="col-link" /><col className="col-resume" /><col className="col-notes" /></colgroup><thead><tr><th><button className={sort === "tier" ? "active" : ""} onClick={() => changeSort("tier")}>Tier {sort === "tier" ? (descending ? "↓" : "↑") : ""}</button></th><th><button className={sort === "company" ? "active" : ""} onClick={() => changeSort("company")}>Company {sort === "company" ? (descending ? "↓" : "↑") : ""}</button></th><th>Location</th><th>Status</th><th>Link</th><th>Resume</th><th>Notes</th></tr></thead><tbody>{sorted.map(company => <tr key={company.id} onDoubleClick={() => onEdit(company)}><td><span className={`tier tier-${company.tier}`}>{company.tier}</span></td><td><div className="company-cell"><Logo name={company.name} domain={company.domain} url={company.logo_url} /><div><div className="company-title-with-favourite"><strong>{company.name}</strong>{favouriteControl(company)}</div><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div></td><td><span className="location-cell"><MapPin size={14} />{company.main_locations || "Not listed"}</span></td><td>{statusControl(company)}</td><td>{company.link ? <a className="button ghost compact-button" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost compact-button" onClick={() => onEdit(company)}>Add link</button>}</td><td><button className="button primary compact-button" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></td><td><button className="table-note edit-note" title={company.notes} onClick={() => onEdit(company)}>{company.notes || "Add notes"}</button></td></tr>)}</tbody></table></div>
       : <div className="company-grid">{sorted.map(company => <article className="company-card simple-card" key={company.id}><div className="card-top"><Logo name={company.name} domain={company.domain} url={company.logo_url} size={48} /><span className={`tier tier-${company.tier}`}>{company.tier}</span></div><div className="card-title"><div><div className="company-title-with-favourite"><h3>{company.name}</h3>{favouriteControl(company)}</div><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div><div className="card-facts"><div><span>Location</span><strong>{company.main_locations || "Not listed"}</strong></div></div><div className="card-applied">{statusControl(company)}</div><button className="notes-preview edit-note" onClick={() => onEdit(company)}>{company.notes || "Add notes for this company."}</button><div className="card-actions"><button className="button ghost" onClick={() => onEdit(company)}>Edit</button>{company.link ? <a className="button ghost" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost" onClick={() => onEdit(company)}>Add link</button>}<button className="button primary" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></div></article>)}</div>}
   </section>;
@@ -188,6 +196,7 @@ export default function App() {
   const overviewFilters = useOverviewFilters();
   const generationTasks = useSyncExternalStore(subscribeGeneration, getGenerationTasks);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [profile, setProfile] = useState<ResumeProfile | null>(null);
   const [resumes, setResumes] = useState<GeneratedResume[]>([]);
@@ -201,6 +210,7 @@ export default function App() {
   const load = async () => {
     try {
       const [companyData, analyticsData, profileData, resumeData, featureData, settingsData] = await Promise.all([api.companies(), api.analytics(), api.profile(), api.resumes(), api.features(), api.aiSettings()]);
+      setApplications(await api.applications());
       setCompanies(companyData); setAnalytics(analyticsData); setProfile(profileData); setResumes(resumeData); setFeatures(featureData); setSettings(settingsData); setError("");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to load InternRadar"); }
     finally { setLoading(false); }
@@ -221,5 +231,5 @@ export default function App() {
   if (error || !analytics || !profile || !settings) return <div className="app-state"><Radar size={34} /><strong>Unable to load local data</strong><p>{error}</p><button className="button primary" onClick={load}>Try again</button></div>;
 
   const nav = [["overview", LayoutDashboard, "Overview"], ["analytics", BarChart3, "Analytics"], ["resume", FileText, "Resume"]] as const;
-  return <div className="shell"><aside><div className="brand"><span><Radar size={23} /></span><div><strong>InternRadar</strong><small>Browser-local tracker</small></div></div><nav>{nav.map(([id, Icon, label]) => <button className={page === id ? "active" : ""} key={id} onClick={() => setPage(id)}><Icon size={19} /><span>{label}</span></button>)}</nav></aside><main><header><div><span className="eyebrow">GitHub Pages ready · browser-local data</span><h1>{page === "overview" ? "Company applications" : page === "analytics" ? "Application analytics" : "Resume studio"}</h1><p>{page === "overview" ? "Track companies, applications, notes, links, and resume versions." : page === "analytics" ? "A simple view of your application pipeline." : "Maintain your master profile, AI settings, backups, and generated resumes."}</p></div></header><div aria-live="polite" className="generation-status-list">{generationTasks.map(task => <div className="compiler-note" key={task.companyId}><button className="button ghost compact-button" onClick={() => { const company = companies.find(item => item.id === task.companyId); if (company) setResumeCompany(company); }}>{task.companyName}: {task.status === "running" ? "Generating resume..." : task.status === "completed" ? "Resume ready" : "Generation failed"}</button>{task.status !== "running" && <button className="button ghost compact-button" aria-label={`Dismiss generation status for ${task.companyName}`} onClick={() => dismissGeneration(task.companyId)}>Dismiss</button>}</div>)}</div>{page === "overview" && <Overview filters={overviewFilters} companies={companies} onUpdate={updateCompany} onEdit={setEditing} onResume={setResumeCompany} onQuickApply={quickApply} />}{page === "analytics" && <AnalyticsPage analytics={analytics} />}{page === "resume" && <ResumePage profile={profile} settings={settings} resumes={resumes} onProfileSave={async data => setProfile(await api.updateProfile(data))} onSettingsChanged={load} onDelete={async resume => { if (confirm(`Delete ${resume.resume_name}?`)) { await api.deleteResume(resume.id); await load(); } }} onExport={async () => downloadBlob(await api.exportBackup(), `InternRadar-backup-${new Date().toISOString().slice(0, 10)}.zip`)} onImport={async file => { await api.importBackup(file); await load(); }} />}</main>{editing && <CompanyModal company={editing} onClose={() => setEditing(null)} onSave={data => updateCompany(editing, data)} />}{resumeCompany && <ResumeModal company={resumeCompany} features={features} onClose={() => setResumeCompany(null)} onSaved={load} />}</div>;
+  return <div className="shell"><aside><div className="brand"><span><Radar size={23} /></span><div><strong>InternRadar</strong><small>Browser-local tracker</small></div></div><nav>{nav.map(([id, Icon, label]) => <button className={page === id ? "active" : ""} key={id} onClick={() => setPage(id)}><Icon size={19} /><span>{label}</span></button>)}</nav></aside><main><header><div><span className="eyebrow">GitHub Pages ready · browser-local data</span><h1>{page === "overview" ? "Company applications" : page === "analytics" ? "Application analytics" : "Resume studio"}</h1><p>{page === "overview" ? "Track companies, applications, notes, links, and resume versions." : page === "analytics" ? "A simple view of your application pipeline." : "Maintain your master profile, AI settings, backups, and generated resumes."}</p></div></header><div aria-live="polite" className="generation-status-list">{generationTasks.map(task => <div className="compiler-note" key={task.companyId}><button className="button ghost compact-button" onClick={() => { const company = companies.find(item => item.id === task.companyId); if (company) setResumeCompany(company); }}>{task.companyName}: {task.status === "running" ? "Generating resume..." : task.status === "completed" ? "Resume ready" : "Generation failed"}</button>{task.status !== "running" && <button className="button ghost compact-button" aria-label={`Dismiss generation status for ${task.companyName}`} onClick={() => dismissGeneration(task.companyId)}>Dismiss</button>}</div>)}</div>{page === "overview" && <Overview filters={overviewFilters} companies={companies} applications={applications} onUpdate={updateCompany} onEdit={setEditing} onResume={setResumeCompany} onQuickApply={quickApply} />}{page === "analytics" && <AnalyticsPage analytics={analytics} />}{page === "resume" && <ResumePage profile={profile} settings={settings} resumes={resumes} onProfileSave={async data => setProfile(await api.updateProfile(data))} onSettingsChanged={load} onDelete={async resume => { if (confirm(`Delete ${resume.resume_name}?`)) { await api.deleteResume(resume.id); await load(); } }} onExport={async () => downloadBlob(await api.exportBackup(), `InternRadar-backup-${new Date().toISOString().slice(0, 10)}.zip`)} onImport={async file => { await api.importBackup(file); await load(); }} />}</main>{editing && <CompanyModal company={editing} onClose={() => setEditing(null)} onSave={data => updateCompany(editing, data)} />}{resumeCompany && <ResumeModal company={resumeCompany} features={features} onClose={() => setResumeCompany(null)} onSaved={load} />}</div>;
 }

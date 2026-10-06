@@ -158,6 +158,10 @@ main{grid-column:2;padding:32px 38px 70px;max-width:1800px;width:100%;margin:aut
 .overview-star-filter input { width:16px; height:16px; accent-color:#1a73e8; }
 
 .company-overview-panel { overflow:visible; }
+.simple-filters { grid-template-columns:minmax(240px,1fr) 105px 135px 160px 170px 165px; align-items:start; }
+@media(max-width:1250px) { .simple-filters { grid-template-columns:repeat(3,minmax(0,1fr)); } .simple-filters .search { grid-column:1/-1; } }
+@media(max-width:850px) { .simple-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:550px) { .simple-filters { grid-template-columns:minmax(0,1fr); } }
 .filters .multi-filter { position:relative; min-width:0; align-self:start; border:1px solid var(--line); border-radius:9px; background:#fff; color:#526176; font-size:12px; }
 .filters .multi-filter[open] { z-index:20; }
 .application-sankey { grid-column:1/-1; min-width:0; }
