@@ -49,6 +49,7 @@ function mergeCompanyStates(current: CompanyState | undefined, incoming: Company
   return {
     company_id: companyId,
     is_favourite: Boolean(current?.is_favourite || incoming.is_favourite),
+    unmatched_stage: current?.unmatched_stage ?? incoming.unmatched_stage ?? null,
     notes,
     link: current?.link || incoming.link || "",
     main_locations: current?.main_locations || incoming.main_locations || "",
@@ -352,6 +353,7 @@ async function companies(): Promise<Company[]> {
       status: application_count > 0 ? "Applied" as const : "Not Applied" as const,
       application_count,
       is_favourite: Boolean(state?.is_favourite),
+      unmatched_stage: state?.unmatched_stage ?? null,
       resume_count: resumeCounts.get(company.id) || 0,
     };
   }).sort((a, b) => (tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier)) || a.name.localeCompare(b.name));
@@ -368,12 +370,46 @@ async function updateCompany(id: number, data: CompanyUpdate) {
   await put<CompanyState>("company_states", {
     company_id: id,
     is_favourite: data.is_favourite ?? current.is_favourite ?? false,
+    unmatched_stage: current.unmatched_stage ?? null,
     notes: data.notes ?? current.notes,
     link: data.link ?? current.link,
     main_locations: data.main_locations ?? current.main_locations,
     updated_at: now(),
   });
   return company(id);
+}
+
+async function matchCompanyStage(transaction: IDBTransaction, companyId: number) {
+  const states = transaction.objectStore("company_states");
+  const state = await req<CompanyState | undefined>(states.get(companyId));
+  const stage = state?.unmatched_stage;
+  if (!state || !stage || stage === "Applied") return;
+  const store = transaction.objectStore("applications");
+  const apps = await req<Application[]>(store.getAll());
+  // Only move forward; terminal decisions and already-matched stages are excluded.
+  const eligible: Record<ApplicationStage, ApplicationStage[]> = {
+    Applied: [], OA: ["Applied"], Interview: ["Applied", "OA"],
+    Rejected: ["Applied", "OA", "Interview"], Offer: ["Applied", "OA", "Interview"],
+  };
+  const candidates = apps.filter(app => app.company_id === companyId && eligible[stage].includes(app.application_stage));
+  if (candidates.length !== 1) return;
+  const app = candidates[0];
+  await req(store.put({ ...app, application_stage: stage, updated_at: now(),
+    notes: `[Auto-matched ${stage}: only remaining eligible application, ${now()}]\n\n${app.notes || ""}` }));
+  await req(states.put({ ...state, unmatched_stage: null, updated_at: now() }));
+}
+
+async function markCompanyStage(companyId: number, stage: ApplicationStage | null) {
+  if (stage !== null && (!stages.includes(stage) || stage === "Applied")) throw new Error("Choose a hiring stage.");
+  const current = await company(companyId);
+  await tx(["company_states", "applications"], "readwrite", async (_, transaction) => {
+    const store = transaction.objectStore("company_states");
+    const state = await req<CompanyState | undefined>(store.get(companyId));
+    await req(store.put({ ...(state || { company_id: companyId, notes: current.notes, link: current.link,
+      main_locations: current.main_locations, is_favourite: current.is_favourite }),
+      unmatched_stage: stage, updated_at: now() }));
+    await matchCompanyStage(transaction, companyId);
+  });
 }
 
 async function analytics(): Promise<Analytics> {
@@ -754,11 +790,17 @@ export const api = {
     if (!response.ok) await responseError(response);    return true;
   },
   applications,
+  markCompanyStage,
   createApplication: (data: { company_id: number; job_title: string; job_description: string; notes: string }) => add<Omit<Application, "id">>("applications", { ...data, application_stage: "Applied", created_at: now(), updated_at: now() } as Application),
   updateApplication: async (id: number, data: Partial<Application>) => {
-    const current = await get<Application>("applications", id);
-    if (!current) throw new Error("Application not found");
-    return put("applications", { ...current, ...data, id, updated_at: now() });
+    return tx(["applications", "company_states"], "readwrite", async (_, transaction) => {
+      const store = transaction.objectStore("applications");
+      const current = await req<Application | undefined>(store.get(id));
+      if (!current) throw new Error("Application not found");
+      await req(store.put({ ...current, ...data, id, updated_at: now() }));
+      if (data.application_stage && data.application_stage !== current.application_stage) await matchCompanyStage(transaction, current.company_id);
+      return req<Application>(store.get(id));
+    });
   },
   deleteApplication: async (id: number) => {
     // Keep immutable versions, including versions shared by other applications.

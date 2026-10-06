@@ -18,6 +18,7 @@ export interface CompanyCatalogItem {
 }
 
 export interface Company extends CompanyCatalogItem {
+  unmatched_stage?: ApplicationStage | null;
   is_favourite?: boolean;
   status: CompanyStatus;
   notes: string;
@@ -33,6 +34,7 @@ export interface CompanyUpdate {
 }
 
 export interface CompanyState {
+  unmatched_stage?: ApplicationStage | null;
   is_favourite?: boolean;
   company_id: number;
   notes: string;

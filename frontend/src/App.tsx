@@ -87,9 +87,9 @@ function Overview({ companies, applications, onUpdate, onEdit, onResume, onQuick
   const tiers = useMemo(() => tierOrder.filter(value => companies.some(company => company.tier === value)), [companies]);
   const { favouritesOnly, setFavouritesOnly } = filters;
   const { hiringProcess, setHiringProcess } = filters;
-  const matchingCompanyIds = useMemo(() => new Set(applications
+  const matchingCompanyIds = useMemo(() => new Set([...applications
     .filter(application => hiringProcess.includes(application.application_stage))
-    .map(application => application.company_id)), [applications, hiringProcess]);
+    .map(application => application.company_id), ...companies.filter(company => company.unmatched_stage && hiringProcess.includes(company.unmatched_stage)).map(company => company.id)]), [applications, companies, hiringProcess]);
   const [favouriteBusy, setFavouriteBusy] = useState(false);
   const [favouriteError, setFavouriteError] = useState("");
   const favouriteControl = (company: Company) => <button type="button" className={"company-favourite" + (company.is_favourite ? " active" : "")} aria-label={(company.is_favourite ? "Unfavourite " : "Favourite ") + company.name} title={company.is_favourite ? "Remove from favourites" : "Add to favourites"} aria-pressed={!!company.is_favourite} disabled={favouriteBusy} onDoubleClick={event => event.stopPropagation()} onClick={async event => {
@@ -119,7 +119,7 @@ function Overview({ companies, applications, onUpdate, onEdit, onResume, onQuick
     if (sort === next) setDescending(value => !value);
     else { setSort(next); setDescending(false); }
   };
-  const statusControl = (company: Company) => <label className="applied-toggle"><input type="checkbox" checked={company.application_count > 0} onChange={() => onQuickApply(company)} /><span>{company.application_count ? `Applied (${company.application_count})` : "Not Applied"}</span></label>;
+  const statusControl = (company: Company) => <div><label className="applied-toggle"><input type="checkbox" checked={company.application_count > 0} onChange={() => onQuickApply(company)} /><span>{company.application_count ? `Applied (${company.application_count})` : "Not Applied"}</span></label>{company.unmatched_stage && <button className="unknown-stage-badge" onClick={() => onResume(company)} title="Hiring update received; role not yet identified">{company.unmatched_stage} · Role unknown</button>}</div>;
   return <section className="content-panel company-overview-panel">
     {favouriteError && <p className="inline-error" role="alert">{favouriteError}</p>}
     <label className="overview-star-filter"><input type="checkbox" checked={favouritesOnly} onChange={event => setFavouritesOnly(event.target.checked)} />Favourites only</label>

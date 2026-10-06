@@ -25,6 +25,8 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
   const [extraInstructions, setExtraInstructions] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [unknownStage, setUnknownStage] = useState<ApplicationStage>("OA");
+  const [pendingStage, setPendingStage] = useState(company.unmatched_stage ?? null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewName, setPreviewName] = useState("");
   const [editing, setEditing] = useState<ResumeVersionRead | null>(null);
@@ -62,8 +64,10 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
     const revision = ++loadRevision.current;
     const nextApps = await api.applications(company.id);
     const nextVersions = await api.companyResumes(company.id);
+    const nextCompany = await api.company(company.id);
     if (companyRef.current !== company.id || revision !== loadRevision.current) return;
     setRecords(nextApps); setSavedVersions(nextVersions);
+    setPendingStage(nextCompany.unmatched_stage ?? null);
     const id = nextApps.some(app => app.id === nextId) ? nextId : nextApps[0]?.id ?? null;
     setSelectedId(id);
     setTargetIds(current => {
@@ -75,7 +79,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
   useEffect(() => {
     setEditing(null);
     setForm(selected ? { job_title: selected.job_title, job_description: selected.job_description, notes: selected.notes, application_stage: selected.application_stage } : emptyForm());
-  }, [selectedId, company.id]);
+  }, [selected, company.id]);
   useEffect(() => {
     setTargetIds([]); setResumeName(""); setEditing(null);
     setRenaming(null); setPreviewUrl(""); setError("");
@@ -159,6 +163,12 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
           <div className="resume-inputs">
             <section className="company-application-list">
               <div className="resume-section-heading"><h3>Applications</h3><button className="button ghost compact-button" disabled={locked} onClick={newApplication}>+ New</button></div>
+              <div className="unknown-stage-control">
+                {pendingStage ? <><small>{pendingStage} · Role unknown</small><button className="button ghost compact-button" disabled={locked} onClick={() => mutate(() => api.markCompanyStage(company.id, null))}>Clear</button></>
+                  : <><label>Role unknown<select aria-label="Unknown role stage" value={unknownStage} disabled={locked} onChange={event => setUnknownStage(event.target.value as ApplicationStage)}>{stages.filter(stage => stage !== "Applied").map(stage => <option key={stage}>{stage}</option>)}</select></label><button className="button ghost compact-button" disabled={locked || !apps.length} onClick={() => {
+                    if (confirm(`Is this a separate ${unknownStage} update for an application not already marked ${unknownStage}, rather than a duplicate or shared assessment? If only one eligible role remains, it will be matched automatically.`)) void mutate(() => api.markCompanyStage(company.id, unknownStage));
+                  }}>Mark</button></>}
+              </div>
               <div className="company-application-rows">
                 {visibleApps.map(app => {
                   const assigned = versions.find(version => version.id === app.assigned_resume_version_id);
