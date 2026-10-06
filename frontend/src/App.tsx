@@ -119,7 +119,7 @@ function Overview({ companies, applications, onUpdate, onEdit, onResume, onQuick
     if (sort === next) setDescending(value => !value);
     else { setSort(next); setDescending(false); }
   };
-  const statusControl = (company: Company) => <div><label className="applied-toggle"><input type="checkbox" checked={company.application_count > 0} onChange={() => onQuickApply(company)} /><span>{company.application_count ? `Applied (${company.application_count})` : "Not Applied"}</span></label>{company.unmatched_stage && <button className="unknown-stage-badge" onClick={() => onResume(company)} title="Hiring update received; role not yet identified">{company.unmatched_stage} · Role unknown</button>}</div>;
+  const statusControl = (company: Company) => <div><label className="applied-toggle"><input type="checkbox" checked={company.application_count > 0} onChange={() => onQuickApply(company)} /><span>{company.application_count ? `Applied (${company.application_count})` : "Not Applied"}</span></label></div>;
   return <section className="content-panel company-overview-panel">
     {favouriteError && <p className="inline-error" role="alert">{favouriteError}</p>}
     <label className="overview-star-filter"><input type="checkbox" checked={favouritesOnly} onChange={event => setFavouritesOnly(event.target.checked)} />Favourites only</label>
