@@ -33,6 +33,15 @@ describe("fixed LaTeX renderer", () => {
     expect(tex).toContain("\\section{Technical Skills}");
   });
 
+  it("renders organizations above job titles for work and research", () => {
+    const tex = renderResumeLatex(completeResume);
+    for (const entry of completeResume.experience) {
+      expect(tex).toContain(`\\resumeSubheading{${escapeLatex(entry.organization)}}{${escapeLatex(entry.dates)}}{${escapeLatex(entry.title)}}{${escapeLatex(entry.location)}}`);
+    }
+    const education = completeResume.education[0];
+    expect(tex).toContain(`\\resumeSubheading{${escapeLatex(education.institution)}}{${escapeLatex(education.dates)}}{${escapeLatex(education.degree)}}{${escapeLatex(education.location)}}`);
+  });
+
   it("escapes LaTeX content without turning URLs into resume text", () => {
     expect(escapeLatex("R&D_50% costs $5 #1 {x} ~ ^ \\")).toBe(String.raw`R\&D{\ttfamily\char95}50\% costs {\char36}5 \#1 \{x\} {\ttfamily\char126} {\ttfamily\char94} $\backslash$`);
     const tex = renderResumeLatex(completeResume);

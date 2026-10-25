@@ -41,6 +41,7 @@ In version history, Edit / AI refine opens the structured JSON editor. Save manu
 Alternatively, enter a refinement instruction and use AI refine for one request with the existing content.
 Both save a new version and assign it to the current application only; other applications keep their assignments.
 Overlong refinements are rejected instead of silently pruning unrelated content. The original remains available.
+Newly generated or manually recompiled resumes show each Experience organization/company on the first line and the job title on the second, with dates and location on the right. Education retains institution first and degree second. Existing saved PDFs remain unchanged until a new version is generated or recompiled.
 Deleting a shared version clears all its assignments, not applications. Deleting an application retains saved versions.
 Backup ZIPs preserve sharing, assignments, and refinement lineage. Existing single-application versions remain compatible.
 

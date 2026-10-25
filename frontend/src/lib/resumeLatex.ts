@@ -129,7 +129,7 @@ function educationSection(resume: StructuredResume): string {
 
 function experienceSection(resume: StructuredResume): string {
   const entries = resume.experience.map(entry => {
-    const header = `  \\resumeSubheading{${escapeLatex(entry.title)}}{${escapeLatex(entry.dates)}}{${escapeLatex(entry.organization)}}{${escapeLatex(entry.location)}}`;
+    const header = `  \\resumeSubheading{${escapeLatex(entry.organization)}}{${escapeLatex(entry.dates)}}{${escapeLatex(entry.title)}}{${escapeLatex(entry.location)}}`;
     const subs = (entry as unknown as { subprojects?: Array<{ name: string; bullets: Array<{ text: string; highlights: string[] }> }>; bullets?: string[] }).subprojects;
     let body = "";
     if (subs?.length) {
