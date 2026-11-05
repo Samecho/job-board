@@ -168,10 +168,12 @@ main{grid-column:2;padding:32px 38px 70px;max-width:1800px;width:100%;margin:aut
 .filters .multi-filter { position:relative; min-width:0; align-self:start; border:1px solid var(--line); border-radius:9px; background:#fff; color:#526176; font-size:12px; }
 .filters .multi-filter[open] { z-index:20; }
 .application-sankey { grid-column:1/-1; min-width:0; }
-.application-sankey svg { display:block; width:100%; max-height:460px; }
-.sankey-scroll { overflow-x:auto; }
+.application-sankey svg { display:block; width:100%; height:auto; }
+.sankey-scroll { overflow-x:auto; padding:12px 0 0; }
 .sankey-scroll svg { min-width:740px; }
 .application-sankey text { font-size:14px; fill:#43536a; font-family:inherit; }
+.application-sankey .sankey-stage { font-weight:500; }
+.application-sankey .sankey-count { font-size:13px; fill:var(--muted); }
 .application-sankey .panel-head p { margin:8px 0 0; font-size:12px; color:#687789; }
 .multi-filter summary { padding:11px 12px; cursor:pointer; overflow-wrap:anywhere; }
 .multi-filter summary:focus-visible { outline:2px solid #1a73e8; outline-offset:2px; border-radius:9px; }

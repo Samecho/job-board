@@ -18,12 +18,12 @@ describe("ApplicationSankey", () => {
       { application_stage: "Rejected", stage_history: ["Applied", "Interview"] },
       { application_stage: "Declined", stage_history: ["Applied", "Interview"] },
     ])} />);
-    expect(markup).toContain("Interview (2)");
-    expect(markup).toContain("Rejected (1)");
-    expect(markup).toContain("Declined (1)");
+    expect(markup).toContain('data-stage="Interview" data-count="2"');
+    expect(markup).toContain('data-stage="Rejected" data-count="1"');
+    expect(markup).toContain('data-stage="Declined" data-count="1"');
     expect(markup).toContain("Interview to Rejected: 1 applications");
     expect(markup).toContain("Interview to Declined: 1 applications");
-    expect(markup).not.toContain("OA (2)");
+    expect(markup).not.toContain('data-stage="OA"');
     expect(markup).not.toContain("NaN");
   });
 
@@ -31,6 +31,6 @@ describe("ApplicationSankey", () => {
     expect(renderToStaticMarkup(<ApplicationSankey analytics={stats([])} />)).toContain("No applications yet.");
     const markup = renderToStaticMarkup(<ApplicationSankey analytics={stats([{ application_stage: "Rejected" }])} />);
     expect(markup).toContain("Applied to Rejected: 1 applications");
-    expect(markup).not.toContain("Interview (1)");
+    expect(markup).not.toContain('data-stage="Interview"');
   });
 });
