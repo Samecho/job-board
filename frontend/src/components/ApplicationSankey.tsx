@@ -1,34 +1,49 @@
 import type { Analytics } from "../types";
+import type { FlowStage } from "../lib/applicationStages";
 
-const stages = ["Applied", "OA", "Interview", "Rejected", "Offer"] as const;
-const colors = ["#18aaa3", "#3978d6", "#8a63cb", "#cf6b79", "#56a574"];
+const columns: FlowStage[][] = [["Applied"], ["OA"], ["Interview"], ["Pending", "Rejected", "Declined", "Offer"]];
+const colors: Record<FlowStage, string> = {
+  Applied: "#18aaa3", OA: "#3978d6", Interview: "#8a63cb",
+  Pending: "#8996a5", Rejected: "#cf6b79", Declined: "#bc873c", Offer: "#56a574",
+};
 
 export function ApplicationSankey({ analytics }: { analytics: Analytics }) {
   const total = analytics.total_applications;
-  const active = stages.filter(stage => analytics.applications_by_stage[stage] > 0);
-  const scale = 240 / Math.max(1, total);
-  const gap = 22;
-  const height = 300 + Math.max(0, active.length - 1) * gap;
-  let sourceY = 30;
-  let targetY = 30;
-  const flows = active.map(stage => {
-    const count = analytics.applications_by_stage[stage];
-    const thickness = count * scale;
-    const flow = { stage, count, thickness, sourceY, targetY, color: colors[stages.indexOf(stage)] };
-    sourceY += thickness;
-    targetY += thickness + gap;
-    return flow;
+  const scale = 260 / Math.max(1, total);
+  const counts: Record<FlowStage, number> = { ...analytics.applications_reached_stage, Pending: analytics.applications_by_stage.Applied };
+  const nodes = columns.flatMap((stages, column) => {
+    let y = 52;
+    return stages.filter(stage => counts[stage] > 0).map(stage => {
+      const height = counts[stage] * scale;
+      const node = { stage, count: counts[stage], x: 32 + column * 270, y: column === 1 || column === 2 ? 182 - height / 2 : y, height, incoming: 0, outgoing: 0 };
+      y += Math.max(height, 3) + 42;
+      return node;
+    });
   });
+  const nodeMap = new Map(nodes.map(node => [node.stage, node]));
+  const links = [...analytics.application_flows].sort((a, b) => (nodeMap.get(a.target)?.y ?? 0) - (nodeMap.get(b.target)?.y ?? 0));
+  const flows = links.flatMap(link => {
+    const source = nodeMap.get(link.source), target = nodeMap.get(link.target);
+    if (!source || !target) return [];
+    const thickness = link.count * scale;
+    const flow = { ...link, thickness, x1: source.x + 14, x2: target.x, y1: source.y + source.outgoing, y2: target.y + target.incoming };
+    source.outgoing += thickness;
+    target.incoming += thickness;
+    return [flow];
+  });
+  const height = Math.max(390, ...nodes.map(node => node.y + Math.max(node.height, 3) + 30));
   return <section className="panel application-sankey">
-    <div className="panel-head"><h2>Application Sankey</h2><p>Applications by current stage, not historical transitions.</p></div>
-    {total ? <svg viewBox={`0 0 720 ${height}`} role="img" aria-label={`Current application stages: ${stages.map(stage => `${stage} ${analytics.applications_by_stage[stage]}`).join(", ")}`}>
-      <text x="18" y="18">All applications ({total})</text>
-      {flows.map(flow => <g key={flow.stage}>
-        <path d={`M 42 ${flow.sourceY} C 310 ${flow.sourceY}, 310 ${flow.targetY}, 555 ${flow.targetY} L 555 ${flow.targetY + flow.thickness} C 310 ${flow.targetY + flow.thickness}, 310 ${flow.sourceY + flow.thickness}, 42 ${flow.sourceY + flow.thickness} Z`} fill={flow.color} opacity="0.25"><title>{flow.stage}: {flow.count} applications</title></path>
-        <rect x="555" y={flow.targetY} width="14" height={flow.thickness} rx="2" fill={flow.color} />
-        <text x="585" y={flow.targetY + flow.thickness / 2} dominantBaseline="middle">{flow.stage} ({flow.count})</text>
+    <div className="panel-head"><h2>Application Sankey</h2><p>Confirmed stages reached, with final outcomes. Declined means you chose not to continue.</p></div>
+    {total ? <div className="sankey-scroll"><svg viewBox={`0 0 1060 ${height}`} role="img" aria-label={`Application journeys. ${nodes.map(node => `${node.stage} ${node.count}`).join(", ")}`}>
+      <desc>OA and Interview include applications that later ended. Rejected and Declined merge incoming paths into separate outcomes. Unrecorded earlier stages are not assumed.</desc>
+      {flows.map(flow => {
+        const curve = (flow.x1 + flow.x2) / 2;
+        return <path key={`${flow.source}:${flow.target}`} d={`M ${flow.x1} ${flow.y1} C ${curve} ${flow.y1}, ${curve} ${flow.y2}, ${flow.x2} ${flow.y2} L ${flow.x2} ${flow.y2 + flow.thickness} C ${curve} ${flow.y2 + flow.thickness}, ${curve} ${flow.y1 + flow.thickness}, ${flow.x1} ${flow.y1 + flow.thickness} Z`} fill={colors[flow.target]} opacity="0.28"><title>{`${flow.source} to ${flow.target}: ${flow.count} applications`}</title></path>;
+      })}
+      {nodes.map(node => <g key={node.stage}>
+        <rect x={node.x} y={node.y} width="14" height={Math.max(node.height, 3)} rx="2" fill={colors[node.stage]}><title>{`${node.stage}: ${node.count}`}</title></rect>
+        <text x={node.x} y={node.y - 12}>{node.stage} ({node.count})</text>
       </g>)}
-      <rect x="28" y="30" width="14" height="240" rx="2" fill="#18aaa3" />
-    </svg> : <p>No applications yet.</p>}
+    </svg></div> : <p>No applications yet.</p>}
   </section>;
 }

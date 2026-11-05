@@ -15,7 +15,8 @@ There is no login, Jobs tab, Sources tab, crawler, match score, priority/pin sys
 - Overview table and cards views
 - Company notes, locations, useful links, internship-friendly badge, and filters
 - Application hierarchy: Company -> Applications -> Resume Versions
-- Application stages: Applied, OA, Interview, Rejected, Offer
+- Application stages: Applied, OA, Interview, Rejected, Declined, Offer
+- Historical OA/interview milestones and outcome-aware Sankey flows
 - Detailed autosaved Resume Profile
 - AI Settings stored locally in the browser
 - Closed provider/model adapters for OpenAI, Gemini, and GLM
@@ -29,6 +30,11 @@ Select applications using the checkboxes directly in the company application lis
 Applications, named resume groups, and assignment choices in this dialog belong only to the current company.
 One AI request considers all selected JDs and saves one PDF/TeX version shared by those applications.
 Each application keeps its own stage, JD, and notes; application counts do not count versions.
+Stage changes retain previously reached milestones. For an older application, use Previously reached
+in its editor to record a confirmed OA or interview before marking its final outcome.
+Declined is the candidate's decision, distinct from an employer rejection.
+Analytics routes those applications through their recorded milestones into the relevant outcome;
+it does not assume that a rejected application had an OA or interview.
 
 Application rows show the resume name and version currently assigned to them.
 Saved resumes are grouped by an editable name and show which applications use each version.

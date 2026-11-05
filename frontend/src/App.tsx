@@ -13,6 +13,7 @@ import { Logo } from "./components/Logo";
 import { ProfileEditor } from "./components/ProfileEditor";
 import { ResumeModal } from "./components/ResumeModal";
 import { downloadBlob } from "./lib/resumeFiles";
+import { APPLICATION_STAGES } from "./lib/applicationStages";
 import type {
   AiProvider, AiSettings, Analytics, Application, Company, CompanyStatus, CompanyUpdate,
   FeatureStatus, GeneratedResume, ResumeProfile, ResumeProfileUpdate,
@@ -20,7 +21,7 @@ import type {
 
 type Page = "overview" | "analytics" | "resume";
 const statuses: CompanyStatus[] = ["Not Applied", "Applied"];
-const hiringStages = ["Applied", "OA", "Interview", "Rejected", "Offer"];
+const hiringStages = APPLICATION_STAGES;
 const tierOrder = ["S+", "S", "A+", "A", "B+", "B", "C", "D"];
 const providerOptions: Array<{ value: AiProvider; label: string; models: Array<{ value: string; label: string }> }> = [
   {

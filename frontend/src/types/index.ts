@@ -1,6 +1,6 @@
 import type { ReasoningEffort } from "../lib/aiModels";
 export type CompanyStatus = "Not Applied" | "Applied";
-export type ApplicationStage = "Applied" | "OA" | "Interview" | "Rejected" | "Offer";
+export type ApplicationStage = "Applied" | "OA" | "Interview" | "Rejected" | "Declined" | "Offer";
 export type AiProvider = "openai" | "gemini" | "glm";
 
 export interface CompanyCatalogItem {
@@ -144,6 +144,7 @@ export interface Application {
   job_title: string;
   job_description: string;
   application_stage: ApplicationStage;
+  stage_history?: ApplicationStage[];
   notes: string;
   created_at: string;
   updated_at: string;
@@ -252,6 +253,8 @@ export interface Analytics {
   applied_count: number;
   total_applications: number;
   applications_by_stage: Record<ApplicationStage, number>;
+  applications_reached_stage: Record<ApplicationStage, number>;
+  application_flows: Array<{ source: ApplicationStage; target: ApplicationStage | "Pending"; count: number }>;
   status_counts: Record<string, number>;
   tier_counts: Record<string, number>;
   applied_tier_counts: Record<string, number>;

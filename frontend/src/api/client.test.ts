@@ -60,6 +60,48 @@ const profile = {
 };
 
 describe("resume version persistence", () => {
+  it("retains interview history independently of rejected and declined outcomes", async () => {
+    const first = await api.createApplication({ company_id: 1, job_title: "Validation", job_description: "Original JD", notes: "Original proof" });
+    const second = await api.createApplication({ company_id: 1, job_title: "Systems", job_description: "Other JD", notes: "Other proof" });
+    await api.updateApplication(first.id, { application_stage: "Interview" });
+    await api.updateApplication(first.id, { application_stage: "Rejected" });
+    await api.updateApplication(second.id, { application_stage: "Interview" });
+    await api.updateApplication(second.id, { application_stage: "Declined" });
+    const stats = await api.analytics();
+    expect(stats.applications_by_stage).toMatchObject({ Interview: 0, Rejected: 1, Declined: 1 });
+    expect(stats.applications_reached_stage).toMatchObject({ Applied: 2, Interview: 2, OA: 0 });
+    expect(stats.application_flows).toContainEqual({ source: "Interview", target: "Rejected", count: 1 });
+    expect(stats.application_flows).toContainEqual({ source: "Interview", target: "Declined", count: 1 });
+    expect((await api.applications(1)).find(app => app.id === first.id)).toMatchObject({ job_description: "Original JD", notes: "Original proof" });
+    const backup = await api.exportBackup();
+    await api.importBackup(new File([backup], "backup.zip"));
+    expect((await api.analytics()).application_flows).toEqual(stats.application_flows);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("backfills only explicit historical milestones and preserves them on note edits", async () => {
+    const app = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "JD", notes: "" });
+    await api.updateApplication(app.id, { application_stage: "Rejected" });
+    expect((await api.analytics()).applications_reached_stage.Interview).toBe(0);
+    await api.updateApplication(app.id, { stage_history: ["Applied", "Interview", "Interview", "Rejected"] });
+    await api.updateApplication(app.id, { notes: "Confirmed interview before rejection" });
+    expect((await api.analytics()).applications_reached_stage).toMatchObject({ Interview: 1, OA: 0 });
+    await api.updateApplication(app.id, { stage_history: ["Applied", "Rejected"] });
+    expect((await api.analytics()).applications_reached_stage.Interview).toBe(0);
+  });
+
+  it("records automatic matching without touching an already declined application", async () => {
+    const first = await api.createApplication({ company_id: 1, job_title: "Closed", job_description: "JD", notes: "" });
+    const second = await api.createApplication({ company_id: 1, job_title: "Active", job_description: "JD", notes: "" });
+    await api.updateApplication(first.id, { application_stage: "Declined" });
+    await api.markCompanyStage(1, "Interview");
+    const apps = await api.applications(1);
+    expect(apps.find(app => app.id === first.id)?.application_stage).toBe("Declined");
+    expect(apps.find(app => app.id === second.id)?.stage_history).toEqual(["Applied", "Interview"]);
+    await api.markCompanyStage(1, "Rejected");
+    expect((await api.analytics()).application_flows).toContainEqual({ source: "Interview", target: "Rejected", count: 1 });
+  });
+
   it("shares one PDF across applications, refines immutably, and restores assignments from backup", async () => {
     await api.updateProfile(profile);
     await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-luna", api_key: "test-local" });

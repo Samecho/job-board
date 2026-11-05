@@ -2,6 +2,7 @@ import { OPENAI_MODELS, estimateInputTokens, modelInfo, defaultEffort, PRICE_CHE
 import { masterSkills } from "../lib/technicalSkills";
 import { assembleResume, resumeContentSource, resumeContentSchema } from "../lib/resumeContent";
 import { profileDetails } from "../lib/profileDetails";
+import { APPLICATION_STAGES, applicationFlow, applicationHistory } from "../lib/applicationStages";
 import { COMPANY_CATALOG } from "../data/catalog";
 import resumeSkill from "../skills/resume-generation.md?raw";
 import type {
@@ -25,7 +26,7 @@ const COMPANY_ID_ALIASES: Record<number, number> = {
   335: 159,
   512: 549,
 };
-const stages: ApplicationStage[] = ["Applied", "OA", "Interview", "Rejected", "Offer"];
+const stages = APPLICATION_STAGES;
 const tierOrder = ["S+", "S", "A+", "A", "B+", "B", "C", "D"];
 const providerModels = {
   openai: OPENAI_MODELS.map(model => model.id),
@@ -389,12 +390,12 @@ async function matchCompanyStage(transaction: IDBTransaction, companyId: number)
   // Only move forward; terminal decisions and already-matched stages are excluded.
   const eligible: Record<ApplicationStage, ApplicationStage[]> = {
     Applied: [], OA: ["Applied"], Interview: ["Applied", "OA"],
-    Rejected: ["Applied", "OA", "Interview"], Offer: ["Applied", "OA", "Interview"],
+    Rejected: ["Applied", "OA", "Interview"], Declined: ["Applied", "OA", "Interview", "Offer"], Offer: ["Applied", "OA", "Interview"],
   };
   const candidates = apps.filter(app => app.company_id === companyId && eligible[stage].includes(app.application_stage));
   if (candidates.length !== 1) return;
   const app = candidates[0];
-  await req(store.put({ ...app, application_stage: stage, updated_at: now(),
+  await req(store.put({ ...app, application_stage: stage, stage_history: applicationHistory(app, stage), updated_at: now(),
     notes: `[Auto-matched ${stage}: only remaining eligible application, ${now()}]\n\n${app.notes || ""}` }));
   await req(states.put({ ...state, unmatched_stage: null, updated_at: now() }));
 }
@@ -416,6 +417,7 @@ async function analytics(): Promise<Analytics> {
   const [items, apps, resumeVersions] = await Promise.all([companies(), applications(), versions()]);
   const stageCounts = Object.fromEntries(stages.map(stage => [stage, 0])) as Record<ApplicationStage, number>;
   apps.forEach(app => { stageCounts[app.application_stage] += 1; });
+  const flow = applicationFlow(apps);
   const tier_counts: Record<string, number> = {};
   const applied_tier_counts: Record<string, number> = {};
   tierOrder.forEach(tier => { tier_counts[tier] = items.filter(company => company.tier === tier).length; });
@@ -426,6 +428,8 @@ async function analytics(): Promise<Analytics> {
     applied_count: items.filter(company => company.application_count > 0).length,
     total_applications: apps.length,
     applications_by_stage: stageCounts,
+    applications_reached_stage: flow.reached,
+    application_flows: flow.links,
     status_counts: { Applied: items.filter(company => company.application_count > 0).length, "Not Applied": items.filter(company => company.application_count === 0).length },
     tier_counts,
     applied_tier_counts,
@@ -791,13 +795,14 @@ export const api = {
   },
   applications,
   markCompanyStage,
-  createApplication: (data: { company_id: number; job_title: string; job_description: string; notes: string }) => add<Omit<Application, "id">>("applications", { ...data, application_stage: "Applied", created_at: now(), updated_at: now() } as Application),
+  createApplication: (data: { company_id: number; job_title: string; job_description: string; notes: string }) => add<Omit<Application, "id">>("applications", { ...data, application_stage: "Applied", stage_history: ["Applied"], created_at: now(), updated_at: now() } as Application),
   updateApplication: async (id: number, data: Partial<Application>) => {
     return tx(["applications", "company_states"], "readwrite", async (_, transaction) => {
       const store = transaction.objectStore("applications");
       const current = await req<Application | undefined>(store.get(id));
       if (!current) throw new Error("Application not found");
-      await req(store.put({ ...current, ...data, id, updated_at: now() }));
+      await req(store.put({ ...current, ...data, id,
+        stage_history: applicationHistory(current, data.application_stage ?? current.application_stage, data.stage_history ?? current.stage_history), updated_at: now() }));
       if (data.application_stage && data.application_stage !== current.application_stage) await matchCompanyStage(transaction, current.company_id);
       return req<Application>(store.get(id));
     });
