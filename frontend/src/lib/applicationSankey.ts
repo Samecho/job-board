@@ -1,19 +1,25 @@
 import type { Analytics } from "../types";
 import type { FlowStage } from "./applicationStages";
 
-type FlowData = Pick<Analytics, "total_applications" | "applications_by_stage" | "applications_reached_stage" | "application_flows">;
+type FlowData = Pick<Analytics, "total_applications" | "applications_by_stage" | "applications_reached_stage" | "application_flows" | "application_flow_details">;
 export const SANKEY_NODE_WIDTH = 10;
 export const SANKEY_COLORS: Record<FlowStage, string> = {
   Applied: "#435268", Pending: "#b5b3ad", OA: "#a6a0d2", Interview: "#69a990",
   Rejected: "#cc686f", Declined: "#bf9759", Offer: "#75a070",
+  "OA completed": "#69a990", "OA not completed": "#bf9759", "Reference unavailable": "#8a929e",
 };
 
 export function layoutApplicationSankey(analytics: FlowData) {
   const scale = 300 / Math.max(1, analytics.total_applications);
-  const counts: Record<FlowStage, number> = { ...analytics.applications_reached_stage, Pending: analytics.applications_by_stage.Applied };
+  const details = analytics.application_flow_details;
+  const counts: Record<FlowStage, number> = { ...analytics.applications_reached_stage,
+    Pending: Math.max(0, analytics.applications_by_stage.Applied - (details?.["Reference unavailable"] || 0)),
+    "OA completed": details?.["OA completed"] || 0, "OA not completed": details?.["OA not completed"] || 0,
+    "Reference unavailable": details?.["Reference unavailable"] || 0 };
   const sourceY = 72;
   const oaY = sourceY + counts.Pending * scale + 32;
-  const rejectedY = oaY + counts.OA * scale + 80;
+  const oaIncompleteY = oaY + counts["OA completed"] * scale + 40;
+  const rejectedY = Math.max(oaY + counts.OA * scale + 80, counts["OA not completed"] ? oaIncompleteY + counts["OA not completed"] * scale + 60 : 0);
   const interviewY = rejectedY + counts.Rejected * scale + 72;
   const offerY = interviewY + Math.max(counts.Interview, counts.Declined) * scale + 84;
   // The large pending ribbon stays above the progression lanes, not behind them.
@@ -21,6 +27,9 @@ export function layoutApplicationSankey(analytics: FlowData) {
     { stage: "Applied", x: 112, y: sourceY, labelSide: "left" },
     { stage: "Pending", x: 752, y: 24, labelSide: "right" },
     { stage: "OA", x: 422, y: oaY, labelSide: "above" },
+    { stage: "OA completed", x: 752, y: oaY, labelSide: "right" },
+    { stage: "OA not completed", x: 752, y: oaIncompleteY, labelSide: "right" },
+    { stage: "Reference unavailable", x: 752, y: 24 + counts.Pending * scale + 32, labelSide: "right" },
     { stage: "Rejected", x: 752, y: rejectedY, labelSide: "right" },
     { stage: "Interview", x: 562, y: interviewY, labelSide: "above" },
     { stage: "Declined", x: 960, y: interviewY, labelSide: "right" },

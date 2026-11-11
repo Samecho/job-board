@@ -3,7 +3,7 @@ import { applicationFlow, APPLICATION_STAGES } from "./applicationStages";
 import { layoutApplicationSankey } from "./applicationSankey";
 import type { Analytics, Application } from "../types";
 
-type Record = Pick<Application, "application_stage" | "stage_history">;
+type Record = Pick<Application, "application_stage" | "stage_history" | "assessment_status" | "reference_status">;
 type Ribbon = ReturnType<typeof layoutApplicationSankey>["flows"][number];
 function ribbonY(flow: Ribbon, atX: number) {
   let low = 0, high = 1;
@@ -17,11 +17,29 @@ function ribbonY(flow: Ribbon, atX: number) {
 }
 function data(apps: Record[]) {
   const flow = applicationFlow(apps);
-  return { total_applications: apps.length, application_flows: flow.links, applications_reached_stage: flow.reached,
+  return { total_applications: apps.length, application_flows: flow.links, application_flow_details: flow.details, applications_reached_stage: flow.reached,
     applications_by_stage: Object.fromEntries(APPLICATION_STAGES.map(stage => [stage, apps.filter(app => app.application_stage === stage).length])) as Analytics["applications_by_stage"] };
 }
 
 describe("Sankey lane layout", () => {
+  it("draws actionable detail branches with correct counts and separated endpoints", () => {
+    const layout = layoutApplicationSankey(data([
+      { application_stage: "OA", assessment_status: "completed" },
+      { application_stage: "OA", assessment_status: "not_completed" },
+      { application_stage: "Applied", reference_status: "unavailable" },
+      { application_stage: "Applied" },
+    ]));
+    expect(layout.nodes.find(node => node.stage === "Pending")?.count).toBe(1);
+    expect(layout.nodes.find(node => node.stage === "OA")?.count).toBe(2);
+    for (const stage of ["OA completed", "OA not completed", "Reference unavailable"]) {
+      expect(layout.nodes.find(node => node.stage === stage)?.count).toBe(1);
+      expect(layout.flows.find(flow => flow.target === stage)).toBeDefined();
+    }
+    const completed = layout.nodes.find(node => node.stage === "OA completed")!;
+    const incomplete = layout.nodes.find(node => node.stage === "OA not completed")!;
+    expect(incomplete.y).toBeGreaterThan(completed.y + completed.height + 20);
+    expect(layout.flows.every(flow => flow.x2 > flow.x1)).toBe(true);
+  });
   const repeated = (count: number, application_stage: Application["application_stage"]): Record[] => Array.from({ length: count }, () => ({ application_stage }));
 
   it("keeps the dominant pending ribbon above both progression nodes", () => {

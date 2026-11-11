@@ -60,6 +60,21 @@ const profile = {
 };
 
 describe("resume version persistence", () => {
+  it("persists OA completion and unavailable references through backup without changing outcomes", async () => {
+    const oa = await api.createApplication({ company_id: 1, job_title: "Engineering", job_description: "JD", notes: "Proof" });
+    const reference = await api.createApplication({ company_id: 2, job_title: "Research", job_description: "JD", notes: "Reference needed" });
+    await api.updateApplication(oa.id, { application_stage: "OA", assessment_status: "completed" });
+    await api.updateApplication(reference.id, { reference_status: "unavailable" });
+    const stats = await api.analytics();
+    expect(stats.application_flow_details).toEqual({ "OA completed": 1, "Reference unavailable": 1 });
+    expect(stats.application_followups).toHaveLength(2);
+    expect(stats.applications_by_stage).toMatchObject({ Applied: 1, OA: 1, Rejected: 0 });
+    await api.importBackup(new File([await api.exportBackup()], "backup.zip"));
+    expect((await api.applications(1))[0]).toMatchObject({ assessment_status: "completed", notes: "Proof", stage_history: ["Applied", "OA"] });
+    expect((await api.applications(2))[0]).toMatchObject({ reference_status: "unavailable", application_stage: "Applied" });
+    expect((await api.analytics()).application_flow_details).toEqual(stats.application_flow_details);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it("retains interview history independently of rejected and declined outcomes", async () => {
     const first = await api.createApplication({ company_id: 1, job_title: "Validation", job_description: "Original JD", notes: "Original proof" });
     const second = await api.createApplication({ company_id: 1, job_title: "Systems", job_description: "Other JD", notes: "Other proof" });

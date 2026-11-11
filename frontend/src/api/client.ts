@@ -2,7 +2,7 @@ import { OPENAI_MODELS, estimateInputTokens, modelInfo, defaultEffort, PRICE_CHE
 import { masterSkills } from "../lib/technicalSkills";
 import { assembleResume, resumeContentSource, resumeContentSchema } from "../lib/resumeContent";
 import { profileDetails } from "../lib/profileDetails";
-import { APPLICATION_STAGES, applicationFlow, applicationHistory } from "../lib/applicationStages";
+import { APPLICATION_STAGES, applicationDetail, applicationFlow, applicationHistory } from "../lib/applicationStages";
 import { COMPANY_CATALOG } from "../data/catalog";
 import resumeSkill from "../skills/resume-generation.md?raw";
 import type {
@@ -430,6 +430,11 @@ async function analytics(): Promise<Analytics> {
     applications_by_stage: stageCounts,
     applications_reached_stage: flow.reached,
     application_flows: flow.links,
+    application_flow_details: flow.details,
+    application_followups: apps.flatMap(app => {
+      const detail = applicationDetail(app);
+      return detail ? [{ id: app.id, company_name: companyName(app.company_id), job_title: app.job_title, detail }] : [];
+    }),
     status_counts: { Applied: items.filter(company => company.application_count > 0).length, "Not Applied": items.filter(company => company.application_count === 0).length },
     tier_counts,
     applied_tier_counts,

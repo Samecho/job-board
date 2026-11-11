@@ -145,6 +145,8 @@ export interface Application {
   job_description: string;
   application_stage: ApplicationStage;
   stage_history?: ApplicationStage[];
+  assessment_status?: "unknown" | "not_completed" | "completed";
+  reference_status?: "unknown" | "required" | "unavailable" | "provided";
   notes: string;
   created_at: string;
   updated_at: string;
@@ -254,7 +256,9 @@ export interface Analytics {
   total_applications: number;
   applications_by_stage: Record<ApplicationStage, number>;
   applications_reached_stage: Record<ApplicationStage, number>;
-  application_flows: Array<{ source: ApplicationStage; target: ApplicationStage | "Pending"; count: number }>;
+  application_flow_details?: Partial<Record<"OA completed" | "OA not completed" | "Reference unavailable", number>>;
+  application_flows: Array<{ source: ApplicationStage; target: ApplicationStage | "Pending" | "OA completed" | "OA not completed" | "Reference unavailable"; count: number }>;
+  application_followups?: Array<{ id: number; company_name: string; job_title: string; detail: "OA completed" | "OA not completed" | "Reference unavailable" }>;
   status_counts: Record<string, number>;
   tier_counts: Record<string, number>;
   applied_tier_counts: Record<string, number>;

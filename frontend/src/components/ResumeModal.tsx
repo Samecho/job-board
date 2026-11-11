@@ -8,7 +8,7 @@ import type { Application, ApplicationStage, Company, FeatureStatus, ResumeVersi
 
 const stages = APPLICATION_STAGES;
 const filename = (value: string, ext: string) => (value.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-|-$/g, "") || "resume") + "." + ext;
-const emptyForm = () => ({ job_title: "", job_description: "", notes: "", application_stage: "Applied" as ApplicationStage, stage_history: ["Applied"] as ApplicationStage[] });
+const emptyForm = () => ({ job_title: "", job_description: "", notes: "", application_stage: "Applied" as ApplicationStage, stage_history: ["Applied"] as ApplicationStage[], assessment_status: "unknown" as NonNullable<Application["assessment_status"]>, reference_status: "unknown" as NonNullable<Application["reference_status"]> });
 
 export function ResumeModal(props: Parameters<typeof CompanyResumeModal>[0]) {
   return <CompanyResumeModal key={props.company.id} {...props} />;
@@ -79,7 +79,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
   useEffect(() => { load(selectedId ?? task?.applicationId ?? null).catch(reason => setError(String(reason))); }, [company.id, task]);
   useEffect(() => {
     setEditing(null);
-    setForm(selected ? { job_title: selected.job_title, job_description: selected.job_description, notes: selected.notes, application_stage: selected.application_stage, stage_history: applicationHistory(selected) } : emptyForm());
+    setForm(selected ? { job_title: selected.job_title, job_description: selected.job_description, notes: selected.notes, application_stage: selected.application_stage, stage_history: applicationHistory(selected), assessment_status: selected.assessment_status || "unknown", reference_status: selected.reference_status || "unknown" } : emptyForm());
   }, [selected, company.id]);
   useEffect(() => {
     setTargetIds([]); setResumeName(""); setEditing(null);
@@ -97,7 +97,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
     try {
       const saved = selected ? await api.updateApplication(selected.id, form)
         : await api.createApplication({ company_id: company.id, job_title: form.job_title, job_description: form.job_description, notes: form.notes });
-      if (!selected) await api.updateApplication(saved.id, { application_stage: form.application_stage, stage_history: form.stage_history });
+      if (!selected) await api.updateApplication(saved.id, { application_stage: form.application_stage, stage_history: form.stage_history, assessment_status: form.assessment_status, reference_status: form.reference_status });
       await load(saved.id); await onSaved();
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Save failed"); }
     finally { setBusy(""); }
@@ -113,7 +113,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
         return targets[0];
       }
       const app = await api.createApplication({ company_id: company.id, job_title: form.job_title, job_description: form.job_description, notes: form.notes });
-      await api.updateApplication(app.id, { application_stage: form.application_stage, stage_history: form.stage_history });
+      await api.updateApplication(app.id, { application_stage: form.application_stage, stage_history: form.stage_history, assessment_status: form.assessment_status, reference_status: form.reference_status });
       return app.id;
     }, id => api.generateResumeVersion(id, extraInstructions, targets.length ? targets : [id], resumeName));
     await onSaved();
@@ -194,6 +194,8 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
                   setForm(current => ({ ...current, application_stage: stage }));
                 }}>{stages.map(stage => <option key={stage}>{stage}</option>)}</select></label>
                 <fieldset className="application-milestones"><legend>Previously reached</legend>{APPLICATION_MILESTONES.map(stage => <label key={stage}><input type="checkbox" checked={form.application_stage === stage || form.stage_history.includes(stage)} disabled={locked || form.application_stage === stage} onChange={event => setForm(current => ({ ...current, stage_history: event.target.checked ? [...current.stage_history, stage] : current.stage_history.filter(value => value !== stage) }))} />{stage}</label>)}</fieldset>
+                <label>OA completion<select value={form.assessment_status} disabled={locked} onChange={event => setForm(current => ({ ...current, assessment_status: event.target.value as NonNullable<Application["assessment_status"]> }))}><option value="unknown">Not recorded</option><option value="not_completed">Not completed</option><option value="completed">Completed</option></select></label>
+                <label>Reference letter<select value={form.reference_status} disabled={locked} onChange={event => setForm(current => ({ ...current, reference_status: event.target.value as NonNullable<Application["reference_status"]> }))}><option value="unknown">Not recorded</option><option value="required">Required</option><option value="unavailable">Unavailable</option><option value="provided">Provided</option></select></label>
                 <label>Job description<textarea rows={6} value={form.job_description} disabled={locked} onChange={event => setForm(current => ({ ...current, job_description: event.target.value }))} placeholder="Paste the JD..." /></label>
                 <label>Notes<textarea rows={2} value={form.notes} disabled={locked} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} /></label>
                 <div className="resume-actions"><button className="button ghost" disabled={locked} onClick={saveApplication}>Save application</button>{selected && <button className="button ghost delete" disabled={locked} onClick={deleteApplication}>Delete</button>}{!!selected?.assigned_resume_version_id && <button className="button ghost" disabled={locked} onClick={() => mutate(() => api.assignResume(selected!.id, null))}>Unassign resume</button>}</div>
