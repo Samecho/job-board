@@ -22,6 +22,26 @@ function data(apps: Record[]) {
 }
 
 describe("Sankey lane layout", () => {
+  it("conserves merged pending and OA flows while retaining later outcomes", () => {
+    const layout = layoutApplicationSankey(data([
+      { application_stage: "Applied" },
+      { application_stage: "OA", assessment_status: "completed" },
+      { application_stage: "OA", assessment_status: "unknown" },
+      { application_stage: "OA", assessment_status: "not_completed" },
+      { application_stage: "Rejected", stage_history: ["OA"], assessment_status: "completed" },
+      { application_stage: "Declined", stage_history: ["OA", "Interview"], assessment_status: "completed" },
+      { application_stage: "Interview", stage_history: ["OA"], assessment_status: "completed" },
+    ]));
+    for (const stage of ["Pending", "OA", "Rejected", "Declined", "OA not completed"] as const) {
+      const node = layout.nodes.find(item => item.stage === stage)!;
+      const incoming = layout.flows.filter(flow => flow.target === stage).reduce((sum, flow) => sum + flow.count, 0);
+      expect(incoming).toBe(node.count);
+    }
+    const oa = layout.nodes.find(node => node.stage === "OA")!;
+    expect(layout.flows.filter(flow => flow.source === "OA").reduce((sum, flow) => sum + flow.count, 0)).toBe(oa.count);
+    expect(layout.nodes.find(node => node.stage === "Pending")?.count).toBe(2);
+    expect(layout.nodes.find(node => node.stage === "Interview")?.count).toBe(2);
+  });
   it("draws actionable detail branches with correct counts and separated endpoints", () => {
     const layout = layoutApplicationSankey(data([
       { application_stage: "OA", assessment_status: "completed" },
@@ -29,15 +49,18 @@ describe("Sankey lane layout", () => {
       { application_stage: "Applied", reference_status: "unavailable" },
       { application_stage: "Applied" },
     ]));
-    expect(layout.nodes.find(node => node.stage === "Pending")?.count).toBe(1);
+    expect(layout.nodes.find(node => node.stage === "Pending")?.count).toBe(2);
     expect(layout.nodes.find(node => node.stage === "OA")?.count).toBe(2);
-    for (const stage of ["OA completed", "OA not completed", "Reference unavailable"]) {
+    for (const stage of ["OA not completed", "Reference unavailable"]) {
       expect(layout.nodes.find(node => node.stage === stage)?.count).toBe(1);
       expect(layout.flows.find(flow => flow.target === stage)).toBeDefined();
     }
-    const completed = layout.nodes.find(node => node.stage === "OA completed")!;
+    expect(layout.nodes.some(node => node.stage === "OA completed")).toBe(false);
+    expect(layout.flows).toContainEqual(expect.objectContaining({ source: "OA", target: "Pending", count: 1 }));
+    const pending = layout.nodes.find(node => node.stage === "Pending")!;
     const incomplete = layout.nodes.find(node => node.stage === "OA not completed")!;
-    expect(incomplete.y).toBeGreaterThan(completed.y + completed.height + 20);
+    expect(incomplete.y).toBeGreaterThan(pending.y + pending.height + 20);
+    expect(incomplete.label).toBe("Not completed");
     expect(layout.flows.every(flow => flow.x2 > flow.x1)).toBe(true);
   });
   const repeated = (count: number, application_stage: Application["application_stage"]): Record[] => Array.from({ length: count }, () => ({ application_stage }));

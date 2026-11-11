@@ -35,6 +35,9 @@ in its editor to record a confirmed OA or interview before marking its final out
 Declined is the candidate's decision, distinct from an employer rejection.
 Analytics routes those applications through their recorded milestones into the relevant outcome;
 it does not assume that a rejected application had an OA or interview.
+Completed OAs awaiting a decision flow from OA into Pending. Other active OAs
+flow into Not completed, including those without recorded completion; the chart
+does not change their stored completion status or imply that completion means passing.
 
 Application rows show the resume name and version currently assigned to them.
 Saved resumes are grouped by an editable name and show which applications use each version.

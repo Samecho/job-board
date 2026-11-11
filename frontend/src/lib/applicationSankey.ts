@@ -13,12 +13,12 @@ export function layoutApplicationSankey(analytics: FlowData) {
   const scale = 300 / Math.max(1, analytics.total_applications);
   const details = analytics.application_flow_details;
   const counts: Record<FlowStage, number> = { ...analytics.applications_reached_stage,
-    Pending: Math.max(0, analytics.applications_by_stage.Applied - (details?.["Reference unavailable"] || 0)),
+    Pending: analytics.application_flows.filter(link => link.target === "Pending").reduce((sum, link) => sum + link.count, 0),
     "OA completed": details?.["OA completed"] || 0, "OA not completed": details?.["OA not completed"] || 0,
     "Reference unavailable": details?.["Reference unavailable"] || 0 };
   const sourceY = 72;
   const oaY = sourceY + counts.Pending * scale + 32;
-  const oaIncompleteY = oaY + counts["OA completed"] * scale + 40;
+  const oaIncompleteY = oaY;
   const rejectedY = Math.max(oaY + counts.OA * scale + 80, counts["OA not completed"] ? oaIncompleteY + counts["OA not completed"] * scale + 60 : 0);
   const interviewY = rejectedY + counts.Rejected * scale + 72;
   const offerY = interviewY + Math.max(counts.Interview, counts.Declined) * scale + 84;
@@ -27,7 +27,6 @@ export function layoutApplicationSankey(analytics: FlowData) {
     { stage: "Applied", x: 112, y: sourceY, labelSide: "left" },
     { stage: "Pending", x: 752, y: 24, labelSide: "right" },
     { stage: "OA", x: 422, y: oaY, labelSide: "above" },
-    { stage: "OA completed", x: 752, y: oaY, labelSide: "right" },
     { stage: "OA not completed", x: 752, y: oaIncompleteY, labelSide: "right" },
     { stage: "Reference unavailable", x: 752, y: 24 + counts.Pending * scale + 32, labelSide: "right" },
     { stage: "Rejected", x: 752, y: rejectedY, labelSide: "right" },
@@ -39,7 +38,7 @@ export function layoutApplicationSankey(analytics: FlowData) {
     const height = counts[node.stage] * scale;
     const anchor = node.labelSide === "left" ? "end" : node.labelSide === "above" ? "middle" : "start";
     return { ...node, count: counts[node.stage], height,
-      label: node.stage === "Applied" ? "Applications" : node.stage,
+      label: node.stage === "Applied" ? "Applications" : node.stage === "OA not completed" ? "Not completed" : node.stage,
       labelX: node.labelSide === "left" ? node.x - 12 : node.labelSide === "above" ? node.x + SANKEY_NODE_WIDTH / 2 : node.x + SANKEY_NODE_WIDTH + 12,
       labelY: node.labelSide === "above" ? node.y - 26 : node.y + height / 2 - 4,
       anchor };

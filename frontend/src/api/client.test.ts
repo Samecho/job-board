@@ -66,7 +66,8 @@ describe("resume version persistence", () => {
     await api.updateApplication(oa.id, { application_stage: "OA", assessment_status: "completed" });
     await api.updateApplication(reference.id, { reference_status: "unavailable" });
     const stats = await api.analytics();
-    expect(stats.application_flow_details).toEqual({ "OA completed": 1, "Reference unavailable": 1 });
+    expect(stats.application_flow_details).toEqual({ "Reference unavailable": 1 });
+    expect(stats.application_flows).toContainEqual({ source: "OA", target: "Pending", count: 1 });
     expect(stats.application_followups).toHaveLength(2);
     expect(stats.applications_by_stage).toMatchObject({ Applied: 1, OA: 1, Rejected: 0 });
     await api.importBackup(new File([await api.exportBackup()], "backup.zip"));

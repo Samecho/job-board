@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applicationFlow, applicationHistory, applicationPath } from "./applicationStages";
 
 describe("application journeys", () => {
-  it("separates completed and unfinished OAs without inventing a passing result", () => {
+  it("merges completed OAs into pending and groups the rest without changing recorded facts", () => {
     const flow = applicationFlow([
       { application_stage: "OA", assessment_status: "completed" },
       { application_stage: "OA", assessment_status: "not_completed" },
@@ -10,11 +10,11 @@ describe("application journeys", () => {
       { application_stage: "Applied", reference_status: "unavailable" },
     ]);
     expect(flow.reached).toMatchObject({ Applied: 4, OA: 3, Interview: 0, Rejected: 0 });
-    expect(flow.details).toEqual({ "OA completed": 1, "OA not completed": 1, "Reference unavailable": 1 });
-    expect(flow.links).toContainEqual({ source: "OA", target: "OA completed", count: 1 });
-    expect(flow.links).toContainEqual({ source: "OA", target: "OA not completed", count: 1 });
+    expect(flow.details).toEqual({ "OA not completed": 2, "Reference unavailable": 1 });
+    expect(flow.links).toContainEqual({ source: "OA", target: "Pending", count: 1 });
+    expect(flow.links).toContainEqual({ source: "OA", target: "OA not completed", count: 2 });
     expect(flow.links).toContainEqual({ source: "Applied", target: "Reference unavailable", count: 1 });
-    expect(flow.links.some(link => link.target === "Pending")).toBe(false);
+    expect(flow.links.some(link => link.target === "OA completed")).toBe(false);
   });
 
   it("lets final outcomes supersede OA/reference details while preserving history", () => {
@@ -53,6 +53,7 @@ describe("application journeys", () => {
     expect(flow.links).toContainEqual({ source: "Applied", target: "Pending", count: 1 });
     expect(flow.links).toContainEqual({ source: "Applied", target: "OA", count: 3 });
     expect(flow.links).toContainEqual({ source: "OA", target: "Interview", count: 2 });
+    expect(flow.links).toContainEqual({ source: "OA", target: "OA not completed", count: 1 });
     expect(flow.links).toContainEqual({ source: "Interview", target: "Rejected", count: 1 });
     expect(flow.links).toContainEqual({ source: "Applied", target: "Rejected", count: 1 });
   });

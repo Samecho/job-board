@@ -24,6 +24,7 @@ export function applicationPath(app: StageRecord): FlowStage[] {
   const history = applicationHistory(app);
   const path: FlowStage[] = ["Applied", ...APPLICATION_MILESTONES.filter(stage => history.includes(stage))];
   if (outcomes.includes(app.application_stage)) path.push(app.application_stage);
+  else if (app.application_stage === "OA") path.push(app.assessment_status === "completed" ? "Pending" : "OA not completed");
   else {
     const detail = applicationDetail(app);
     if (detail) path.push(detail);
