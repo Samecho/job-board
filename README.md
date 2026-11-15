@@ -54,6 +54,69 @@ Newly generated or manually recompiled resumes show each Experience organization
 Deleting a shared version clears all its assignments, not applications. Deleting an application retains saved versions.
 Backup ZIPs preserve sharing, assignments, and refinement lineage. Existing single-application versions remain compatible.
 
+## JSON Console
+
+Open **Console** in the sidebar. This is a small, browser-local command interface,
+not a public API or a JavaScript terminal. It uses the same IndexedDB records as
+Overview, Analytics and Resume; it makes no AI or employer-site requests.
+
+1. Download a backup before bulk changes. Keep the ZIP private; it contains personal
+   records and PDFs (but not the AI API key).
+2. Query companies and applications for their exact IDs. Existing records may only
+   have their requisition number in the title or notes; use the returned application
+   ID until the structured `requisition_id` is populated.
+3. Paste JSON, choose **Preview without saving**, then **Run command** (or Ctrl/Cmd+Enter).
+   Every batch validates fully and commits in one transaction. An error saves none
+   of the batch. Missing fields stay unchanged; `notes` replaces the existing notes.
+4. For PDFs, first use **Attach PDFs**, then `import_resume` with the exact filename.
+   Selecting a file alone does not save it. Imported PDFs are retained byte-for-byte,
+   can be previewed/downloaded in the company Resume dialog, and cannot be AI-refined.
+
+```json
+{"action":"query","entity":"companies","search":"Amazon"}
+```
+
+```json
+{"action":"query","entity":"applications","company_id":123,"include_jd":true}
+```
+
+IDs below are placeholders: replace them with query results.
+
+```json
+{
+  "action": "batch",
+  "request_id": "mail-review-2026-11-14-01",
+  "operations": [
+    {"action":"update_application","id":456,"changes":{"application_stage":"OA","assessment_status":"completed"}},
+    {"action":"update_application","id":789,"changes":{"application_stage":"Rejected"}},
+    {"action":"import_resume","company_id":123,"file":"Company_Yutong_Zha_Resume.pdf","application_ids":[456,789]}
+  ]
+}
+```
+
+- `query`: entities `companies`, `applications`, `resumes`, `history`. Filters:
+  `search`, `company_id`, `ids`, `limit` (default 50, max 200), `offset`.
+  `applications` also supports `stage` and `include_jd`; `history` only supports
+  search/pagination. Queries exclude PDF blobs, profile and AI settings.
+- `update_application`: target `id`, or `job: {company_id, requisition_id}`.
+  Optional `expected_updated_at` rejects stale edits. Editable fields are listed
+  in the Console's built-in reference; previous milestones are retained.
+- `create_application`: requires `company_id` and `data` with `requisition_id`,
+  `job_title` and full `job_description`. Use only for submitted roles, not drafts.
+  Duplicate requisitions are rejected, including possible legacy title/notes matches.
+- `import_resume`: `company_id`, exact `file`, optional `title` and `application_ids`.
+  PDFs are limited to 10 MB each; identical uploads within a company are reused.
+- `assign_resume`: `resume_id` and `application_ids` (same company); `null` removes
+  an assignment without deleting the file. Associations do not upload to employers
+  or independently verify submission.
+
+Use a new `request_id` for each new batch (max 50 operations). Repeating an identical
+batch replays its receipt without reapplying it; changing its content requires a new
+ID. File-import retries must reattach the same PDFs. Receipts and before/after values
+are local and included in new backups. There are no delete, restore, script or
+credential commands. Database v4 adds only a receipt store; existing records/PDFs
+are not rewritten. Localhost and GitHub Pages have separate browser databases.
+
 ## Run Locally
 
 ```powershell

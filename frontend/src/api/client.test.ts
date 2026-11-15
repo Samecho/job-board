@@ -122,7 +122,7 @@ describe("resume version persistence", () => {
     await api.updateProfile(profile);
     await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-luna", api_key: "test-local" });
     const a = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "Go services", notes: "first" });
-    const b = await api.createApplication({ company_id: 2, job_title: "Infra", job_description: "Kubernetes systems", notes: "second" });
+    const b = await api.createApplication({ company_id: 1, job_title: "Infra", job_description: "Kubernetes systems", notes: "second" });
     await api.updateApplication(b.id, { application_stage: "Interview" });
     const v1 = await api.generateResumeVersion(a.id, "", [a.id, b.id, b.id]);
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -130,23 +130,23 @@ describe("resume version persistence", () => {
     expect(await api.resumes()).toHaveLength(1);
     expect((await api.resumeVersions(b.id))[0].id).toBe(v1.id);
     expect((await api.applications()).every(app => app.assigned_resume_version_id === v1.id)).toBe(true);
-    expect((await api.companies()).find(item => item.id === 2)?.resume_count).toBe(1);
-    const edited = structuredClone(v1.structured_resume);
+    expect((await api.companies()).find(item => item.id === 1)?.resume_count).toBe(1);
+    const edited = structuredClone(v1.structured_resume!);
     edited.header.location = "Vancouver";
     const v2 = await api.refineResumeVersion(v1.id, a.id, JSON.stringify(edited));
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(v2.parent_version_id).toBe(v1.id);
-    expect((await api.getResumeVersion(v1.id))?.structured_resume.header.location).not.toBe("Vancouver");
-    expect((await api.applications(2))[0].assigned_resume_version_id).toBe(v1.id);
+    expect((await api.getResumeVersion(v1.id))?.structured_resume?.header.location).not.toBe("Vancouver");
+    expect((await api.applications(1)).find(app => app.id === b.id)?.assigned_resume_version_id).toBe(v1.id);
     await api.assignResume(b.id, v2.id);
     const backup = await api.exportBackup();
     await api.importBackup(new File([backup], "backup.zip"));
-    expect((await api.applications(2))[0]).toMatchObject({ assigned_resume_version_id: v2.id, notes: "second", application_stage: "Interview" });
+    expect((await api.applications(1)).find(app => app.id === b.id)).toMatchObject({ assigned_resume_version_id: v2.id, notes: "second", application_stage: "Interview" });
     expect((await api.analytics()).total_applications).toBe(2);
     await api.deleteApplication(a.id);
     expect(await api.getResumeVersion(v2.id)).toBeDefined();
     await api.deleteResumeVersion(v2.id);
-    expect((await api.applications(2))[0].assigned_resume_version_id).toBeNull();
+    expect((await api.applications(1)).find(app => app.id === b.id)?.assigned_resume_version_id).toBeNull();
     expect(await api.getResumeVersion(v1.id)).toBeDefined();
   });
 
@@ -155,13 +155,13 @@ describe("resume version persistence", () => {
     await api.saveAiSettings({ provider: "openai", model: "gpt-5.6-luna", api_key: "test-local" });
     const app = await api.createApplication({ company_id: 1, job_title: "Backend", job_description: "Go", notes: "" });
     const original = await api.generateResumeVersion(app.id, "");
-    const changed = structuredClone(original.structured_resume);
+    const changed = structuredClone(original.structured_resume!);
     changed.header.location = "Remote";
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(changed), status: "completed" })));
     const refined = await api.refineResumeVersion(original.id, app.id, JSON.stringify(original.structured_resume), "Change location to Remote only");
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(refined.structured_resume.experience).toEqual(original.structured_resume.experience);
-    expect(refined.structured_resume.header.location).toBe("Remote");
+    expect(refined.structured_resume?.experience).toEqual(original.structured_resume?.experience);
+    expect(refined.structured_resume?.header.location).toBe("Remote");
     await expect(api.refineResumeVersion(original.id, app.id, "{}" )).rejects.toThrow();
     expect(await api.resumes()).toHaveLength(2);
     vi.mocked(compileResumeLatex).mockResolvedValueOnce({ pdfFile: new Blob(), pdfBytes: new Uint8Array(), pageCount: 2, log: "" });
@@ -198,9 +198,9 @@ describe("resume version persistence", () => {
     expect(versions.map(version => version.version_number)).toEqual([2, 1]);
     const newest = await api.getResumeVersion(versions[0].id);
     expect(newest?.tex_source).toContain("\\documentclass[letterpaper,11pt]{article}");
-    expect(newest?.structured_resume.header.phone).toBe(profile.phone);
-    expect(newest?.structured_resume.education[0].institution).toBe(profile.education[0].institution);
-    expect(newest?.structured_resume.experience[0].organization).toBe(profile.workExperiences[0].company);
+    expect(newest?.structured_resume?.header.phone).toBe(profile.phone);
+    expect(newest?.structured_resume?.education[0].institution).toBe(profile.education[0].institution);
+    expect(newest?.structured_resume?.experience[0].organization).toBe(profile.workExperiences[0].company);
     expect(newest?.pdf_file.type).toBe("application/pdf");
     expect(newest && "docx_file" in newest).toBe(false);
 

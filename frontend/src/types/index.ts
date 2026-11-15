@@ -137,6 +137,14 @@ export interface AiSettings {
 }
 
 export interface Application {
+  requisition_id?: string;
+  job_url?: string;
+  location?: string;
+  application_email?: string;
+  submitted_at?: string;
+  assessment_url?: string;
+  assessment_deadline?: string;
+  submission_evidence?: string;
   is_starred?: boolean;
   assigned_resume_version_id?: number | null;
   id: number;
@@ -204,6 +212,9 @@ export interface AiUsage {
   price_checked: string;
 }
 export interface ResumeVersion {
+  source?: "generated" | "uploaded";
+  file_name?: string;
+  sha256?: string;
   resume_group_id?: string;
   resume_title?: string;
   application_ids?: number[];
@@ -212,7 +223,7 @@ export interface ResumeVersion {
   application_id: number;
   company_id: number;
   version_number: number;
-  structured_resume: StructuredResume;
+  structured_resume: StructuredResume | null;
   ai_usage?: AiUsage;
   tex_source: string;
   pdf_file: Blob;
@@ -224,6 +235,9 @@ export interface ResumeVersion {
 }
 
 export interface ResumeVersionRead {
+  source?: "generated" | "uploaded";
+  file_name?: string;
+  sha256?: string;
   resume_group_id?: string;
   resume_title?: string;
   application_ids?: number[];
@@ -234,7 +248,7 @@ export interface ResumeVersionRead {
   company_name: string;
   job_title: string;
   version_number: number;
-  structured_resume: StructuredResume;
+  structured_resume: StructuredResume | null;
   ai_usage?: AiUsage;
   provider: string;
   model: string;

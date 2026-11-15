@@ -15,7 +15,7 @@ import { compileResumeLatex, renderResumeLatex } from "../lib/resumeLatex";
 import { normalizeStoredStructuredResume, trimLowestPriorityContent, parseStructuredResumeJson, RESUME_JSON_SCHEMA } from "../lib/resumeSchema";
 
 const DB_NAME = "internradar-browser";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const COMPANY_ID_ALIASES: Record<number, number> = {
   25: 26,
   118: 110,
@@ -100,6 +100,7 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("ai_settings")) db.createObjectStore("ai_settings", { keyPath: "id" });
       if (!db.objectStoreNames.contains("applications")) db.createObjectStore("applications", { keyPath: "id", autoIncrement: true });
       if (!db.objectStoreNames.contains("resume_versions")) db.createObjectStore("resume_versions", { keyPath: "id", autoIncrement: true });
+      if (!db.objectStoreNames.contains("console_requests")) db.createObjectStore("console_requests", { keyPath: "request_id" });
       if (event.oldVersion < 2 && request.transaction) migrateCompanyReferences(request.transaction);
     };
     request.onerror = () => reject(request.error);
@@ -312,6 +313,7 @@ type StoredResumeVersion = Omit<ResumeVersion, "structured_resume" | "tex_source
 };
 
 function hydrateResumeVersion(version: StoredResumeVersion): ResumeVersion {
+  if (version.source === "uploaded") return { ...version, structured_resume: null, tex_source: version.tex_source || "" };
   const structuredResume = normalizeStoredStructuredResume(version.structured_resume);
   return {
     ...version,
@@ -324,7 +326,7 @@ function hydrateResumeVersion(version: StoredResumeVersion): ResumeVersion {
 
 async function versions(applicationId?: number) {
   const items = (await all<StoredResumeVersion>("resume_versions")).map(hydrateResumeVersion);
-  return items.filter(item => !applicationId || (item.application_ids ?? [item.application_id]).includes(applicationId)).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return items.filter(item => !applicationId || (item.application_ids ?? [item.application_id]).includes(applicationId)).sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id);
 }
 
 function companyName(companyId: number) {
@@ -611,6 +613,7 @@ async function refineResumeVersion(id: number, applicationId: number, content: s
   const stored = await get<StoredResumeVersion>("resume_versions", id);
   if (!stored) throw new Error("Resume version not found");
   const original = hydrateResumeVersion(stored);
+  if (original.source === "uploaded") throw new Error("Uploaded PDFs are immutable. Upload a new version instead.");
   const app = await get<Application>("applications", applicationId);
   if (!app) throw new Error("Application not found");
   let resume = parseStructuredResumeJson(content, false);
@@ -670,6 +673,9 @@ async function generateResumeVersion(applicationId: number, extraInstructions: s
 }
 function versionRead(version: ResumeVersion, app?: Application): ResumeVersionRead {
   return {
+    source: version.source,
+    file_name: version.file_name,
+    sha256: version.sha256,
     resume_group_id: version.resume_group_id ?? `company:${version.company_id}/application:${version.application_id}`,
     resume_title: version.resume_title || app?.job_title || "Resume",
     application_ids: version.application_ids ?? [version.application_id],
@@ -695,7 +701,7 @@ async function resumeReads(): Promise<GeneratedResume[]> {
     const app = apps.find(item => item.id === version.application_id);
     return {
       ...versionRead(version, app),
-      resume_name: `${companyName(version.company_id)} ${app?.job_title || "Resume"} v${version.version_number}`,
+      resume_name: version.source === "uploaded" ? version.resume_title || version.file_name || "Uploaded PDF" : `${companyName(version.company_id)} ${app?.job_title || "Resume"} v${version.version_number}`,
       jd_text: app?.job_description || "",
       generated_latex: version.tex_source,
       notes: app?.notes || "",
@@ -705,19 +711,19 @@ async function resumeReads(): Promise<GeneratedResume[]> {
 }
 
 async function exportBackup() {
-  const [states, profileData, settings, apps, resumeVersions] = await Promise.all([
-    all<CompanyState>("company_states"), profile(), aiSettings(), applications(), versions(),
+  const [states, profileData, settings, apps, resumeVersions, consoleRequests] = await Promise.all([
+    all<CompanyState>("company_states"), profile(), aiSettings(), applications(), versions(), all("console_requests"),
   ]);
   const files: Record<string, Blob | string> = {};
   const metadata = resumeVersions.map(version => {
     const app = apps.find(item => item.id === version.application_id);
-    const path = `resumes/${slug(companyName(version.company_id))}/${slug(app?.job_title || "application")}/v${version.version_number}`;
+    const path = `resumes/${slug(companyName(version.company_id))}/${slug(app?.job_title || "application")}/v${version.version_number}-${version.id}`;
     files[`${path}.pdf`] = version.pdf_file;
     files[`${path}.tex`] = version.tex_source;
     const { pdf_file: _pdf, docx_file: _legacyDocx, tex_source: _tex, ...rest } = version;
     return { ...rest, pdf_path: `${path}.pdf`, tex_path: `${path}.tex` };
   });
-  files["data.json"] = JSON.stringify({ company_states: states, resume_profile: profileData, ai_settings: { ...settings, api_key: "" }, applications: apps, resume_versions: metadata }, null, 2);
+  files["data.json"] = JSON.stringify({ company_states: states, resume_profile: profileData, ai_settings: { ...settings, api_key: "" }, applications: apps, resume_versions: metadata, console_requests: consoleRequests }, null, 2);
   return makeZip(files);
 }
 
@@ -729,6 +735,7 @@ async function importBackup(file: File) {
     company_states?: CompanyState[];
     resume_profile?: ResumeProfile;
     applications?: Application[];
+    console_requests?: Array<{ request_id: string }>;
     resume_versions?: Array<Record<string, unknown> & {
       company_id: number;
       structured_resume: unknown;
@@ -742,12 +749,12 @@ async function importBackup(file: File) {
     const { pdf_path: pdfPath, tex_path: texPath, docx_path: _legacyDocxPath, ...version } = meta;
     const pdfFile = pdfPath ? files[pdfPath] : undefined;
     if (!pdfFile) throw new Error(`Backup is missing resume PDF: ${pdfPath || "unknown path"}`);
-    const structuredResume = normalizeStoredStructuredResume(version.structured_resume);
+    const structuredResume = version.source === "uploaded" ? null : normalizeStoredStructuredResume(version.structured_resume);
     const texSource = texPath && files[texPath]
       ? await files[texPath].text()
       : typeof version.tex_source === "string" && version.tex_source.trim()
         ? version.tex_source
-        : renderResumeLatex(structuredResume);
+        : structuredResume ? renderResumeLatex(structuredResume) : "";
     return {
       ...version,
       company_id: canonicalCompanyId(Number(version.company_id)),
@@ -757,8 +764,8 @@ async function importBackup(file: File) {
     };
   }));
 
-  await tx(["company_states", "resume_profile", "applications", "resume_versions"], "readwrite", async (_, transaction) => {
-    for (const store of ["company_states", "resume_profile", "applications", "resume_versions"]) await req(transaction.objectStore(store).clear());
+  await tx(["company_states", "resume_profile", "applications", "resume_versions", "console_requests"], "readwrite", async (_, transaction) => {
+    for (const store of ["company_states", "resume_profile", "applications", "resume_versions", "console_requests"]) await req(transaction.objectStore(store).clear());
     const importedStates = new Map<number, CompanyState>();
     for (const state of data.company_states || []) {
       const companyId = canonicalCompanyId(state.company_id);
@@ -770,8 +777,11 @@ async function importBackup(file: File) {
       await req(transaction.objectStore("applications").put({ ...app, company_id: canonicalCompanyId(app.company_id) }));
     }
     for (const version of importedVersions) await req(transaction.objectStore("resume_versions").put(version));
+    for (const request of data.console_requests || []) await req(transaction.objectStore("console_requests").put(request));
   });
 }
+// Shared browser-local storage boundary; the console never exposes arbitrary DB operations.
+export { tx as databaseTransaction, req as databaseRequest };
 export const api = {
   companies,
   company,

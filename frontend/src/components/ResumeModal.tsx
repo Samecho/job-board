@@ -26,6 +26,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
   const [extraInstructions, setExtraInstructions] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [unknownStage, setUnknownStage] = useState<ApplicationStage>("OA");
   const [pendingStage, setPendingStage] = useState(company.unmatched_stage ?? null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -48,7 +49,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
   const tasks = useSyncExternalStore(subscribeGeneration, getGenerationTasks);
   const task = tasks.find(item => item.companyId === company.id);
   const generating = task?.status === "running";
-  const locked = generating || !!busy;
+  const locked = loading || generating || !!busy;
   const aiAvailable = features?.ai_enabled && features.ai_configured;
   const groups = useMemo(() => {
     const grouped = new Map<string, { id: string; name: string; versions: ResumeVersionRead[] }>();
@@ -68,6 +69,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
     const nextCompany = await api.company(company.id);
     if (companyRef.current !== company.id || revision !== loadRevision.current) return;
     setRecords(nextApps); setSavedVersions(nextVersions);
+    setLoading(false);
     setPendingStage(nextCompany.unmatched_stage ?? null);
     const id = nextApps.some(app => app.id === nextId) ? nextId : nextApps[0]?.id ?? null;
     setSelectedId(id);
@@ -128,7 +130,7 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
     const record = await api.getResumeVersion(version.id);
     if (!record || record.company_id !== company.id) return;
     const baseName = company.name + "-" + (version.resume_title || "resume") + "-v" + version.version_number;
-    if (ext === "pdf" && record.pdf_file) downloadBlob(record.pdf_file, filename(baseName, "pdf"));
+    if (ext === "pdf" && record.pdf_file) downloadBlob(record.pdf_file, record.file_name || filename(baseName, "pdf"));
     if (ext === "tex" && record.tex_source) downloadBlob(new Blob([record.tex_source], { type: "application/x-tex;charset=utf-8" }), filename(baseName, "tex"));
   };
   const deleteVersion = (version: ResumeVersionRead) => {
@@ -230,10 +232,10 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
                       <p className="resume-usage">{assignedApps.length ? assignedApps.map(app => app.job_title || "Untitled role").join(", ") : "Not assigned"}</p>
                       <div className="resume-version-actions">
                         <button disabled={locked || !targets.length} onClick={() => mutate(() => api.assignResumeApplications(company.id, version.id, targets))}>Use for selected ({targets.length})</button>
-                        <button disabled={locked || !selected} title={!selected ? "Open an application to refine this version" : ""} onClick={() => editVersion(version)}>Edit / AI refine</button>
+                        <button disabled={locked || !selected || version.source === "uploaded"} title={version.source === "uploaded" ? "Uploaded PDF: upload a new version to make changes" : !selected ? "Open an application to refine this version" : ""} onClick={() => editVersion(version)}>Edit / AI refine</button>
                         <button onClick={() => preview(version)}><Eye size={13} /> Preview</button>
                         <button onClick={() => download(version, "pdf")}><Download size={13} /> PDF</button>
-                        <button onClick={() => download(version, "tex")}><FileCode2 size={13} /> .tex</button>
+                        {version.source !== "uploaded" && <button onClick={() => download(version, "tex")}><FileCode2 size={13} /> .tex</button>}
                         <button className="delete" disabled={locked} onClick={() => deleteVersion(version)}><Trash2 size={13} /> Delete</button>
                       </div>
                     </article>;
