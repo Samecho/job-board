@@ -60,6 +60,14 @@ const profile = {
 };
 
 describe("resume version persistence", () => {
+  it("adds catalog companies without changing an existing application or company notes", async () => {
+    const original = await api.createApplication({ company_id: 52, job_title: "Existing role", job_description: "Original JD", notes: "Original evidence" });
+    await api.updateCompany(52, { notes: "Existing company note", is_favourite: true });
+    const companies = await api.companies();
+    expect(companies.find(company => company.id === 10001)).toMatchObject({ name: "Altera", status: "Not Applied", application_count: 0 });
+    expect(companies.find(company => company.id === 52)).toMatchObject({ name: "Amazon", notes: "Existing company note", is_favourite: true, status: "Applied" });
+    expect((await api.applications(52)).find(application => application.id === original.id)).toMatchObject({ job_description: "Original JD", notes: "Original evidence" });
+  });
   it("persists OA completion and unavailable references through backup without changing outcomes", async () => {
     const oa = await api.createApplication({ company_id: 1, job_title: "Engineering", job_description: "JD", notes: "Proof" });
     const reference = await api.createApplication({ company_id: 2, job_title: "Research", job_description: "JD", notes: "Reference needed" });
