@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { matchesLocationFilter } from "./locationFilter";
-import { SOFTWARE_HIRING_SITES } from "../data/softwareHiringSites";
+import { NO_CANADA_SWE_MATCH_AUDITS, SOFTWARE_HIRING_SITES } from "../data/softwareHiringSites";
 import { COMPANY_CATALOG } from "../data/catalog";
 
 describe("SWE recruiting location filter", () => {
@@ -47,6 +47,13 @@ describe("SWE recruiting location filter", () => {
   it("matches Microsoft's audited Canadian software job location", () => {
     expect(matchesLocationFilter({ name: "Microsoft" }, "Canada")).toBe(true);
     expect(matchesLocationFilter({ name: "Microsoft" }, "Vancouver")).toBe(true);
+  });
+
+  it("does not convert a negative board audit into an invented location", () => {
+    expect(NO_CANADA_SWE_MATCH_AUDITS.OpenAI.source).toMatch(/^https:\/\//);
+    expect(NO_CANADA_SWE_MATCH_AUDITS["Jane Street"].source).toMatch(/^https:\/\//);
+    expect(matchesLocationFilter({ name: "OpenAI" }, "Canada")).toBe(false);
+    expect(matchesLocationFilter({ name: "Jane Street" }, "Canada")).toBe(false);
   });
 
   it("does not infer SWE hiring from an unverified saved location or ordinary office", () => {

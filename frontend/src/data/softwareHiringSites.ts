@@ -7,6 +7,19 @@ export interface SoftwareHiringEvidence {
   audit?: { source: string; label: string; description: string };
 }
 
+export const NO_CANADA_SWE_MATCH_AUDITS: Record<string, { source: string; label: string; description: string }> = {
+  OpenAI: {
+    source: "https://api.ashbyhq.com/posting-api/job-board/openai",
+    label: "Canada board audit: no direct SWE match",
+    description: "2026-11-16: among 838 public Ashby postings, six had a Canadian city or province in primary or secondary location fields; none had a direct SWE title. This does not rule out other titles, unlisted roles, other boards or remote eligibility expressed elsewhere.",
+  },
+  "Jane Street": {
+    source: "https://www.janestreet.com/join-jane-street/open-roles/?type=students-and-new-grads",
+    label: "Canada board audit: no Canadian location listed",
+    description: "2026-11-16: student and experienced job-board location selectors listed New York, Hong Kong, London, Singapore, Chicago and Austin, with no Canadian or remote location option. This does not rule out unlisted recruiting or Canadians applying abroad.",
+  },
+};
+
 // A source establishes a recruiting location, not an exhaustive office list or a current vacancy.
 export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
   RBC: [{
@@ -41,6 +54,11 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
     source: "https://internships.shopify.com/",
     description: "Engineering and Data internships: in-person office options",
     checked: "2026-11-16",
+    audit: {
+      source: "https://internships.shopify.com/",
+      label: "Internship program locations audit",
+      description: "2026-11-16: Shopify's Engineering & Data internship program explicitly lists Montreal, Ottawa, Toronto, Bellevue and New York City, with at least three in-office days per week. Its separate general SWE roles may be remote; this is not a complete map of all company SWE recruitment.",
+    },
   }],
   Databricks: [{
     locations: [
