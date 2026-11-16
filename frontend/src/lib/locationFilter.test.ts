@@ -60,6 +60,25 @@ describe("SWE recruiting location filter", () => {
     }
   });
 
+  it("matches the current AMD and Qualcomm development locations without inferring Ottawa", () => {
+    for (const city of ["Markham", "Vancouver", "Waterloo", "Calgary"]) expect(matchesLocationFilter({ name: "AMD" }, city)).toBe(true);
+    for (const city of ["Markham", "Toronto", "Vancouver"]) expect(matchesLocationFilter({ name: "Qualcomm" }, city)).toBe(true);
+    expect(matchesLocationFilter({ name: "Qualcomm" }, "Ottawa")).toBe(false);
+    expect(SOFTWARE_HIRING_SITES.Qualcomm[1].label).toMatch(/Remote/);
+  });
+
+  it("matches Bombardier's Saint-Laurent location by borough or Montreal", () => {
+    for (const location of ["Dorval", "Saint-Laurent", "Montreal", "Mississauga"]) {
+      expect(matchesLocationFilter({ name: "Bombardier" }, location)).toBe(true);
+    }
+  });
+
+  it("keeps IBM's physical and remote recruiting locations distinct", () => {
+    expect(SOFTWARE_HIRING_SITES.IBM[0].label).toMatch(/Onsite or hybrid/);
+    expect(SOFTWARE_HIRING_SITES.IBM[1].label).toMatch(/Remote/);
+    for (const city of ["Bromont", "Markham", "Ottawa", "Vancouver", "Montreal"]) expect(matchesLocationFilter({ name: "IBM" }, city)).toBe(true);
+  });
+
   it("does not convert a negative board audit into an invented location", () => {
     expect(NO_CANADA_SWE_MATCH_AUDITS.OpenAI.source).toMatch(/^https:\/\//);
     expect(NO_CANADA_SWE_MATCH_AUDITS["Jane Street"].source).toMatch(/^https:\/\//);
