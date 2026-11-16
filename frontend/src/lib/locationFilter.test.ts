@@ -4,6 +4,11 @@ import { NO_CANADA_SWE_MATCH_AUDITS, SOFTWARE_HIRING_SITES } from "../data/softw
 import { COMPANY_CATALOG } from "../data/catalog";
 
 describe("SWE recruiting location filter", () => {
+  it("matches Canadian cities documented by previous software internship postings", () => {
+    for (const [company, city] of [["DRW", "Montreal"], ["Robinhood", "Toronto"], ["Tower Research Capital", "Montreal"], ["Electronic Arts", "Vancouver"], ["Tenstorrent", "Toronto"], ["Pinterest", "Toronto"]]) {
+      expect(matchesLocationFilter({ name: company }, city)).toBe(true);
+    }
+  });
   it("separates MongoDB Toronto from province-level remote eligibility", () => {
     expect(matchesLocationFilter({ name: "MongoDB" }, "Toronto")).toBe(true);
     expect(matchesLocationFilter({ name: "MongoDB" }, "British Columbia")).toBe(true);
