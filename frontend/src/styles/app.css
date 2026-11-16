@@ -161,7 +161,11 @@ main{grid-column:2;padding:32px 38px 70px;max-width:1800px;width:100%;margin:aut
 .overview-star-filter input { width:16px; height:16px; accent-color:#1a73e8; }
 
 .company-overview-panel { overflow:visible; }
-.simple-filters { grid-template-columns:minmax(240px,1fr) 105px 135px 160px 170px 165px; align-items:start; }
+.simple-filters { grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) 105px 135px 160px 170px 165px; align-items:start; }
+.location-filter-note { padding:0 20px 14px; color:var(--muted); font-size:11px; line-height:1.4; }
+.overview-table .location-cell { white-space:normal; overflow:visible; }
+.company-locations { margin-top:4px; color:var(--muted); }
+.company-locations summary { cursor:pointer; }
 @media(max-width:1250px) { .simple-filters { grid-template-columns:repeat(3,minmax(0,1fr)); } .simple-filters .search { grid-column:1/-1; } }
 @media(max-width:850px) { .simple-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:550px) { .simple-filters { grid-template-columns:minmax(0,1fr); } }

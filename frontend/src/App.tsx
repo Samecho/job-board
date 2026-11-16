@@ -15,6 +15,8 @@ import { ResumeModal } from "./components/ResumeModal";
 import { JsonConsole } from "./components/JsonConsole";
 import { downloadBlob } from "./lib/resumeFiles";
 import { VERIFIED_OFFICES, verifiedOfficeSearch } from "./data/verifiedOffices";
+import { SOFTWARE_HIRING_SITES } from "./data/softwareHiringSites";
+import { matchesLocationFilter } from "./lib/locationFilter";
 import { APPLICATION_STAGES } from "./lib/applicationStages";
 import type {
   AiProvider, AiSettings, Analytics, Application, Company, CompanyStatus, CompanyUpdate,
@@ -41,10 +43,10 @@ function InternBadge() {
 
 function OfficeLocations({ company }: { company: Company }) {
   const verified = VERIFIED_OFFICES[company.name];
+  const hiringSites = SOFTWARE_HIRING_SITES[company.name] ?? [];
   return <div>
-    {company.main_locations && <span>{company.main_locations}</span>}
-    {verified && <div><a href={verified.source} target="_blank" rel="noreferrer" title={`Verified ${verified.checked}; other sites may exist`}>Verified sites (partial): {verified.locations}</a>{verified.additionalSource && <> <a href={verified.additionalSource} target="_blank" rel="noreferrer">Additional source</a></>}</div>}
-    {!verified && <span>{company.main_locations ? " (not independently verified)" : "Not verified"}</span>}
+    {hiringSites.length ? hiringSites.map((evidence, index) => <div key={`${evidence.source}-${index}`}><a href={evidence.source} target="_blank" rel="noreferrer" title={`${evidence.description}; checked ${evidence.checked}`}>SWE recruiting evidence: {evidence.locations.map(site => site.city).join(", ")}</a></div>) : <span className="muted">SWE hiring locations not verified</span>}
+    {(company.main_locations || verified) && <details className="company-locations"><summary>Other company locations</summary>{company.main_locations && <div>Saved: {company.main_locations}</div>}{verified && <div><a href={verified.source} target="_blank" rel="noreferrer">Company offices: {verified.locations}</a>{verified.additionalSource && <> <a href={verified.additionalSource} target="_blank" rel="noreferrer">Additional source</a></>}</div>}<span className="muted">Not verified for SWE hiring</span></details>}
   </div>;
 }
 
@@ -75,6 +77,7 @@ function MultiFilter({ label, options, selected, onChange }: {
 function useOverviewFilters() {
   const [view, setView] = useState<"table" | "cards">("table");
   const [search, setSearch] = useState("");
+  const [location, setLocation] = useState("");
   const [status, setStatus] = useState("");
   const [hiringProcess, setHiringProcess] = useState<string[]>([]);
   const [tier, setTier] = useState<string[]>([]);
@@ -83,7 +86,7 @@ function useOverviewFilters() {
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [sort, setSort] = useState<"tier" | "company">("tier");
   const [descending, setDescending] = useState(false);
-  return { view, setView, search, setSearch, status, setStatus, hiringProcess, setHiringProcess, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending, favouritesOnly, setFavouritesOnly };
+  return { view, setView, search, setSearch, location, setLocation, status, setStatus, hiringProcess, setHiringProcess, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending, favouritesOnly, setFavouritesOnly };
 }
 
 function Overview({ companies, applications, onUpdate, onEdit, onResume, onQuickApply, filters }: {
@@ -95,7 +98,7 @@ function Overview({ companies, applications, onUpdate, onEdit, onResume, onQuick
   onResume: (company: Company) => void;
   onQuickApply: (company: Company) => Promise<void>;
 }) {
-  const { view, setView, search, setSearch, status, setStatus, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending } = filters;
+  const { view, setView, search, setSearch, location, setLocation, status, setStatus, tier, setTier, category, setCategory, internHiring, setInternHiring, sort, setSort, descending, setDescending } = filters;
   const tiers = useMemo(() => tierOrder.filter(value => companies.some(company => company.tier === value)), [companies]);
   const { favouritesOnly, setFavouritesOnly } = filters;
   const { hiringProcess, setHiringProcess } = filters;
@@ -114,6 +117,7 @@ function Overview({ companies, applications, onUpdate, onEdit, onResume, onQuick
   const filtered = companies.filter(company =>
     (!favouritesOnly || company.is_favourite) &&
     (!search || `${company.name} ${company.category} ${company.main_locations} ${verifiedOfficeSearch(company.name)}`.toLowerCase().includes(search.toLowerCase())) &&
+    matchesLocationFilter(company, location) &&
     (!status || company.status === status) && (!tier.length || tier.includes(company.tier)) &&
     (!hiringProcess.length || matchingCompanyIds.has(company.id)) &&
     (!category.length || category.includes(company.category)) &&
@@ -136,7 +140,8 @@ function Overview({ companies, applications, onUpdate, onEdit, onResume, onQuick
     {favouriteError && <p className="inline-error" role="alert">{favouriteError}</p>}
     <label className="overview-star-filter"><input type="checkbox" checked={favouritesOnly} onChange={event => setFavouritesOnly(event.target.checked)} />Favourites only</label>
     <div className="toolbar"><div><span className="eyebrow">{sorted.length} companies</span><h2>Company tracker</h2></div><div className="view-toggle"><button className={view === "table" ? "active" : ""} onClick={() => setView("table")}><List size={17} /> Table</button><button className={view === "cards" ? "active" : ""} onClick={() => setView("cards")}><Grid2X2 size={17} /> Cards</button></div></div>
-    <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, categories, locations..." /></label><MultiFilter label="Tiers" options={tiers} selected={tier} onChange={setTier} /><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select><MultiFilter label="Hiring process" options={hiringStages} selected={hiringProcess} onChange={setHiringProcess} /><MultiFilter label="Categories" options={categories} selected={category} onChange={setCategory} /><select value={internHiring} onChange={event => setInternHiring(event.target.value)}><option value="">All intern hiring</option><option value="yes">Regular intern hiring</option><option value="no">Limited or uncommon</option></select></div>
+    <div className="filters simple-filters"><label className="search"><Search size={18} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search companies, categories, locations..." /></label><label className="search location-filter"><MapPin size={16} /><input aria-label="Filter by SWE hiring location" list="swe-location-options" value={location} onChange={event => setLocation(event.target.value)} placeholder="SWE location: Canada, Vancouver..." /></label><datalist id="swe-location-options"><option value="Canada" /><option value="Vancouver" /><option value="Toronto" /><option value="Montreal" /><option value="Ottawa" /><option value="Calgary" /><option value="United States" /></datalist><MultiFilter label="Tiers" options={tiers} selected={tier} onChange={setTier} /><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select><MultiFilter label="Hiring process" options={hiringStages} selected={hiringProcess} onChange={setHiringProcess} /><MultiFilter label="Categories" options={categories} selected={category} onChange={setCategory} /><select value={internHiring} onChange={event => setInternHiring(event.target.value)}><option value="">All intern hiring</option><option value="yes">Regular intern hiring</option><option value="no">Limited or uncommon</option></select></div>
+    {location.trim() && <p className="location-filter-note">Shows recorded SWE recruiting locations only. Unverified companies are excluded; sources do not guarantee current openings or a complete company footprint.</p>}
     {view === "table" ? <div className="table-wrap overview-table"><table><colgroup><col className="col-tier" /><col className="col-company" /><col className="col-location" /><col className="col-status" /><col className="col-link" /><col className="col-resume" /><col className="col-notes" /></colgroup><thead><tr><th><button className={sort === "tier" ? "active" : ""} onClick={() => changeSort("tier")}>Tier {sort === "tier" ? (descending ? "↓" : "↑") : ""}</button></th><th><button className={sort === "company" ? "active" : ""} onClick={() => changeSort("company")}>Company {sort === "company" ? (descending ? "↓" : "↑") : ""}</button></th><th>Location</th><th>Status</th><th>Link</th><th>Resume</th><th>Notes</th></tr></thead><tbody>{sorted.map(company => <tr key={company.id} onDoubleClick={() => onEdit(company)}><td><span className={`tier tier-${company.tier}`}>{company.tier}</span></td><td><div className="company-cell"><Logo name={company.name} domain={company.domain} url={company.logo_url} /><div><div className="company-title-with-favourite"><strong>{company.name}</strong>{favouriteControl(company)}</div><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div></td><td><div className="location-cell"><MapPin size={14} /><OfficeLocations company={company} /></div></td><td>{statusControl(company)}</td><td>{company.link ? <a className="button ghost compact-button" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost compact-button" onClick={() => onEdit(company)}>Add link</button>}</td><td><button className="button primary compact-button" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></td><td><button className="table-note edit-note" title={company.notes} onClick={() => onEdit(company)}>{company.notes || "Add notes"}</button></td></tr>)}</tbody></table></div>
       : <div className="company-grid">{sorted.map(company => <article className="company-card simple-card" key={company.id}><div className="card-top"><Logo name={company.name} domain={company.domain} url={company.logo_url} size={48} /><span className={`tier tier-${company.tier}`}>{company.tier}</span></div><div className="card-title"><div><div className="company-title-with-favourite"><h3>{company.name}</h3>{favouriteControl(company)}</div><span className="company-meta">{company.category}{company.intern_friendly && <InternBadge />}</span></div></div><div className="card-facts"><div><span>Location</span><OfficeLocations company={company} /></div></div><div className="card-applied">{statusControl(company)}</div><button className="notes-preview edit-note" onClick={() => onEdit(company)}>{company.notes || "Add notes for this company."}</button><div className="card-actions"><button className="button ghost" onClick={() => onEdit(company)}>Edit</button>{company.link ? <a className="button ghost" href={company.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a> : <button className="button ghost" onClick={() => onEdit(company)}>Add link</button>}<button className="button primary" onClick={() => onResume(company)}>Resume{company.resume_count ? ` (${company.resume_count})` : ""}</button></div></article>)}</div>}
   </section>;
