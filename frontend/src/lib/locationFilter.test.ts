@@ -18,6 +18,12 @@ describe("SWE recruiting location filter", () => {
     expect(matchesLocationFilter({ name: "Atlassian" }, "vancouver")).toBe(true);
   });
 
+  it("matches each city on the Huawei Canada recruiting board", () => {
+    for (const city of ["Edmonton", "Kingston", "Markham", "Montreal", "Ottawa", "Vancouver", "Waterloo"]) {
+      expect(matchesLocationFilter({ name: "Huawei" }, city)).toBe(true);
+    }
+  });
+
   it("does not infer SWE hiring from an unverified saved location or ordinary office", () => {
     const company = { name: "Unknown", main_locations: "Toronto, Canada" };
     expect(matchesLocationFilter(company, "Canada")).toBe(false);

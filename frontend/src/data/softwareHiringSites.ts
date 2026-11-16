@@ -107,4 +107,10 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
     description: "Indexed Intern, Software Developer; listing may change",
     checked: "2026-11-16",
   }],
+  Huawei: [{
+    locations: ["Edmonton", "Kingston", "Markham", "Montreal", "Ottawa", "Vancouver", "Waterloo"].map(city => ({ city, country: "Canada" })),
+    source: "https://huaweicanada.recruitee.com/all-of-our-positions",
+    description: "Huawei Technologies Canada current careers board: all listed cities, each with software or software-related roles; other entities and future hiring not covered",
+    checked: "2026-11-16",
+  }],
 };
