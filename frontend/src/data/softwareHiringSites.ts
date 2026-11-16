@@ -285,4 +285,22 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
     description: "A specific backend role lists remote Canada with conditions; eligibility is not necessarily country-wide for all Stripe jobs.",
     checked: "2026-11-16",
   }],
+  NVIDIA: [{
+    locations: [{ city: "Toronto", country: "Canada" }],
+    source: "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite?locationHierarchy1=2fcb99c455831013ea529c3b93ba3236",
+    label: "Current software job location",
+    description: "Toronto is listed on three software/compiler roles; engineering verification roles are not counted as SWE.",
+    checked: "2026-11-16",
+    audit: {
+      source: "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite?locationHierarchy1=2fcb99c455831013ea529c3b93ba3236",
+      label: "Canada current jobs audit",
+      description: "2026-11-16: reviewed all 17 Canada-filtered job cards on one page; three direct software/compiler postings list Toronto and Canada remote. No SWE internship was identified; an ASIC verification internship is hardware. Other boards, unlisted jobs and remote province restrictions are outside this snapshot.",
+    },
+  }, {
+    locations: [{ city: "Canada (remote)", country: "Canada" }],
+    source: "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/Senior-Software-Engineer---DGX-Cloud_JR2028921",
+    label: "Remote SWE eligibility",
+    description: "Canada remote is listed for specific software roles; province restrictions should be verified per posting.",
+    checked: "2026-11-16",
+  }],
 };

@@ -86,6 +86,11 @@ describe("SWE recruiting location filter", () => {
     expect(SOFTWARE_HIRING_SITES.Stripe[1].label).toMatch(/Remote/);
   });
 
+  it("distinguishes NVIDIA Toronto software jobs from remote eligibility", () => {
+    expect(matchesLocationFilter({ name: "NVIDIA" }, "Toronto")).toBe(true);
+    expect(SOFTWARE_HIRING_SITES.NVIDIA[1].label).toMatch(/Remote/);
+  });
+
   it("does not convert a negative board audit into an invented location", () => {
     expect(NO_CANADA_SWE_MATCH_AUDITS.OpenAI.source).toMatch(/^https:\/\//);
     expect(NO_CANADA_SWE_MATCH_AUDITS["Jane Street"].source).toMatch(/^https:\/\//);
