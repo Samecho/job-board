@@ -81,6 +81,11 @@ describe("SWE recruiting location filter", () => {
     for (const city of ["Bromont", "Markham", "Ottawa", "Vancouver", "Montreal"]) expect(matchesLocationFilter({ name: "IBM" }, city)).toBe(true);
   });
 
+  it("includes Stripe Canadian software locations with remote separately", () => {
+    for (const city of ["Toronto", "Vancouver", "Canada"]) expect(matchesLocationFilter({ name: "Stripe" }, city)).toBe(true);
+    expect(SOFTWARE_HIRING_SITES.Stripe[1].label).toMatch(/Remote/);
+  });
+
   it("does not convert a negative board audit into an invented location", () => {
     expect(NO_CANADA_SWE_MATCH_AUDITS.OpenAI.source).toMatch(/^https:\/\//);
     expect(NO_CANADA_SWE_MATCH_AUDITS["Jane Street"].source).toMatch(/^https:\/\//);

@@ -267,4 +267,22 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
     description: "Union of city labels across five remote SWE postings, not proof of physical offices or eligibility everywhere in the province. Check each individual role for its listed locations.",
     checked: "2026-11-16",
   }],
+  Stripe: [{
+    locations: ["Toronto", "Vancouver"].map(city => ({ city, country: "Canada" })),
+    source: "https://stripe.com/jobs/search?gh_jid=8231439",
+    label: "Software job locations",
+    description: "Canadian locations listed in current software job postings; a summer software internship lists Toronto. A location label alone is not proof of a distinct office.",
+    checked: "2026-11-16",
+    audit: {
+      source: "https://boards-api.greenhouse.io/v1/boards/stripe/jobs?content=true",
+      label: "Canada current jobs audit",
+      description: "2026-11-16: screened 785 public-board jobs; 73 matched Canadian names in location or office fields. Toronto and Vancouver appear in software roles. Listings and remote conditions change; other boards, undisclosed jobs and remote eligibility without Canadian location text are outside scope.",
+    },
+  }, {
+    locations: [{ city: "Canada (remote)", country: "Canada" }],
+    source: "https://stripe.com/careers/listing/backend-engineer-data/7913700",
+    label: "Remote SWE eligibility",
+    description: "A specific backend role lists remote Canada with conditions; eligibility is not necessarily country-wide for all Stripe jobs.",
+    checked: "2026-11-16",
+  }],
 };
