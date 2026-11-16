@@ -45,7 +45,7 @@ function OfficeLocations({ company }: { company: Company }) {
   const verified = VERIFIED_OFFICES[company.name];
   const hiringSites = SOFTWARE_HIRING_SITES[company.name] ?? [];
   return <div>
-    {hiringSites.length ? hiringSites.map((evidence, index) => <div key={`${evidence.source}-${index}`}><a href={evidence.source} target="_blank" rel="noreferrer" title={`${evidence.description}; checked ${evidence.checked}`}>SWE recruiting evidence: {evidence.locations.map(site => site.city).join(", ")}</a></div>) : <span className="muted">SWE hiring locations not verified</span>}
+    {hiringSites.length ? hiringSites.map((evidence, index) => <div key={`${evidence.source}-${index}`}><a href={evidence.source} target="_blank" rel="noreferrer" title={`${evidence.description}; checked ${evidence.checked}`}>{evidence.label ?? "SWE recruiting evidence"}: {evidence.locations.map(site => site.city).join(", ")}</a>{evidence.audit && <details className="company-locations"><summary>{evidence.audit.label}</summary><span>{evidence.audit.description} </span><a href={evidence.audit.source} target="_blank" rel="noreferrer">Source</a></details>}</div>) : <span className="muted">SWE hiring locations not verified</span>}
     {(company.main_locations || verified) && <details className="company-locations"><summary>Other company locations</summary>{company.main_locations && <div>Saved: {company.main_locations}</div>}{verified && <div><a href={verified.source} target="_blank" rel="noreferrer">Company offices: {verified.locations}</a>{verified.additionalSource && <> <a href={verified.additionalSource} target="_blank" rel="noreferrer">Additional source</a></>}</div>}<span className="muted">Not verified for SWE hiring</span></details>}
   </div>;
 }

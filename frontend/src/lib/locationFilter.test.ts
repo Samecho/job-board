@@ -24,6 +24,26 @@ describe("SWE recruiting location filter", () => {
     }
   });
 
+  it("matches locations from all Databricks 2027 software engineering intern postings", () => {
+    for (const location of ["Vancouver", "Bellevue", "Mountain View", "San Francisco", "Aarhus", "Amsterdam", "Belgrade", "Berlin", "London", "Denmark", "United Kingdom"]) {
+      expect(matchesLocationFilter({ name: "Databricks" }, location)).toBe(true);
+    }
+  });
+
+  it("distinguishes Cohere hybrid locations from remote job eligibility", () => {
+    const groups = SOFTWARE_HIRING_SITES.Cohere;
+    expect(groups[0].locations.map(site => site.city)).toEqual(["Toronto", "Montreal", "Ottawa"]);
+    expect(groups[1].label).toMatch(/Remote/);
+    expect(matchesLocationFilter({ name: "Cohere" }, "Vancouver")).toBe(true);
+  });
+
+  it("matches Cisco's potential co-op location alternatives without losing borough names", () => {
+    for (const city of ["Calgary", "Halifax", "Kanata", "Montreal", "Ottawa", "Saint-Laurent", "Toronto", "Vancouver"]) {
+      expect(matchesLocationFilter({ name: "Cisco" }, city)).toBe(true);
+    }
+    expect(SOFTWARE_HIRING_SITES.Cisco[0].label).toMatch(/Potential/);
+  });
+
   it("does not infer SWE hiring from an unverified saved location or ordinary office", () => {
     const company = { name: "Unknown", main_locations: "Toronto, Canada" };
     expect(matchesLocationFilter(company, "Canada")).toBe(false);
@@ -37,6 +57,7 @@ describe("SWE recruiting location filter", () => {
       expect(companies.has(name), name).toBe(true);
       for (const group of groups) {
         expect(group.source).toMatch(/^https:\/\//);
+        if (group.audit) expect(group.audit.source).toMatch(/^https:\/\//);
         expect(group.locations.length).toBeGreaterThan(0);
         expect(group.locations.every(site => site.city && site.country)).toBe(true);
       }

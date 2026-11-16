@@ -1,8 +1,10 @@
 export interface SoftwareHiringEvidence {
   locations: { city: string; country: string }[];
   source: string;
+  label?: string;
   description: string;
   checked: string;
+  audit?: { source: string; label: string; description: string };
 }
 
 // A source establishes a recruiting location, not an exhaustive office list or a current vacancy.
@@ -47,6 +49,22 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
     ],
     source: "https://www.databricks.com/company/careers/university-recruiting---engineering/software-engineering-intern-2027-6865687002",
     description: "Software Engineering Intern (2027)",
+    checked: "2026-11-16",
+    audit: {
+      source: "https://boards-api.greenhouse.io/v1/boards/databricks/jobs?content=true",
+      label: "Canada current SWE audit",
+      description: "2026-11-16: reviewed 28 Canada-matching listings out of 895 public board jobs, including office fields. Current individual-contributor SWE roles list Vancouver. Snapshot excludes unposted roles and other boards.",
+    },
+  }, {
+    locations: [
+      { city: "Aarhus", country: "Denmark" },
+      { city: "Amsterdam", country: "Netherlands" },
+      { city: "Belgrade", country: "Serbia" },
+      { city: "Berlin", country: "Germany" },
+      { city: "London", country: "United Kingdom" },
+    ],
+    source: "https://www.databricks.com/company/careers/open-positions",
+    description: "2027 Software Engineering Intern openings on the public board; snapshot 2026-11-16, roles and locations may change",
     checked: "2026-11-16",
   }],
   AMD: [{
@@ -112,5 +130,35 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
     source: "https://huaweicanada.recruitee.com/all-of-our-positions",
     description: "Huawei Technologies Canada current careers board: all listed cities, each with software or software-related roles; other entities and future hiring not covered",
     checked: "2026-11-16",
+  }],
+  Cohere: [{
+    locations: ["Toronto", "Montreal", "Ottawa"].map(city => ({ city, country: "Canada" })),
+    source: "https://jobs.ashbyhq.com/cohere/39cab400-c976-41d9-9002-880ac6985b64",
+    label: "Hybrid SWE job locations",
+    description: "Locations listed for hybrid software roles, not a claim that every city has a Cohere office",
+    checked: "2026-11-16",
+    audit: {
+      source: "https://api.ashbyhq.com/posting-api/job-board/cohere",
+      label: "Canada software job audit",
+      description: "2026-11-16: all 121 public-board postings checked by software/full-stack/frontend/backend title and primary/secondary locations; 14 of 15 matching titles listed Canada or a Canadian city. Some postings may be talent pools.",
+    },
+  }, {
+    locations: ["Toronto", "Montreal", "Ottawa", "Vancouver", "Canada (remote)"].map(city => ({ city, country: "Canada" })),
+    source: "https://jobs.ashbyhq.com/cohere/7133d205-5421-4336-a8e2-6037b5f55073",
+    label: "Remote SWE job locations",
+    description: "Locations listed for remote software roles; not proof of a physical office or eligibility for every Canadian resident",
+    checked: "2026-11-16",
+  }],
+  Cisco: [{
+    locations: ["Calgary", "Halifax", "Kanata", "Montreal", "Ottawa", "Saint-Laurent", "Toronto", "Vancouver"].map(city => ({ city, country: "Canada" })),
+    source: "https://careers.cisco.com/global/en/job/2024208/Software-Developer-Full-Stack-Backend-I-Co-op-Canada",
+    label: "Potential hybrid co-op locations",
+    description: "2024208 lists these alternatives as potential opportunities. The interactive page and server-rendered page disagreed about whether applications were accepted; verify before applying. Kanata is in Ottawa and Saint-Laurent is in Montreal.",
+    checked: "2026-11-16",
+    audit: {
+      source: "https://careers.cisco.com/global/en/search-results?keywords=software&location=Canada",
+      label: "Canada current jobs audit",
+      description: "2026-11-16: reviewed all 27 Canada-filtered search results across three pages and expanded the relevant location lists; nine software development roles, including potential-opportunity postings. Globally tagged remote and off-board roles may be omitted.",
+    },
   }],
 };
