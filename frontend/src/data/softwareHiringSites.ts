@@ -25,8 +25,20 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
   RBC: [{
     locations: ["Toronto", "Montreal", "Vancouver", "Halifax", "Calgary"].map(city => ({ city, country: "Canada" })),
     source: "https://jobs.rbc.com/ca/en/amplify",
-    description: "Amplify summer program: developer teams and program locations",
+    label: "Amplify program locations",
+    description: "Amplify program developer team locations; the standing program page is not proof that a particular city has an open role now.",
     checked: "2026-11-16",
+  }, {
+    locations: ["Toronto", "Vancouver", "Calgary"].map(city => ({ city, country: "Canada" })),
+    source: "https://jobs.rbc.com/ca/en/search-results?keywords=software",
+    label: "Current direct software jobs",
+    description: "Cities listed by currently observed direct software-development postings, not all RBC engineering locations.",
+    checked: "2026-11-16",
+    audit: {
+      source: "https://jobs.rbc.com/ca/en/search-results?keywords=developer",
+      label: "Canada current jobs audit",
+      description: "2026-11-16: reviewed all 136 software and 26 developer worldwide keyword-search results, expanded multi-location cards and deduplicated to 142 jobs. Seventeen direct Canadian SWE jobs listed these three cities. Other titles, French-only results and private recruiting may be missed; indexed and interactive availability sometimes conflicted.",
+    },
   }],
   Atlassian: [{
     locations: [{ city: "Vancouver", country: "Canada" }],

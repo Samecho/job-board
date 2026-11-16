@@ -10,6 +10,8 @@ describe("SWE recruiting location filter", () => {
       expect(matchesLocationFilter(company, location)).toBe(true);
     }
     expect(matchesLocationFilter(company, "Ottawa")).toBe(false);
+    expect(SOFTWARE_HIRING_SITES.RBC[0].label).toMatch(/Amplify/);
+    expect(SOFTWARE_HIRING_SITES.RBC[1].locations.map(site => site.city)).toEqual(["Toronto", "Vancouver", "Calgary"]);
   });
 
   it("matches case and accents without treating company names as locations", () => {
