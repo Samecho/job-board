@@ -22,6 +22,24 @@ export const NO_CANADA_SWE_MATCH_AUDITS: Record<string, { source: string; label:
 
 // A source establishes a recruiting location, not an exhaustive office list or a current vacancy.
 export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
+  MongoDB: [{
+    locations: [{ city: "Toronto", country: "Canada" }],
+    source: "https://www.mongodb.com/careers/job/?gh_jid=8313374",
+    label: "Software job location",
+    description: "Toronto is listed on software engineering postings; work arrangements are role-specific.",
+    checked: "2026-11-16",
+    audit: {
+      source: "https://boards-api.greenhouse.io/v1/boards/mongodb/jobs?content=true",
+      label: "Canada current jobs audit",
+      description: "2026-11-16: screened 391 public-board postings and 21 with Canadian location or office fields. Current SWE jobs include Toronto and province-specific remote options. Other boards, unlisted roles and locations not identified in these fields are not covered.",
+    },
+  }, {
+    locations: ["Alberta (remote)", "British Columbia (remote)", "Manitoba (remote)", "Ontario (remote)", "Quebec (remote)"].map(city => ({ city, country: "Canada" })),
+    source: "https://www.mongodb.com/careers/job/?gh_jid=8360715",
+    label: "Province-specific remote SWE",
+    description: "Remote eligibility varies by role; these province labels combine two software engineering postings and do not imply physical offices.",
+    checked: "2026-11-16",
+  }],
   RBC: [{
     locations: ["Toronto", "Montreal", "Vancouver", "Halifax", "Calgary"].map(city => ({ city, country: "Canada" })),
     source: "https://jobs.rbc.com/ca/en/amplify",

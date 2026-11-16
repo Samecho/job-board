@@ -4,6 +4,12 @@ import { NO_CANADA_SWE_MATCH_AUDITS, SOFTWARE_HIRING_SITES } from "../data/softw
 import { COMPANY_CATALOG } from "../data/catalog";
 
 describe("SWE recruiting location filter", () => {
+  it("separates MongoDB Toronto from province-level remote eligibility", () => {
+    expect(matchesLocationFilter({ name: "MongoDB" }, "Toronto")).toBe(true);
+    expect(matchesLocationFilter({ name: "MongoDB" }, "British Columbia")).toBe(true);
+    expect(matchesLocationFilter({ name: "MongoDB" }, "Vancouver")).toBe(false);
+    expect(SOFTWARE_HIRING_SITES.MongoDB[1].label).toMatch(/remote/i);
+  });
   it("matches the country and all five locations in RBC's developer program", () => {
     const company = { name: "RBC" };
     for (const location of ["Canada", "Toronto", "Montreal", "Vancouver", "Halifax", "Calgary"]) {
