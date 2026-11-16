@@ -147,8 +147,12 @@ describe("resume version persistence", () => {
     expect((await api.getResumeVersion(v1.id))?.structured_resume?.header.location).not.toBe("Vancouver");
     expect((await api.applications(1)).find(app => app.id === b.id)?.assigned_resume_version_id).toBe(v1.id);
     await api.assignResume(b.id, v2.id);
+    const originalPdf = new Uint8Array(await (await api.getResumeVersion(v2.id))!.pdf_file.arrayBuffer());
     const backup = await api.exportBackup();
     await api.importBackup(new File([backup], "backup.zip"));
+    const restoredPdf = (await api.getResumeVersion(v2.id))!.pdf_file;
+    expect(restoredPdf.type).toBe("application/pdf");
+    expect(new Uint8Array(await restoredPdf.arrayBuffer())).toEqual(originalPdf);
     expect((await api.applications(1)).find(app => app.id === b.id)).toMatchObject({ assigned_resume_version_id: v2.id, notes: "second", application_stage: "Interview" });
     expect((await api.analytics()).total_applications).toBe(2);
     await api.deleteApplication(a.id);

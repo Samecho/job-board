@@ -2,7 +2,7 @@ import { getGenerationTasks, subscribeGeneration, runResumeGeneration } from "..
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Download, Eye, FileCode2, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "../api/client";
-import { downloadBlob } from "../lib/resumeFiles";
+import { asPdfBlob, downloadBlob } from "../lib/resumeFiles";
 import { APPLICATION_STAGES, APPLICATION_MILESTONES, applicationHistory } from "../lib/applicationStages";
 import type { Application, ApplicationStage, Company, FeatureStatus, ResumeVersionRead } from "../types";
 
@@ -124,13 +124,13 @@ function CompanyResumeModal({ company, features, onClose, onSaved }: {
   const preview = async (version: ResumeVersionRead) => {
     const record = await api.getResumeVersion(version.id);
     if (!record?.pdf_file || record.company_id !== company.id) return;
-    setPreviewName(versionLabel(version)); setPreviewUrl(URL.createObjectURL(record.pdf_file));
+    setPreviewName(versionLabel(version)); setPreviewUrl(URL.createObjectURL(asPdfBlob(record.pdf_file)));
   };
   const download = async (version: ResumeVersionRead, ext: "pdf" | "tex") => {
     const record = await api.getResumeVersion(version.id);
     if (!record || record.company_id !== company.id) return;
     const baseName = company.name + "-" + (version.resume_title || "resume") + "-v" + version.version_number;
-    if (ext === "pdf" && record.pdf_file) downloadBlob(record.pdf_file, record.file_name || filename(baseName, "pdf"));
+    if (ext === "pdf" && record.pdf_file) downloadBlob(asPdfBlob(record.pdf_file), record.file_name || filename(baseName, "pdf"));
     if (ext === "tex" && record.tex_source) downloadBlob(new Blob([record.tex_source], { type: "application/x-tex;charset=utf-8" }), filename(baseName, "tex"));
   };
   const deleteVersion = (version: ResumeVersionRead) => {

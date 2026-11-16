@@ -10,7 +10,7 @@ import type {
   CompanyUpdate, FeatureStatus, GeneratedResume, ResumeProfile, ResumeProfileUpdate,
   ResumeVersion, ResumeVersionRead, StructuredResume,
 } from "../types";
-import { makeZip, readStoreZip } from "../lib/resumeFiles";
+import { asPdfBlob, makeZip, readStoreZip } from "../lib/resumeFiles";
 import { compileResumeLatex, renderResumeLatex } from "../lib/resumeLatex";
 import { normalizeStoredStructuredResume, trimLowestPriorityContent, parseStructuredResumeJson, RESUME_JSON_SCHEMA } from "../lib/resumeSchema";
 
@@ -760,7 +760,7 @@ async function importBackup(file: File) {
       company_id: canonicalCompanyId(Number(version.company_id)),
       structured_resume: structuredResume,
       tex_source: texSource,
-      pdf_file: pdfFile,
+      pdf_file: asPdfBlob(pdfFile),
     };
   }));
 

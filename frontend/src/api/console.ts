@@ -1,6 +1,7 @@
 import { databaseRequest as request, databaseTransaction as transaction } from "./client";
 import { COMPANY_CATALOG } from "../data/catalog";
 import { APPLICATION_STAGES, applicationHistory } from "../lib/applicationStages";
+import { asPdfBlob } from "../lib/resumeFiles";
 import type { Application, ApplicationStage, ResumeVersion } from "../types";
 
 type ObjectValue = Record<string, unknown>;
@@ -220,7 +221,7 @@ export async function executeConsoleCommand(source: string, files: File[] = [], 
         const reused = Boolean(resume);
         if (!resume) {
           const id = temporaryId--;
-          resume = { id, company_id: op.company_id, application_id: op.application_ids[0] || 0, application_ids: [], resume_group_id: `upload:${op.company_id}:${upload.sha256}`, resume_title: op.title || op.file, version_number: 1, structured_resume: null, tex_source: "", pdf_file: upload.file, provider: "uploaded", model: "External PDF", source: "uploaded", file_name: op.file, sha256: upload.sha256, created_at: now };
+          resume = { id, company_id: op.company_id, application_id: op.application_ids[0] || 0, application_ids: [], resume_group_id: `upload:${op.company_id}:${upload.sha256}`, resume_title: op.title || op.file, version_number: 1, structured_resume: null, tex_source: "", pdf_file: asPdfBlob(upload.file), provider: "uploaded", model: "External PDF", source: "uploaded", file_name: op.file, sha256: upload.sha256, created_at: now };
           resumes.push(resume);
         }
         assign(op.application_ids, resume.id);

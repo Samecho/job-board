@@ -1,5 +1,10 @@
 const encoder = new TextEncoder();
 
+// Older backups and some uploads contain valid PDF bytes without a PDF MIME type.
+export function asPdfBlob(blob: Blob): Blob {
+  return blob.type === "application/pdf" ? blob : blob.slice(0, blob.size, "application/pdf");
+}
+
 function crc32(bytes: Uint8Array): number {
   let crc = -1;
   for (const byte of bytes) {
