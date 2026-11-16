@@ -8,6 +8,7 @@ describe("verified office locations", () => {
       expect(COMPANY_CATALOG.filter(company => company.name === name)).toHaveLength(1);
       expect(office.locations).toContain("Canada:");
       expect(new URL(office.source).protocol).toBe("https:");
+      if (office.additionalSource) expect(new URL(office.additionalSource).protocol).toBe("https:");
       expect(office.checked).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
   });

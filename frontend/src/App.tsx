@@ -43,8 +43,8 @@ function OfficeLocations({ company }: { company: Company }) {
   const verified = VERIFIED_OFFICES[company.name];
   return <div>
     {company.main_locations && <span>{company.main_locations}</span>}
-    {verified && <div><a href={verified.source} target="_blank" rel="noreferrer" title={`Verified ${verified.checked}; other offices may exist`}>Verified offices (partial): {verified.locations}</a></div>}
-    {!company.main_locations && !verified && <span>Not verified</span>}
+    {verified && <div><a href={verified.source} target="_blank" rel="noreferrer" title={`Verified ${verified.checked}; other sites may exist`}>Verified sites (partial): {verified.locations}</a>{verified.additionalSource && <> <a href={verified.additionalSource} target="_blank" rel="noreferrer">Additional source</a></>}</div>}
+    {!verified && <span>{company.main_locations ? " (not independently verified)" : "Not verified"}</span>}
   </div>;
 }
 
