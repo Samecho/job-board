@@ -30,6 +30,11 @@ describe("SWE recruiting location filter", () => {
     }
   });
 
+  it("includes both cities from the Atlassian US internship detail", () => {
+    expect(matchesLocationFilter({ name: "Atlassian" }, "Seattle")).toBe(true);
+    expect(matchesLocationFilter({ name: "Atlassian" }, "San Francisco")).toBe(true);
+  });
+
   it("distinguishes Cohere hybrid locations from remote job eligibility", () => {
     const groups = SOFTWARE_HIRING_SITES.Cohere;
     expect(groups[0].locations.map(site => site.city)).toEqual(["Toronto", "Montreal", "Ottawa"]);

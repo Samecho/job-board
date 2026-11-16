@@ -33,6 +33,16 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
     source: "https://www.atlassian.com/company/careers/details/26275",
     description: "Software Engineer Intern, 2027 Canada (hybrid)",
     checked: "2026-11-16",
+    audit: {
+      source: "https://www.atlassian.com/company/careers/all-jobs",
+      label: "2027 SWE internships audit",
+      description: "2026-11-16: the public jobs list showed 14 internship postings; the two explicitly SWE-titled postings list Vancouver for Canada and Seattle or San Francisco for the US. The US job detail lists Seattle even though the result card shows San Francisco. Other titles or off-board roles are not covered.",
+    },
+  }, {
+    locations: ["Seattle", "San Francisco"].map(city => ({ city, country: "United States" })),
+    source: "https://www.atlassian.com/company/careers/details/26266",
+    description: "Software Engineer Intern, 2027 Summer U.S.; hybrid and no work sponsorship",
+    checked: "2026-11-16",
   }],
   SOTI: [{
     locations: [{ city: "Mississauga", country: "Canada" }],
