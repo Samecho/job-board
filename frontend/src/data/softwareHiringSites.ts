@@ -41,10 +41,16 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
     checked: "2026-11-16",
   }],
   Amazon: [{
-    locations: ["Vancouver", "Toronto", "Victoria", "Ottawa", "Calgary"].map(city => ({ city, country: "Canada" })),
+    locations: ["Vancouver", "Toronto", "Victoria", "Ottawa", "Calgary", "Winnipeg"].map(city => ({ city, country: "Canada" })),
     source: "https://www.amazon.jobs/en-gb/jobs/10553947/software-development-engineer-intern-summer-2027-can",
-    description: "2027 SDE internship: Canadian recruiting locations; source's Winnipeg province needs confirmation",
+    label: "2027 SDE intern possible locations",
+    description: "Amazon states these possible internship locations are not exhaustive and can change. The posting labels Winnipeg as MN, an apparent province abbreviation error; placement is not guaranteed.",
     checked: "2026-11-16",
+    audit: {
+      source: "https://www.amazon.jobs/en/search?category%5B%5D=software-development&country=CAN&loc_query=Canada",
+      label: "Canada current jobs audit",
+      description: "2026-11-16: reviewed all 134 Canada Software Development category jobs over 14 pages and both pages of 11 Student Programs jobs. Three intern-titled SDE jobs were in the former category; the general SDE internship was classified elsewhere. Other categories and remote eligibility were not exhaustively audited.",
+    },
   }],
   Shopify: [{
     locations: [

@@ -49,6 +49,12 @@ describe("SWE recruiting location filter", () => {
     expect(matchesLocationFilter({ name: "Microsoft" }, "Vancouver")).toBe(true);
   });
 
+  it("includes each possible location named in Amazon's 2027 SDE internship posting", () => {
+    for (const city of ["Vancouver", "Toronto", "Victoria", "Ottawa", "Calgary", "Winnipeg"]) {
+      expect(matchesLocationFilter({ name: "Amazon" }, city)).toBe(true);
+    }
+  });
+
   it("does not convert a negative board audit into an invented location", () => {
     expect(NO_CANADA_SWE_MATCH_AUDITS.OpenAI.source).toMatch(/^https:\/\//);
     expect(NO_CANADA_SWE_MATCH_AUDITS["Jane Street"].source).toMatch(/^https:\/\//);
