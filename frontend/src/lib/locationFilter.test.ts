@@ -44,6 +44,11 @@ describe("SWE recruiting location filter", () => {
     expect(SOFTWARE_HIRING_SITES.Cisco[0].label).toMatch(/Potential/);
   });
 
+  it("matches Microsoft's audited Canadian software job location", () => {
+    expect(matchesLocationFilter({ name: "Microsoft" }, "Canada")).toBe(true);
+    expect(matchesLocationFilter({ name: "Microsoft" }, "Vancouver")).toBe(true);
+  });
+
   it("does not infer SWE hiring from an unverified saved location or ordinary office", () => {
     const company = { name: "Unknown", main_locations: "Toronto, Canada" };
     expect(matchesLocationFilter(company, "Canada")).toBe(false);

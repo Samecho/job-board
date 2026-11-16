@@ -161,4 +161,16 @@ export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
       description: "2026-11-16: reviewed all 27 Canada-filtered search results across three pages and expanded the relevant location lists; nine software development roles, including potential-opportunity postings. Globally tagged remote and off-board roles may be omitted.",
     },
   }],
+  Microsoft: [{
+    locations: [{ city: "Vancouver", country: "Canada" }],
+    source: "https://apply.careers.microsoft.com/careers/job/1970393557052867?domain=microsoft.com",
+    label: "Current SWE job location",
+    description: "Canada-filtered search: all ten directly software-development-titled jobs list Vancouver; nine specify one or three in-office days and one is remote. Does not establish remote eligibility across every province.",
+    checked: "2026-11-16",
+    audit: {
+      source: "https://apply.careers.microsoft.com/careers?domain=microsoft.com&location=Canada",
+      label: "Canada current jobs audit",
+      description: "2026-11-16: reviewed all 60 Canada-filtered job titles across six pages, including eligible remote results, and opened all ten direct software-development matches. All display Vancouver; no SWE internship title appeared. Other titles, unlisted jobs, and remotely eligible jobs omitted by the search remain possible.",
+    },
+  }],
 };
