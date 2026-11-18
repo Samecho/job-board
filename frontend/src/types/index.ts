@@ -14,6 +14,8 @@ export interface CompanyCatalogItem {
   category: string;
   main_locations: string;
   intern_friendly: boolean;
+  internship_evidence?: string;
+  aliases?: string[];
   link: string;
 }
 

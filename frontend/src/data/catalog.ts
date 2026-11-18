@@ -34,7 +34,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "fiverings.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://fiverings.com&sz=128",
     "career_url": "https://fiverings.com/careers/",
-    "tier": "S+",
+    "tier": "S",
     "category": "Finance & Trading",
     "main_locations": "",
     "intern_friendly": true,
@@ -47,7 +47,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "deshaw.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://deshaw.com&sz=128",
     "career_url": "https://deshaw.com/careers",
-    "tier": "S+",
+    "tier": "S",
     "category": "Finance & Trading",
     "main_locations": "",
     "intern_friendly": true,
@@ -141,8 +141,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "S",
     "category": "Finance & Trading",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://tower-research.com/careers"
+    "intern_friendly": true,
+    "link": "https://tower-research.com/careers",
+    "internship_evidence": "https://tower-research.com/internships/"
   },
   {
     "id": 12,
@@ -180,8 +181,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "A",
     "category": "Finance & Trading",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://mlp.com/careers"
+    "intern_friendly": true,
+    "link": "https://mlp.com/careers",
+    "internship_evidence": "https://www.mlp.com/careers/students/"
   },
   {
     "id": 15,
@@ -255,7 +257,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "ssi.inc",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://ssi.inc&sz=128",
     "career_url": "https://ssi.inc/careers",
-    "tier": "A+",
+    "tier": "A",
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
@@ -268,7 +270,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "thinkingmachines.ai",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://thinkingmachines.ai&sz=128",
     "career_url": "https://thinkingmachines.ai/careers",
-    "tier": "A+",
+    "tier": "A",
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
@@ -285,7 +287,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://x.ai/careers"
+    "link": "https://x.ai/careers",
+    "internship_evidence": "https://job-boards.greenhouse.io/xai/jobs/5255111007"
   },
   {
     "id": 23,
@@ -298,7 +301,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://mistral.ai/careers"
+    "link": "https://mistral.ai/careers",
+    "internship_evidence": "https://jobs.ashbyhq.com/mistral.ai/de46ba8b-00cb-4618-83df-66e15a78434e/"
   },
   {
     "id": 24,
@@ -320,7 +324,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "cursor.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://cursor.com&sz=128",
     "career_url": "https://cursor.com/careers",
-    "tier": "S",
+    "tier": "A+",
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
@@ -337,7 +341,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://cohere.com/careers"
+    "link": "https://cohere.com/careers",
+    "internship_evidence": "https://jobs.ashbyhq.com/cohere/36d1f52f-8270-4652-adf5-5303a0ff341b"
   },
   {
     "id": 28,
@@ -350,7 +355,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://scale.com/careers"
+    "link": "https://scale.com/careers",
+    "internship_evidence": "https://job-boards.greenhouse.io/scaleai/jobs/4730845005"
   },
   {
     "id": 29,
@@ -398,7 +404,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "harvey.ai",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://harvey.ai&sz=128",
     "career_url": "https://harvey.ai/careers",
-    "tier": "A+",
+    "tier": "A",
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
@@ -476,7 +482,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "apple.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://apple.com&sz=128",
     "career_url": "https://apple.com/careers",
-    "tier": "A+",
+    "tier": "S",
     "category": "Big Tech & Consumer",
     "main_locations": "",
     "intern_friendly": true,
@@ -542,7 +548,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://stripe.com&sz=128",
     "career_url": "https://stripe.com/careers",
     "tier": "S",
-    "category": "Finance & Trading",
+    "category": "Big Tech & Consumer",
     "main_locations": "",
     "intern_friendly": true,
     "link": "https://stripe.com/careers"
@@ -568,7 +574,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://palantir.com&sz=128",
     "career_url": "https://palantir.com/careers",
     "tier": "A+",
-    "category": "Aerospace & Defense",
+    "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
     "link": "https://palantir.com/careers"
@@ -658,7 +664,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "amazon.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://amazon.com&sz=128",
     "career_url": "https://amazon.com/careers",
-    "tier": "A+",
+    "tier": "S",
     "category": "Big Tech & Consumer",
     "main_locations": "",
     "intern_friendly": true,
@@ -736,7 +742,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "qualcomm.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://qualcomm.com&sz=128",
     "career_url": "https://qualcomm.com/careers",
-    "tier": "A",
+    "tier": "A+",
     "category": "Hardware & Semiconductors",
     "main_locations": "",
     "intern_friendly": true,
@@ -866,7 +872,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "intel.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://intel.com&sz=128",
     "career_url": "https://intel.com/careers",
-    "tier": "B+",
+    "tier": "A",
     "category": "Hardware & Semiconductors",
     "main_locations": "",
     "intern_friendly": true,
@@ -892,7 +898,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "ibm.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://ibm.com&sz=128",
     "career_url": "https://ibm.com/careers",
-    "tier": "B+",
+    "tier": "A",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
@@ -970,7 +976,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "hp.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://hp.com&sz=128",
     "career_url": "https://hp.com/careers",
-    "tier": "C",
+    "tier": "B",
     "category": "Hardware & Semiconductors",
     "main_locations": "",
     "intern_friendly": true,
@@ -983,7 +989,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "hpe.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://hpe.com&sz=128",
     "career_url": "https://hpe.com/careers",
-    "tier": "B",
+    "tier": "B+",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
@@ -996,7 +1002,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "lenovo.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://lenovo.com&sz=128",
     "career_url": "https://lenovo.com/careers",
-    "tier": "C",
+    "tier": "B",
     "category": "Hardware & Semiconductors",
     "main_locations": "",
     "intern_friendly": true,
@@ -1048,7 +1054,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "mongodb.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://mongodb.com&sz=128",
     "career_url": "https://mongodb.com/careers",
-    "tier": "A",
+    "tier": "A+",
     "category": "Cloud, Data & DevTools",
     "main_locations": "",
     "intern_friendly": true,
@@ -1103,8 +1109,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "A",
     "category": "Cloud, Data & DevTools",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://vercel.com/careers"
+    "intern_friendly": true,
+    "link": "https://vercel.com/careers",
+    "internship_evidence": "https://vercel.com/blog/inside-the-vercel-intern-experience"
   },
   {
     "id": 87,
@@ -1129,8 +1136,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "A",
     "category": "Cloud, Data & DevTools",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://sentry.io/careers"
+    "intern_friendly": true,
+    "link": "https://sentry.io/careers",
+    "internship_evidence": "https://sentry.io/careers/internships-and-early-careers/"
   },
   {
     "id": 89,
@@ -1259,8 +1267,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "A+",
     "category": "Finance & Trading",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://ramp.com/careers"
+    "intern_friendly": true,
+    "link": "https://ramp.com/careers",
+    "internship_evidence": "https://ramp.com/emerging-talent"
   },
   {
     "id": 99,
@@ -1273,7 +1282,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://rippling.com/careers"
+    "link": "https://rippling.com/careers",
+    "internship_evidence": "https://ats.rippling.com/rippling/jobs/a07e4e46-3721-4934-b57b-0d58412e22ba"
   },
   {
     "id": 100,
@@ -1286,7 +1296,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "Big Tech & Consumer",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://notion.so/careers"
+    "link": "https://notion.so/careers",
+    "internship_evidence": "https://jobs.ashbyhq.com/notion/3fba1c39-c5cb-47d7-9ad2-1cec4d7e9d0c"
   },
   {
     "id": 101,
@@ -1451,7 +1462,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "shopify.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://shopify.com&sz=128",
     "career_url": "https://shopify.com/careers",
-    "tier": "A",
+    "tier": "A+",
     "category": "Big Tech & Consumer",
     "main_locations": "",
     "intern_friendly": true,
@@ -1516,7 +1527,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "salesforce.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://salesforce.com&sz=128",
     "career_url": "https://salesforce.com/careers",
-    "tier": "B+",
+    "tier": "A",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
@@ -1529,7 +1540,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "adobe.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://adobe.com&sz=128",
     "career_url": "https://adobe.com/careers",
-    "tier": "A",
+    "tier": "A+",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
@@ -1542,7 +1553,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "sap.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://sap.com&sz=128",
     "career_url": "https://sap.com/careers",
-    "tier": "B",
+    "tier": "A",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
@@ -1581,7 +1592,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "workday.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://workday.com&sz=128",
     "career_url": "https://workday.com/careers",
-    "tier": "B",
+    "tier": "A",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
@@ -1620,11 +1631,12 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "asana.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://asana.com&sz=128",
     "career_url": "https://asana.com/careers",
-    "tier": "B",
+    "tier": "A",
     "category": "Enterprise Software",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://asana.com/careers"
+    "intern_friendly": true,
+    "link": "https://asana.com/careers",
+    "internship_evidence": "https://asana.com/en-gb/jobs/university-recruiting"
   },
   {
     "id": 128,
@@ -1675,8 +1687,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "A",
     "category": "Enterprise Software",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://samsara.com/careers"
+    "intern_friendly": true,
+    "link": "https://samsara.com/careers",
+    "internship_evidence": "https://www.samsara.com/company/careers/emerging-talent"
   },
   {
     "id": 132,
@@ -1841,11 +1854,12 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "thomsonreuters.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://thomsonreuters.com&sz=128",
     "career_url": "https://thomsonreuters.com/careers",
-    "tier": "B",
-    "category": "Finance & Trading",
+    "tier": "B+",
+    "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://thomsonreuters.com/careers"
+    "link": "https://thomsonreuters.com/careers",
+    "internship_evidence": "https://www.thomsonreuters.com/en/about-us/labs"
   },
   {
     "id": 145,
@@ -1906,7 +1920,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "bmo.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://bmo.com&sz=128",
     "career_url": "https://bmo.com/careers",
-    "tier": "C",
+    "tier": "B",
     "category": "Finance & Trading",
     "main_locations": "",
     "intern_friendly": true,
@@ -1919,7 +1933,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "scotiabank.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://scotiabank.com&sz=128",
     "career_url": "https://scotiabank.com/careers",
-    "tier": "C",
+    "tier": "B",
     "category": "Finance & Trading",
     "main_locations": "",
     "intern_friendly": true,
@@ -1932,7 +1946,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "cibc.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://cibc.com&sz=128",
     "career_url": "https://cibc.com/careers",
-    "tier": "C",
+    "tier": "B",
     "category": "Finance & Trading",
     "main_locations": "",
     "intern_friendly": true,
@@ -1945,7 +1959,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "nbc.ca",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://nbc.ca&sz=128",
     "career_url": "https://nbc.ca/careers",
-    "tier": "C",
+    "tier": "B",
     "category": "Finance & Trading",
     "main_locations": "",
     "intern_friendly": true,
@@ -2023,7 +2037,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "cisco.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://cisco.com&sz=128",
     "career_url": "https://cisco.com/careers",
-    "tier": "B+",
+    "tier": "A",
     "category": "Security & Networking",
     "main_locations": "",
     "intern_friendly": true,
@@ -2040,7 +2054,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "Security & Networking",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://fortinet.com/careers"
+    "link": "https://fortinet.com/careers",
+    "internship_evidence": "https://www.fortinet.com/content/dam/fortinet/assets/reports/fortinet-2023-sustainability-report.pdf"
   },
   {
     "id": 160,
@@ -2296,7 +2311,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "unity.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://unity.com&sz=128",
     "career_url": "https://unity.com/careers",
-    "tier": "B",
+    "tier": "A",
     "category": "Gaming & Media",
     "main_locations": "",
     "intern_friendly": true,
@@ -2309,7 +2324,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "ea.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://ea.com&sz=128",
     "career_url": "https://ea.com/careers",
-    "tier": "B",
+    "tier": "B+",
     "category": "Gaming & Media",
     "main_locations": "",
     "intern_friendly": true,
@@ -2348,7 +2363,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "ubisoft.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://ubisoft.com&sz=128",
     "career_url": "https://ubisoft.com/careers",
-    "tier": "C",
+    "tier": "B+",
     "category": "Gaming & Media",
     "main_locations": "",
     "intern_friendly": true,
@@ -2374,11 +2389,12 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "anduril.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://anduril.com&sz=128",
     "career_url": "https://anduril.com/careers",
-    "tier": "S",
+    "tier": "A+",
     "category": "Aerospace & Defense",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://anduril.com/careers"
+    "link": "https://anduril.com/careers",
+    "internship_evidence": "https://job-boards.greenhouse.io/andurilindustries/jobs/5148079007"
   },
   {
     "id": 186,
@@ -2404,7 +2420,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "Robotics & Mobility",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://waabi.ai/careers"
+    "link": "https://waabi.ai/careers",
+    "internship_evidence": "https://jobs.lever.co/waabi/0fd4e30b-9bd1-4b53-9043-6088457363cb"
   },
   {
     "id": 188,
@@ -2469,7 +2486,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "Robotics & Mobility",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://flyzipline.com/careers"
+    "link": "https://flyzipline.com/careers",
+    "internship_evidence": "https://www.zipline.com/open-roles?gh_jid=7812147003"
   },
   {
     "id": 193,
@@ -2533,8 +2551,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "A",
     "category": "Aerospace & Defense",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://blueorigin.com/careers"
+    "intern_friendly": true,
+    "link": "https://blueorigin.com/careers",
+    "internship_evidence": "https://www.blueorigin.com/careers/internships"
   },
   {
     "id": 199,
@@ -2764,7 +2783,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "bombardier.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://bombardier.com&sz=128",
     "career_url": "https://bombardier.com/careers",
-    "tier": "C",
+    "tier": "B",
     "category": "Aerospace & Defense",
     "main_locations": "",
     "intern_friendly": true,
@@ -2868,7 +2887,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "siemens.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://siemens.com&sz=128",
     "career_url": "https://siemens.com/careers",
-    "tier": "B",
+    "tier": "B+",
     "category": "Industrial & Engineering",
     "main_locations": "",
     "intern_friendly": true,
@@ -3167,8 +3186,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "blackberry.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://blackberry.com&sz=128",
     "career_url": "https://blackberry.com/careers",
-    "tier": "C",
-    "category": "Big Tech & Consumer",
+    "tier": "B",
+    "category": "Security & Networking",
     "main_locations": "",
     "intern_friendly": true,
     "link": "https://blackberry.com/careers"
@@ -3180,8 +3199,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "opentext.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://opentext.com&sz=128",
     "career_url": "https://opentext.com/careers",
-    "tier": "C",
-    "category": "Big Tech & Consumer",
+    "tier": "B",
+    "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
     "link": "https://opentext.com/careers"
@@ -3232,11 +3251,12 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "clio.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://clio.com&sz=128",
     "career_url": "https://clio.com/careers",
-    "tier": "B",
-    "category": "Big Tech & Consumer",
+    "tier": "B+",
+    "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://clio.com/careers"
+    "link": "https://clio.com/careers",
+    "internship_evidence": "https://www.clio.com/about/careers/search/"
   },
   {
     "id": 253,
@@ -3349,11 +3369,12 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "redhat.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://redhat.com&sz=128",
     "career_url": "https://redhat.com/careers",
-    "tier": "A",
+    "tier": "A+",
     "category": "Cloud, Data & DevTools",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://redhat.com/careers"
+    "intern_friendly": true,
+    "link": "https://redhat.com/careers",
+    "internship_evidence": "https://research.redhat.com/internships/"
   },
   {
     "id": 262,
@@ -3479,7 +3500,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "redis.io",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://redis.io&sz=128",
     "career_url": "https://redis.io/careers",
-    "tier": "B+",
+    "tier": "A",
     "category": "Cloud, Data & DevTools",
     "main_locations": "",
     "intern_friendly": false,
@@ -3570,7 +3591,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "jetbrains.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://jetbrains.com&sz=128",
     "career_url": "https://jetbrains.com/careers",
-    "tier": "B+",
+    "tier": "A",
     "category": "Cloud, Data & DevTools",
     "main_locations": "",
     "intern_friendly": false,
@@ -3765,7 +3786,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "twilio.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://twilio.com&sz=128",
     "career_url": "https://twilio.com/careers",
-    "tier": "B",
+    "tier": "A",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
@@ -3804,11 +3825,12 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "box.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://box.com&sz=128",
     "career_url": "https://box.com/careers",
-    "tier": "C",
+    "tier": "B+",
     "category": "Enterprise Software",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://box.com/careers"
+    "intern_friendly": true,
+    "link": "https://box.com/careers",
+    "internship_evidence": "https://careers.box.com/en/early-careers/"
   },
   {
     "id": 298,
@@ -3817,7 +3839,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "docusign.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://docusign.com&sz=128",
     "career_url": "https://docusign.com/careers",
-    "tier": "C",
+    "tier": "B+",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": true,
@@ -3830,7 +3852,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "zendesk.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://zendesk.com&sz=128",
     "career_url": "https://zendesk.com/careers",
-    "tier": "C",
+    "tier": "B+",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": false,
@@ -3843,7 +3865,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "intercom.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://intercom.com&sz=128",
     "career_url": "https://intercom.com/careers",
-    "tier": "C",
+    "tier": "A",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": false,
@@ -3882,7 +3904,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "braze.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://braze.com&sz=128",
     "career_url": "https://braze.com/careers",
-    "tier": "C",
+    "tier": "B+",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": false,
@@ -3895,7 +3917,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "klaviyo.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://klaviyo.com&sz=128",
     "career_url": "https://klaviyo.com/careers",
-    "tier": "C",
+    "tier": "B+",
     "category": "Enterprise Software",
     "main_locations": "",
     "intern_friendly": false,
@@ -4142,11 +4164,12 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "akamai.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://akamai.com&sz=128",
     "career_url": "https://akamai.com/careers",
-    "tier": "B",
+    "tier": "A",
     "category": "Security & Networking",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://akamai.com/careers"
+    "intern_friendly": true,
+    "link": "https://akamai.com/careers",
+    "internship_evidence": "https://www.akamai.com/careers/students-and-recent-graduates"
   },
   {
     "id": 325,
@@ -4293,16 +4316,20 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
   },
   {
     "id": 338,
-    "name": "Pure Storage",
-    "display_name": "Pure Storage",
-    "domain": "purestorage.com",
-    "logo_url": "https://www.google.com/s2/favicons?domain_url=https://purestorage.com&sz=128",
-    "career_url": "https://purestorage.com/careers",
+    "name": "Everpure",
+    "display_name": "Everpure",
+    "domain": "everpuredata.com",
+    "logo_url": null,
+    "career_url": "https://www.everpuredata.com/company/careers/opportunities.html",
     "tier": "A",
     "category": "Cloud, Data & DevTools",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://purestorage.com/careers"
+    "link": "https://www.everpuredata.com/company/careers/opportunities.html",
+    "aliases": [
+      "Pure Storage"
+    ],
+    "internship_evidence": "https://www.everpuredata.com/company/careers/opportunities.html"
   },
   {
     "id": 339,
@@ -4311,11 +4338,12 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "nutanix.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://nutanix.com&sz=128",
     "career_url": "https://nutanix.com/careers",
-    "tier": "B",
+    "tier": "A",
     "category": "Cloud, Data & DevTools",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://nutanix.com/careers"
+    "intern_friendly": true,
+    "link": "https://nutanix.com/careers",
+    "internship_evidence": "https://careers.nutanix.com/en/student-programs/"
   },
   {
     "id": 340,
@@ -4324,8 +4352,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "coreweave.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://coreweave.com&sz=128",
     "career_url": "https://coreweave.com/careers",
-    "tier": "S",
-    "category": "AI & ML",
+    "tier": "A+",
+    "category": "Cloud & Infrastructure",
     "main_locations": "",
     "intern_friendly": false,
     "link": "https://coreweave.com/careers"
@@ -4405,8 +4433,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "A+",
     "category": "AI & ML",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://tenstorrent.com/careers"
+    "intern_friendly": true,
+    "link": "https://tenstorrent.com/careers",
+    "internship_evidence": "https://tenstorrent.com/en/university"
   },
   {
     "id": 347,
@@ -4873,8 +4902,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "A",
     "category": "Industrial & Engineering",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://mathworks.com/careers"
+    "intern_friendly": true,
+    "link": "https://mathworks.com/careers",
+    "internship_evidence": "https://www.mathworks.com/company/jobs/students/internships.html"
   },
   {
     "id": 383,
@@ -5277,7 +5307,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://www.together.ai/careers"
+    "link": "https://www.together.ai/careers",
+    "internship_evidence": "https://www.together.ai/blog/inside-the-together-ai-kernels-team"
   },
   {
     "id": 414,
@@ -5342,7 +5373,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "Security & Networking",
     "main_locations": "",
     "intern_friendly": false,
-    "link": "https://www.verkada.com/careers/"
+    "link": "https://www.verkada.com/careers/",
+    "internship_evidence": "https://job-boards.greenhouse.io/verkada/jobs/5210813007"
   },
   {
     "id": 419,
@@ -5403,7 +5435,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "cognition.ai",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://cognition.ai&sz=128",
     "career_url": "https://cognition.ai/careers",
-    "tier": "S",
+    "tier": "A+",
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
@@ -5419,8 +5451,9 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "tier": "A+",
     "category": "AI & ML",
     "main_locations": "",
-    "intern_friendly": false,
-    "link": "https://sierra.ai/careers"
+    "intern_friendly": true,
+    "link": "https://sierra.ai/careers",
+    "internship_evidence": "https://sierra.ai/early-career-program"
   },
   {
     "id": 425,
@@ -5442,7 +5475,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "abridge.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://abridge.com&sz=128",
     "career_url": "https://www.abridge.com/careers",
-    "tier": "A+",
+    "tier": "A",
     "category": "Health & Biotech",
     "main_locations": "",
     "intern_friendly": false,
@@ -5650,7 +5683,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "openevidence.com",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://openevidence.com&sz=128",
     "career_url": "https://www.openevidence.com/careers",
-    "tier": "A+",
+    "tier": "A",
     "category": "Health & Biotech",
     "main_locations": "",
     "intern_friendly": false,
@@ -6326,7 +6359,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "moonshot.ai",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://moonshot.ai&sz=128",
     "career_url": "https://www.moonshot.cn/",
-    "tier": "S",
+    "tier": "A+",
     "category": "AI & ML",
     "main_locations": "",
     "intern_friendly": false,
@@ -6352,7 +6385,7 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "domain": "nasa.gov",
     "logo_url": "https://www.google.com/s2/favicons?domain_url=https://nasa.gov&sz=128",
     "career_url": "https://www.nasa.gov/careers/",
-    "tier": "B+",
+    "tier": "A",
     "category": "Government & Public Sector",
     "main_locations": "",
     "intern_friendly": true,
@@ -6655,7 +6688,8 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "category": "Finance & Trading",
     "main_locations": "New York",
     "intern_friendly": false,
-    "link": "https://pdtpartners.com/careers/"
+    "link": "https://pdtpartners.com/careers/",
+    "internship_evidence": "https://job-boards.greenhouse.io/pdtpartners/jobs/8083292"
   },
   {
     "id": 521,
@@ -7618,5 +7652,275 @@ export const COMPANY_CATALOG: CompanyCatalogItem[] = [
     "main_locations": "United States",
     "intern_friendly": true,
     "link": "https://www.qualtrics.com/careers/us/en/eng-students"
+  },
+  {
+    "id": 10009,
+    "name": "Disney",
+    "display_name": "Disney",
+    "domain": "disney.com",
+    "logo_url": null,
+    "career_url": "https://www.disneycareers.com/en/early-career-programs",
+    "tier": "A",
+    "category": "Gaming & Media",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://www.disneycareers.com/en/early-career-programs",
+    "internship_evidence": "https://www.disneycareers.com/es/trabajo/vancouver/software-engineer-intern-pipeline-infrastructure/391/102485178400"
+  },
+  {
+    "id": 10010,
+    "name": "Manulife",
+    "display_name": "Manulife",
+    "domain": "manulife.com",
+    "logo_url": null,
+    "career_url": "https://careers.manulife.com/global/en/internship-co-op",
+    "tier": "B",
+    "category": "Finance & Trading",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://careers.manulife.com/global/en/internship-co-op",
+    "internship_evidence": "https://careers.manulife.com/global/en/internship-co-op"
+  },
+  {
+    "id": 10011,
+    "name": "Sun Life",
+    "display_name": "Sun Life",
+    "domain": "sunlife.ca",
+    "logo_url": null,
+    "career_url": "https://www.sunlife.ca/en/careers/",
+    "tier": "B",
+    "category": "Finance & Trading",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://www.sunlife.ca/en/careers/",
+    "internship_evidence": "https://sunlife.wd3.myworkdayjobs.com/en-US/Campus/job/Toronto-Ontario/Student--API-Developer--Winter-2027-_JR00127091"
+  },
+  {
+    "id": 10012,
+    "name": "Intact Financial",
+    "display_name": "Intact Financial",
+    "domain": "intactfc.com",
+    "logo_url": null,
+    "career_url": "https://careers.intactfc.com/internship-co-ops",
+    "tier": "B+",
+    "category": "Finance & Trading",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://careers.intactfc.com/internship-co-ops",
+    "aliases": [
+      "Intact Lab"
+    ],
+    "internship_evidence": "https://careers.intactfc.com/internship-co-ops"
+  },
+  {
+    "id": 10013,
+    "name": "Ross Video",
+    "display_name": "Ross Video",
+    "domain": "rossvideo.com",
+    "logo_url": null,
+    "career_url": "https://www.rossvideo.com/company/careers/",
+    "tier": "B+",
+    "category": "Industrial & Engineering",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://www.rossvideo.com/company/careers/",
+    "internship_evidence": "https://www.rossvideo.com/company/media/news-releases/carleton-university-and-ross-video-establish-three-year-integrated-partnership-streamlining-product-and-talent-development/"
+  },
+  {
+    "id": 10014,
+    "name": "Dayforce",
+    "display_name": "Dayforce",
+    "domain": "dayforce.com",
+    "logo_url": null,
+    "career_url": "https://www.dayforce.com/who-we-are/careers",
+    "tier": "B+",
+    "category": "Enterprise Software",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://www.dayforce.com/who-we-are/careers",
+    "aliases": [
+      "Ceridian"
+    ],
+    "internship_evidence": "https://jobs.dayforcehcm.com/mydayforce/ALLJOBS/jobs/102384"
+  },
+  {
+    "id": 10015,
+    "name": "BCI",
+    "display_name": "BCI",
+    "domain": "bci.ca",
+    "logo_url": null,
+    "career_url": "https://www.bci.ca/people/students-interns/overview/",
+    "tier": "B",
+    "category": "Finance & Trading",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://www.bci.ca/people/students-interns/overview/",
+    "aliases": [
+      "British Columbia Investment Management Corporation"
+    ],
+    "internship_evidence": "https://www.bci.ca/people/students-interns/overview/"
+  },
+  {
+    "id": 10016,
+    "name": "SSI",
+    "display_name": "SSI",
+    "domain": "ssi-corporate.com",
+    "logo_url": null,
+    "career_url": "https://www.ssi-corporate.com/about-us/careers/",
+    "tier": "B",
+    "category": "Industrial & Engineering",
+    "main_locations": "",
+    "intern_friendly": false,
+    "link": "https://www.ssi-corporate.com/about-us/careers/",
+    "aliases": [
+      "ShipConstructor"
+    ]
+  },
+  {
+    "id": 10017,
+    "name": "Birdseye Security Solutions",
+    "display_name": "Birdseye Security Solutions",
+    "domain": "birdseye.ca",
+    "logo_url": null,
+    "career_url": "https://birdseyeaccount.bamboohr.com/careers/",
+    "tier": "B",
+    "category": "Security & Networking",
+    "main_locations": "",
+    "intern_friendly": false,
+    "link": "https://birdseyeaccount.bamboohr.com/careers/",
+    "internship_evidence": "https://birdseyeaccount.bamboohr.com/careers/287/"
+  },
+  {
+    "id": 10018,
+    "name": "Capital Power",
+    "display_name": "Capital Power",
+    "domain": "capitalpower.com",
+    "logo_url": null,
+    "career_url": "https://www.capitalpower.com/careers/",
+    "tier": "B",
+    "category": "Industrial & Engineering",
+    "main_locations": "",
+    "intern_friendly": false,
+    "link": "https://www.capitalpower.com/careers/",
+    "internship_evidence": "https://capitalpower.wd10.myworkdayjobs.com/External/job/Edmonton-AB/Summer-Student---Data-Science_JR807223-1"
+  },
+  {
+    "id": 10019,
+    "name": "Ai2",
+    "display_name": "Ai2",
+    "domain": "allenai.org",
+    "logo_url": null,
+    "career_url": "https://allenai.org/internships",
+    "tier": "A+",
+    "category": "AI & ML",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://allenai.org/internships",
+    "aliases": [
+      "Allen Institute for AI"
+    ],
+    "internship_evidence": "https://allenai.org/internships"
+  },
+  {
+    "id": 10020,
+    "name": "Sakana AI",
+    "display_name": "Sakana AI",
+    "domain": "sakana.ai",
+    "logo_url": null,
+    "career_url": "https://sakana.ai/careers/",
+    "tier": "A+",
+    "category": "AI & ML",
+    "main_locations": "",
+    "intern_friendly": false,
+    "link": "https://sakana.ai/careers/",
+    "internship_evidence": "https://sakana.ai/careers/applied-research-engineer/"
+  },
+  {
+    "id": 10021,
+    "name": "Bending Spoons",
+    "display_name": "Bending Spoons",
+    "domain": "bendingspoons.com",
+    "logo_url": null,
+    "career_url": "https://jobs.bendingspoons.com/",
+    "tier": "A",
+    "category": "Big Tech & Consumer",
+    "main_locations": "",
+    "intern_friendly": false,
+    "link": "https://jobs.bendingspoons.com/",
+    "internship_evidence": "https://jobs.bendingspoons.com/positions/6abcc9f826f91ee39d3040c4?var=2"
+  },
+  {
+    "id": 10022,
+    "name": "NetApp",
+    "display_name": "NetApp",
+    "domain": "netapp.com",
+    "logo_url": null,
+    "career_url": "https://careers.netapp.com/category/internships-jobs/27600/8608640/1",
+    "tier": "A",
+    "category": "Cloud, Data & DevTools",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://careers.netapp.com/category/internships-jobs/27600/8608640/1",
+    "internship_evidence": "https://careers.netapp.com/job/san-jose/intern-software-engineer-systems/27600/103264301616"
+  },
+  {
+    "id": 10023,
+    "name": "Walmart Global Tech",
+    "display_name": "Walmart Global Tech",
+    "domain": "tech.walmart.com",
+    "logo_url": null,
+    "career_url": "https://careers.walmart.com/us/en/global-tech",
+    "tier": "B+",
+    "category": "Big Tech & Consumer",
+    "main_locations": "",
+    "intern_friendly": false,
+    "link": "https://careers.walmart.com/us/en/global-tech",
+    "internship_evidence": "https://careers.walmart.com/us/en/jobs/R-2630029"
+  },
+  {
+    "id": 10024,
+    "name": "Khan Academy",
+    "display_name": "Khan Academy",
+    "domain": "khanacademy.org",
+    "logo_url": null,
+    "career_url": "https://www.khanacademy.org/careers",
+    "tier": "B+",
+    "category": "Enterprise Software",
+    "main_locations": "",
+    "intern_friendly": false,
+    "link": "https://www.khanacademy.org/careers",
+    "internship_evidence": "https://www.khanacademy.org/about/our-interns"
+  },
+  {
+    "id": 10025,
+    "name": "Wikimedia Foundation",
+    "display_name": "Wikimedia Foundation",
+    "domain": "wikimediafoundation.org",
+    "logo_url": null,
+    "career_url": "https://wikimediafoundation.org/about/jobs/",
+    "tier": "A",
+    "category": "Big Tech & Consumer",
+    "main_locations": "",
+    "intern_friendly": false,
+    "link": "https://wikimediafoundation.org/about/jobs/",
+    "internship_evidence": "https://job-boards.greenhouse.io/wikimediainternship/jobs/8287616"
+  },
+  {
+    "id": 10026,
+    "name": "NASA Jet Propulsion Laboratory",
+    "display_name": "NASA Jet Propulsion Laboratory",
+    "domain": "jpl.nasa.gov",
+    "logo_url": null,
+    "career_url": "https://www.jpl.nasa.gov/edu/internships/apply/",
+    "tier": "A",
+    "category": "Aerospace & Defense",
+    "main_locations": "",
+    "intern_friendly": true,
+    "link": "https://www.jpl.nasa.gov/edu/internships/apply/",
+    "aliases": [
+      "JPL",
+      "NASA JPL"
+    ],
+    "internship_evidence": "https://www.jpl.nasa.gov/edu/internships/apply/"
   }
 ];

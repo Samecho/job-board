@@ -216,7 +216,9 @@ Rates in `frontend/src/lib/aiModels.ts` were checked 2026-09-06 and should be ma
 
 ## Catalog Audit
 
-The static catalog contains the September 2026 resume-signal audit. Tiers measure technical reputation and resume recognition; internship availability is tracked separately by the Intern badge. The tier order `S+`, `S`, `A+`, `A`, `B+`, `B`, `C`, `D`.
+Tiers estimate the resume value of a substantive technical role for a CS student: engineering reputation, depth of work, and recognition across technical employers. Pay, geography, and internship availability do not affect tiers. The tier order is `S+`, `S`, `A+`, `A`, `B+`, `B`, `C`, `D`.
+
+The Intern badge is separate: an existing recurring program or a documented posting is enough for a badge, while unverified companies are left unmarked. None of these statuses indicate that applications are open now. Location tags come only from evidenced SWE recruiting sites, link to their source, and do not claim to be an exhaustive list of office locations.
 
 To reproduce the audit transform:
 

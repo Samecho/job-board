@@ -22,6 +22,74 @@ export const NO_CANADA_SWE_MATCH_AUDITS: Record<string, { source: string; label:
 
 // A source establishes a recruiting location, not an exhaustive office list or a current vacancy.
 export const SOFTWARE_HIRING_SITES: Record<string, SoftwareHiringEvidence[]> = {
+  Disney: [{
+    locations: [
+      { city: "Vancouver", country: "Canada" },
+    ],
+    source: "https://www.disneycareers.com/es/trabajo/vancouver/software-engineer-intern-pipeline-infrastructure/391/102485178400",
+    description: "Software Engineer Intern, Pipeline Infrastructure at Walt Disney Animation Studios.",
+    checked: "2026-11-18",
+  }, {
+    locations: [{ city: "Glendale", country: "United States" }],
+    source: "https://www.disneycareers.com/en/job/glendale/product-and-technology-software-engineering-intern-summer-2027/391/102343795584",
+    description: "Product and Technology Software Engineering Intern.",
+    checked: "2026-11-18",
+  }],
+  Manulife: [{
+    locations: [{ city: "Toronto", country: "Canada" }],
+    source: "https://careers.manulife.com/global/en/job/JR26101403/Full-Stack-Software-Engineer",
+    description: "Full Stack Software Engineer, Finance Solution Delivery.",
+    checked: "2026-11-18",
+  }, {
+    locations: [
+      { city: "Waterloo", country: "Canada" },
+      { city: "Boston", country: "United States" },
+    ],
+    source: "https://careers.manulife.com/global/en/new-graduate",
+    description: "Technology new-grad program sites for software engineering rotations.",
+    checked: "2026-11-18",
+  }],
+  "Sun Life": [{
+    locations: ["Toronto", "North York", "Waterloo"].map(city => ({ city, country: "Canada" })),
+    source: "https://sunlife.wd3.myworkdayjobs.com/en-US/Campus/job/Toronto-Ontario/Student--API-Developer--Winter-2027-_JR00127091",
+    description: "API Developer co-op listing named all three locations.",
+    checked: "2026-11-18",
+  }],
+  "Intact Financial": [{
+    locations: ["Montréal", "St-Hyacinthe"].map(city => ({ city, country: "Canada" })),
+    source: "https://careers.intactfc.com/d%C3%A9veloppeur-logiciel-i-4-mois-coop-stagiaire-hiver-2027/job/R155561",
+    description: "Software Developer I co-op for full-stack and backend roles in IT and Lab.",
+    checked: "2026-11-18",
+  }],
+  "Birdseye Security Solutions": [{
+    locations: [{ city: "Mississauga", country: "Canada" }],
+    source: "https://birdseyeaccount.bamboohr.com/careers/287/",
+    description: "AI Systems internship in Mississauga.",
+    checked: "2026-11-18",
+  }],
+  "Sakana AI": [{
+    locations: [{ city: "Tokyo", country: "Japan" }],
+    source: "https://sakana.ai/careers/applied-research-engineer/",
+    description: "Applied Research Engineer (Product), with an internship option.",
+    checked: "2026-11-18",
+  }],
+  "Bending Spoons": [{
+    locations: [
+      { city: "Milan", country: "Italy" },
+      { city: "London", country: "United Kingdom" },
+      { city: "Madrid", country: "Spain" },
+      { city: "Warsaw", country: "Poland" },
+    ],
+    source: "https://jobs.bendingspoons.com/positions/6abcc9f826f91ee39d3040c4?var=2",
+    description: "Software engineer, summer intern recruiting locations.",
+    checked: "2026-11-18",
+  }],
+  NetApp: [{
+    locations: ["San Jose", "Morrisville"].map(city => ({ city, country: "United States" })),
+    source: "https://careers.netapp.com/en/job/san-jose/intern-software-engineer-systems/27600/103264301616",
+    description: "Intern - Software Engineer (Systems).",
+    checked: "2026-11-18",
+  }],
   MongoDB: [{
     locations: [{ city: "Toronto", country: "Canada" }],
     source: "https://www.mongodb.com/careers/job/?gh_jid=8313374",

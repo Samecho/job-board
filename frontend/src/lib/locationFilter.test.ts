@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesLocationFilter } from "./locationFilter";
+import { getSoftwareHiringLocations, matchesLocationFilter } from "./locationFilter";
 import { NO_CANADA_SWE_MATCH_AUDITS, SOFTWARE_HIRING_SITES } from "../data/softwareHiringSites";
 import { COMPANY_CATALOG } from "../data/catalog";
 
@@ -111,9 +111,23 @@ describe("SWE recruiting location filter", () => {
 
   it("does not infer SWE hiring from an unverified saved location or ordinary office", () => {
     const company = { name: "Unknown", main_locations: "Toronto, Canada" };
+    expect(getSoftwareHiringLocations(company)).toEqual([]);
     expect(matchesLocationFilter(company, "Canada")).toBe(false);
     expect(matchesLocationFilter(company, "Toronto")).toBe(false);
     expect(matchesLocationFilter(company, " ")).toBe(true);
+  });
+
+  it("deduplicates hiring city tags and preserves a source for each tag", () => {
+    const cities = getSoftwareHiringLocations({ name: "RBC" });
+    expect(cities.filter(site => site.city === "Toronto")).toHaveLength(1);
+    expect(cities.find(site => site.city === "Vancouver")?.source).toMatch(/^https:\/\//);
+  });
+
+  it("finds added employers by recruiting city and country, including accents", () => {
+    expect(matchesLocationFilter({ name: "Disney" }, "Vancouver")).toBe(true);
+    expect(matchesLocationFilter({ name: "Intact Financial" }, "Montreal")).toBe(true);
+    expect(matchesLocationFilter({ name: "Intact Financial" }, "Canada")).toBe(true);
+    expect(matchesLocationFilter({ name: "NetApp" }, "Canada")).toBe(false);
   });
 
   it("links every recorded company and location to a catalog entry and an evidence source", () => {
